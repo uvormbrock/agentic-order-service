@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "01-requirements/product-requirements.md",
+                "file": "02-architecture/domain-model.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "product-requirements"
+              "title": "domain-model"
             }
           }
         ]
@@ -199,6 +199,8 @@
   },
   "active": "17844cdd48270744",
   "lastOpenFiles": [
+    "02-architecture/order-item-snapshots.md",
+    "02-architecture/domain-model.md",
     "01-requirements/product-requirements.md",
     "00_Project/Metadata.md",
     "Chapters/English",
@@ -243,8 +245,6 @@
     "Chapters/Chapter 31 - What the Warrant Holds.md",
     "Chapters/Chapter 28 - Poison File.md",
     "Chapters/Chapter 27 - Maryland.md",
-    "Chapters/Chapter 26 - Devices.md",
-    "Chapters/Chapter 25 - The Other Drive.md",
     "Unbenannt.canvas"
   ]
 }
