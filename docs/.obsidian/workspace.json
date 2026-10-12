@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "02-architecture/domain-model.md",
+                "file": "03-decisions/0002-transaction-and-locking-strategy.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "domain-model"
+              "title": "0002-transaction-and-locking-strategy"
             }
           }
         ]
@@ -199,9 +199,12 @@
   },
   "active": "17844cdd48270744",
   "lastOpenFiles": [
+    "02-architecture/rest-api-design.md",
+    "03-decisions/0002-transaction-and-locking-strategy.md",
+    "01-requirements/product-requirements.md",
+    "03-decisions/0001-order-placement-concurrency.md",
     "02-architecture/order-item-snapshots.md",
     "02-architecture/domain-model.md",
-    "01-requirements/product-requirements.md",
     "00_Project/Metadata.md",
     "Chapters/English",
     "social_media/insta/01_post/slide_05.png",
@@ -242,9 +245,6 @@
     "Chapters/Chapter 21 - Live.md",
     "Chapters/Chapter 33 - Uncalled.md",
     "Chapters/Chapter 32 - Leave the Race.md",
-    "Chapters/Chapter 31 - What the Warrant Holds.md",
-    "Chapters/Chapter 28 - Poison File.md",
-    "Chapters/Chapter 27 - Maryland.md",
     "Unbenannt.canvas"
   ]
 }
