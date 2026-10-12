@@ -1,0 +1,22 @@
+# Betriebssystem
+.DS_Store
+Thumbs.db
+
+# Maven / Java
+target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Lokale Obsidian-Zustände
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/cache/
+
+# Lokale Geheimnisse
+.env
+.env.*
+!.env.example
