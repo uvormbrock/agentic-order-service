@@ -81,7 +81,7 @@ Reject ambient transactions before coordination; use fresh transaction-scoped st
 
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
-| Maven, single module | Maven/wrapper version Open | Compile/package and execute approved quality gates | **Accepted** build tool and structure |
+| Maven, single module | **3.9.9**, pinned by the official Apache Maven Wrapper (wrapper scripts 3.3.4) | Compile/package and execute approved quality gates consistently across developer environments | **Accepted** build tool, structure, and wrapper-managed Maven version |
 | Spring Boot dependency management | **4.1.1** parent/BOM alignment; exact POM form not generated | Keep compatible Spring and supported library versions aligned | **Accepted** version policy |
 | Maven Surefire / Failsafe | Compatible plugin versions verified before build approval | Proposed separation of unit tests and PostgreSQL integration tests | **Proposed** test execution convention |
 
@@ -144,7 +144,7 @@ flowchart TB
     DATA["Spring Data JPA and Hibernate"]
     PG[("PostgreSQL: version Open")]
     FLY["Flyway: execution strategy Open"]
-    BUILD["Maven: tool version Open"]
+    BUILD["Maven 3.9.9 via Apache Maven Wrapper"]
     TEST["Accepted JUnit 6 and Testcontainers"]
     QUALITY["Static analysis and CI tooling Open"]
     JAVA -. "runtime" .-> BOOT
@@ -172,3 +172,7 @@ flowchart TB
 7. Keep decisions in ADRs, version roles in this inventory, and unresolved execution details in [open items](../00-overview/open-items.md). Avoid maintaining duplicate version lists with competing authority.
 
 For recorded upstream compatibility observations and links, consult [ADR-0005](../03-decisions/ADR-0005-technology-stack.md). This reference changes no business rules, ADR statuses, or tool approvals.
+
+### Approved Maven Wrapper Enhancement
+
+The user explicitly approved Maven **3.9.9** via the official Apache Maven Wrapper as a post-review enhancement to Increment 1. The generated `only-script` wrapper uses scripts from wrapper release 3.3.4 and downloads Maven from `https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip`. No wrapper JAR is committed. Java 21 is supplied through a command-local JAVA_HOME; no system configuration is changed. See the [bootstrap execution record](../04-agentic-coding/prompts/02-technical-bootstrap.md#post-review-enhancement--maven-wrapper) for successful version/build/test/dependency evidence and pending human review of this enhancement. This resolves the previously Open Maven/wrapper selection for this increment; ADR-0005's original decision history is preserved. Other Open technology and operational decisions remain unchanged.
