@@ -67,34 +67,80 @@ Foundation tests have been run as recorded in Increment 2; no domain/mapping/con
 
 ## Increment 2 Test Responsibilities
 
-`AgenticOrderServiceApplicationTest` retains MVC/Validation assertions while excluding DataSource, Hibernate JPA, and Flyway auto-configuration only through its test annotation. It verifies web-context wiring, not persistence readiness, and must run without Docker through `./mvnw test`.
+The current test classes verify the technical foundation:
 
-`PostgreSqlFoundationIT` uses the full application context, the `integration-test` profile, and a Spring-managed PostgreSQL bean with `@ServiceConnection`. It verifies JDBC/server version, EntityManagerFactory with zero entities, disabled OSIV, validation/no SQL initialization, zero application migrations, and only Flyway metadata. Failsafe executes it through `./mvnw verify`; Docker unavailability fails startup, with no disabled-without-Docker skip. Context teardown stops the test database; reuse is disabled. Credentials/ports are independent of Compose.
+- `AgenticOrderServiceApplicationTest`: web application context, DispatcherServlet, and Validation wiring. DataSource, Hibernate JPA, and Flyway auto-configuration are excluded only in this smoke test; it provides no persistence evidence.
+- `PostgreSqlImageConfigurationTest`: understandable failures for missing files/properties, empty or malformed image values, and malformed properties syntax, using temporary files.
+- `PostgreSqlFoundationIT`: isolated container startup, configured image and actual server version, JDBC `SELECT 1`, EntityManagerFactory initialization with zero entities, disabled OSIV, Hibernate validation, disabled SQL initialization, and only empty Flyway metadata with no application migrations or domain tables.
 
-No entity round trips, application migrations, domain rules, transaction guards, or concurrency behavior are verified by this increment. Those gates remain Pending. Actual results: [Increment 2 execution record](../04-agentic-coding/prompts/03-postgresql-foundation.md).
+Entity round trips, application migrations, domain rules, transaction guards, and concurrency behavior remain Pending. Actual foundation results are recorded in the [Increment 2 execution record](../04-agentic-coding/prompts/03-postgresql-foundation.md).
 
 ## Running Tests
 
-Run commands from the repository root using the Maven Wrapper:
+Run commands from the repository root using the Maven Wrapper. Both test groups use JUnit 6; Surefire and Failsafe determine their execution within the Maven lifecycle.
 
-| Command | Execution and scope | Docker |
+### Fast Tests and Integration Tests
+
+| Aspect | Fast tests | PostgreSQL integration tests |
 | --- | --- | --- |
-| `./mvnw test` | Surefire runs the fast smoke and image-configuration tests during Maven's `test` phase. It does not run PostgreSQL integration tests. | Not required |
-| `./mvnw verify` | Surefire runs fast tests; Failsafe runs PostgreSQL `*IT` tests during `integration-test` and checks their results during `verify`. | Required |
+| Maven plugin | Surefire | Failsafe |
+| Project naming convention | `*Test` | `*IT` |
+| Execution phase | `test` | `integration-test`, with results checked in `verify` |
+| Current scope | Smoke and image-configuration checks | Full application context with real PostgreSQL |
+| PostgreSQL / Docker required | No | Yes |
+| Command | `./mvnw test` | `./mvnw verify` also runs the fast tests |
 
-The current test classes check:
+Fast tests provide frequent development feedback without starting containers. They are not necessarily unit tests: the smoke test loads a Spring web application context. PostgreSQL integration tests additionally exercise database connectivity and framework integration, including container and database startup.
 
-- `AgenticOrderServiceApplicationTest`: web application context, DispatcherServlet, and Validation wiring. Database auto-configuration is excluded only for this smoke test; it provides no persistence evidence.
-- `PostgreSqlImageConfigurationTest`: understandable failures for missing files/properties, empty or malformed image values, and malformed properties syntax, using temporary files.
-- `PostgreSqlFoundationIT`: container startup and the centrally configured image/server version, JDBC `SELECT 1`, EntityManagerFactory initialization, disabled OSIV, Hibernate validation, disabled SQL initialization, and only empty Flyway metadata with no application migrations or domain tables.
+`verify` includes the earlier `test` phase, so it runs both groups. These commands do not select mutually exclusive suites; a passing `test` run does not establish PostgreSQL readiness.
 
-Integration tests read [config/postgres.properties](../../config/postgres.properties), require a reachable Docker Engine, and may download images on first use. They do not require local `.env` credentials or a running Compose database. Spring starts the isolated Testcontainers PostgreSQL bean before dependent beans; context teardown closes JPA and the pool before stopping the container. Reuse is disabled, and Testcontainers cleans up its resources. Docker unavailability fails integration startup; do not report skipped/unavailable integration verification as Passed.
-
-Use the existing Java 21 installation through command-local JAVA_HOME; this does not change system configuration:
+Use the existing Java 21 installation through command-local JAVA_HOME without changing system configuration:
 
 ```sh
 env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw test
 env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw verify
 ```
 
-During development, run `test` for fast feedback and `verify` after database/integration changes. Before proposing an implementation commit, run `verify`, inspect Surefire/Failsafe reports under `target/`, check the actual Git diff and whitespace, and report applicable results and limitations. Obtain human acceptance and explicit commit authorization through the [AI workflow](../04-agentic-coding/ai-development-workflow.md). Documentation-only changes use documentation gates; future domain/migration/concurrency gates remain Pending.
+### Docker Compose vs. Testcontainers
+
+Both approaches use the image defined in [config/postgres.properties](../../config/postgres.properties), but their database instances, credentials, and lifecycles are separate.
+
+| Aspect | Local development | PostgreSQL integration tests |
+| --- | --- | --- |
+| Application/test process | Spring Boot application on the host | JUnit/Maven tests on the host |
+| Database management | Docker Compose, started explicitly | Testcontainers, started automatically |
+| Credentials | Git-ignored local `.env`, exported to the application | Isolated values in `PostgreSqlTestConfiguration` |
+| Host database port | Configurable, bound to `127.0.0.1` | Dynamically mapped |
+| Database storage | Persistent named volume | Disposable test database; reuse disabled |
+| Teardown | Explicit Compose shutdown; preserve the volume | Application-context teardown and Testcontainers cleanup |
+
+```mermaid
+flowchart TB
+    subgraph HOST["Host Machine"]
+        APP["Spring Boot application<br/>(local development)"]
+        TESTS["JUnit / Maven integration tests"]
+    end
+
+    subgraph DOCKER["Docker Engine"]
+        DEVDB[("PostgreSQL<br/>Docker Compose<br/>persistent development database")]
+        TESTDB[("PostgreSQL<br/>Testcontainers<br/>temporary integration test database")]
+    end
+
+    APP -->|"Uses credentials exported from local .env"| DEVDB
+    TESTS -->|"Creates isolated container automatically"| TESTDB
+```
+
+Integration tests require a reachable Docker Engine and may download images on first use. They read the central properties file directly, without parsing Compose YAML, loading local `.env`, or requiring a running Compose database. They do not modify the persistent development database. Docker unavailability fails integration startup; unavailable verification must not be reported as Passed.
+
+Spring starts the PostgreSQL container bean before dependent beans. Context teardown closes JPA and the connection pool before stopping the container; Testcontainers cleans up its test resources.
+
+Local Compose commands require `--env-file .env --env-file config/postgres.properties`. See the [technology reference](../02-architecture/technology-stack.md#postgresql-configuration-source-and-local-credentials) for startup, teardown, environment export, and image-override checks. The automated tests do not use this local startup workflow.
+
+### Development and Pre-commit Workflow
+
+1. Run `./mvnw test` during development for fast feedback.
+2. Run `./mvnw verify` after database/integration changes and before proposing an implementation commit.
+3. Inspect results in `target/surefire-reports/` and `target/failsafe-reports/`, review the actual Git diff, and run whitespace checks. Report failures and applicable verification limitations.
+4. Obtain human acceptance and explicit commit authorization through the [AI workflow](../04-agentic-coding/ai-development-workflow.md).
+
+Documentation-only changes use documentation gates. Passing the current foundation tests does not establish completion of future domain, migration, transaction, or concurrency gates.
