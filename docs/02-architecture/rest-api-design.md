@@ -10,6 +10,12 @@ Capture the agreed REST request-validation requirements before implementing the 
 
 The Product Requirements Document (PRD) is authoritative for endpoint behavior and HTTP status codes. In particular, unsupported request fields and caller-supplied pricing fields must be **rejected with HTTP 400**, not silently ignored.
 
+### Decision Scope
+
+Accepted API requirements come from the PRD: endpoints, response fields, status semantics, strict request rejection, server-authoritative pricing, and validation limits. Separate API DTOs, application orchestration, and transaction-safe materialization are accepted architecture conventions.
+
+Spring MVC, Jackson configuration, Bean Validation annotations/provider wiring, illustrative DTO field types, and concrete exception-handler classes remain Proposed implementation choices. Boot 4.1.1 is Accepted; choosing a framework mechanism does not change the HTTP contract. Use the [technology reference](technology-stack.md) for individual tool statuses.
+
 ## 2. API Boundary and DTOs
 
 - Define dedicated request DTOs; do not deserialize external JSON directly into domain objects or JPA entities.
@@ -37,12 +43,12 @@ public record CreateOrderRequest(
 - Reject caller-supplied monetary fields such as `unitPrice`, `subtotal`, `discount`, or `total` rather than ignoring them.
 - Reject read-only fields such as `id` in create/update bodies unless explicitly permitted by the PRD.
 - Apply the same strictness to relevant product and customer requests.
-- Configure and verify Jackson's unknown-property handling explicitly; **do not rely on framework defaults**.
+- In the Proposed Jackson implementation, configure and verify unknown-property handling explicitly; **do not rely on framework defaults**.
 - Spring Boot **4.1.1** is accepted in [ADR-0005](../03-decisions/ADR-0005-technology-stack.md). The exact strict-deserialization configuration must match its selected Jackson stack; do not reuse the unapproved Boot 3.5 skeleton configuration.
 
 ## 4. Request Validation
 
-Use Bean Validation and appropriate request parsing to enforce PRD rules, including:
+The Proposed Bean Validation/parsing approach must enforce the following Accepted PRD rules; no particular annotation or provider setting is selected here:
 
 - Required `customerId`, `productId`, and order items.
 - At least one order item.
@@ -76,9 +82,17 @@ The example error code is provisional; the PRD only requires `code` and `message
 
 Technical transaction failures and uncertain commit outcomes are **not** automatically mapped to business-validation conflicts; the accepted business policy is defined in [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md). [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) proposes technical locking, retries, and error handling; it remains Proposed and implementation-unverified, including handling where no HTTP response is possible.
 
+### Exception-to-Response Ownership
+
+The API boundary owns exception-to-HTTP-response translation and the consistent error envelope. Controllers delegate to application operations; domain/application code must not construct HTTP responses or depend on status codes. A concrete shared handler class or framework advice configuration remains Proposed.
+
+Domain and application failures express invalid input, missing references, or business conflicts; translate them to the existing PRD statuses. Persistence/infrastructure failures reach the application transaction boundary for rollback or safe retry classification before API translation. Map a known normalized-email constraint violation to its existing business conflict; do not treat every database exception as a domain conflict.
+
+Technical failure responses remain Proposed in ADR-0002, separate from Accepted business statuses. Unknown commit outcome must not be represented as confirmed rollback and may prevent any response. Keep SQL/internal exception details out of messages. `INVALID_REQUEST` above remains a provisional illustration; no new concrete error code or response field is selected.
+
 ## 6. Integration-Test Checklist
 
-Tests should send actual HTTP requests through Spring MVC's JSON binding and validation layer (not merely invoke controller methods).
+Tests must exercise actual HTTP/JSON binding and validation (not merely invoke controller methods). Spring MVC binding is the Proposed framework path; choosing the test harness remains a separate implementation detail.
 
 | Scenario | Expected result |
 | --- | --- |

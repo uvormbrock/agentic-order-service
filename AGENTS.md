@@ -12,6 +12,9 @@ Agentic Order Service
 ## Engineering Principles
 - Prefer simple and maintainable solutions.
 - Follow established domain boundaries.
+- Comply with documented package dependency directions and feature-owned public contracts; do not access foreign feature persistence internals.
+- Keep controllers separate from persistence: delegate to application operations rather than repositories.
+- Protect aggregate invariants through controlled domain operations; do not bypass aggregate ownership or expose mutable internals.
 - Avoid unnecessary abstractions.
 - Do not introduce new dependencies without approval.
 - Keep changes small and reviewable.
@@ -29,6 +32,8 @@ Agentic Order Service
 - No autonomous database migrations.
 - No architecture changes without approval.
 - Do not modify unrelated files.
+- Do not silently resolve Open decisions or treat Proposed architecture choices as Accepted, including subdecisions within Accepted baseline ADRs.
+- Obtain explicit human approval for any Open or Proposed decision that blocks the implementation increment before implementing the affected work. Scope approval does not implicitly resolve an unspecified blocking decision.
 
 ## Language Conventions
 - All project documentation must be written in English.
@@ -51,7 +56,9 @@ Repository `docs/` is the single source of truth. Read these documents before pr
 4. [Coding guidelines](docs/04-agentic-coding/coding-guidelines.md), [testing strategy](docs/05-testing/testing-strategy.md), and [AI workflow](docs/04-agentic-coding/ai-development-workflow.md).
 5. [Implementation plan](docs/07-implementation/implementation-plan.md), [open items](docs/00-overview/open-items.md), and [REST design](docs/02-architecture/rest-api-design.md).
 
-Accepted baseline: Java 21, Spring Boot 4.1.1, one Maven module, feature-oriented modular monolith, direct JPA aggregates, immutable value objects, Hibernate/Spring Data JPA, PostgreSQL, Flyway, application-owned transactions, TransactionTemplate, and deterministic READ COMMITTED pessimistic locking. ADR-0002 remains Proposed and implementation-unverified. JUnit 6 is Accepted and replaces the earlier JUnit 5 selection. Use Spring Boot 4.1.1-managed Jupiter and Platform versions without overrides to retain JUnit 5.
+Accepted technology and architecture decisions: Java 21, Spring Boot 4.1.1, one Maven module, feature-oriented modular monolith, direct JPA aggregates, immutable value objects, Hibernate/Spring Data JPA, PostgreSQL, Flyway, and application-owned transaction boundaries. JUnit 6 is Accepted and replaces the earlier JUnit 5 selection; use Spring Boot 4.1.1-managed Jupiter and Platform versions without overrides to retain JUnit 5. Explicitly Proposed/Open subdecisions in ADR-0004 and ADR-0005 remain unresolved.
+
+Selected technical direction for transaction management and locking: TransactionTemplate, READ COMMITTED, and deterministic pessimistic locking. This selection does not accept the complete protocol or its unresolved configuration. ADR-0002 remains Proposed and implementation-unverified; its detailed locking/retry implementation and blocking Open decisions require explicit approval before the affected implementation. Accepted transaction-boundary conventions remain governed by ADR-0003 and the transaction documentation.
 
 Do not equate a recorded proposal, documentation approval, passing tests, or package sketch with approval to implement or accept an ADR. New implementation increments require explicit scope approval. Proposed subdecisions remain proposals even inside an Accepted baseline ADR.
 

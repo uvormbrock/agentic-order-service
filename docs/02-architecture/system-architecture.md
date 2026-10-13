@@ -18,6 +18,25 @@ The [PRD](../01-requirements/product-requirements.md) owns business rules and RE
 
 The [technology stack reference](technology-stack.md) inventories selected technologies, version policies, Proposed tooling, and Open compatibility choices. ADR-0005 remains authoritative for selection rationale.
 
+## System Context
+
+REST clients call the application through its documented HTTP/JSON contract. The application boundary contains the feature modules, domain behavior, REST adapters, transaction coordination, and persistence integration. PostgreSQL is the external database. Environment-supplied configuration provides connection settings and infrastructure configuration through the composition root; it does not redefine accepted business rules.
+
+Client identity/type, authentication/authorization policy, exposure/network boundary, configuration delivery/secrets mechanism, and deployment platform remain unresolved. This context neither assumes anonymous production access nor introduces security or deployment features.
+
+```mermaid
+flowchart LR
+    CLIENT["REST clients: concrete clients Open"]
+    APP["Agentic Order Service application boundary"]
+    DB[("PostgreSQL")]
+    CONFIG["External configuration"]
+    CLIENT -->|runtime HTTP calls and JSON data| APP
+    APP -->|runtime database calls and persisted data| DB
+    CONFIG -. configuration data .-> APP
+```
+
+Arrows in the context diagram represent runtime calls/data flow, not Java package dependencies.
+
 ## Runtime and Responsibilities
 
 One Spring Boot application, one Maven module, and one PostgreSQL database. Organize packages by `product`, `customer`, and `order`; introduce `api`, `application`, `domain`, and `persistence` packages only as actual code requires them. Small configuration and shared Money packages are permitted; no generic framework is needed.
@@ -31,6 +50,8 @@ One Spring Boot application, one Maven module, and one PostgreSQL database. Orga
 
 Directly mapped domain aggregates intentionally depend on JPA metadata. HTTP types remain outside the domain. Pricing methods perform no database access. Avoid pretending this is a fully framework-independent hexagonal model.
 
+The following diagram shows code dependencies, except the explicitly labeled database runtime edge. It does not prescribe additional interfaces.
+
 ```mermaid
 flowchart TB
     REST["REST boundary: request and response DTOs"]
@@ -38,18 +59,43 @@ flowchart TB
     DOMAIN["Customer, Product, Order and OrderItem"]
     DATA["Spring Data JPA and Hibernate"]
     DB[("PostgreSQL")]
-    REST --> APP
-    APP --> DOMAIN
-    APP --> DATA
-    DATA --> DOMAIN
-    DATA --> DB
+    REST -->|code dependency| APP
+    APP -->|code dependency| DOMAIN
+    APP -->|code dependency| DATA
+    DATA -->|code dependency| DOMAIN
+    DATA -->|runtime database calls| DB
 ```
+
+## Package Dependencies and Composition Root
+
+| Package | Permitted dependencies | Boundary |
+| --- | --- | --- |
+| `api` | Own feature application operations and API DTO/error-mapping types | Controllers do not call repositories, orchestrate aggregates, or calculate business amounts. |
+| `application` | Own domain/persistence components, shared value objects, narrow provider-owned cross-feature contracts | No dependency on controllers or API-specific DTOs; return transport-independent materialized results for API mapping. |
+| `domain` | Domain types, shared immutable values, and JPA metadata required by accepted direct mapping | No API/application/persistence component dependency or database calls; JPA metadata is the explicit framework-coupling exception. |
+| `persistence` | Own domain types and JPA/Hibernate/Spring Data infrastructure | No API or use-case orchestration dependency; no foreign feature persistence access. |
+| `configuration` | Components/infrastructure needed to wire the application | The composition root may depend on these components; feature/domain behavior must not depend on the concrete configuration package. |
+
+Feature-owned public contracts are the narrowly exposed application operations and immutable request/result carriers intended for cross-feature use. Repositories, entity graphs, controller classes, and other implementation helpers remain internal. Public Java visibility needed for Spring/JPA is not permission for another feature to depend on an internal type. Do not add a contracts framework or an interface per class.
+
+The Boot entry point and configuration wiring form the composition root. Constructor injection supplies explicit collaborators. Infrastructure settings are bound and supplied here; domain code does not read environment variables or construct repositories. Concrete configuration classes, scanning boundaries, contract signatures, and base package remain part of scoped implementation planning.
 
 ## Module Access
 
 Order placement coordinates narrow provider-owned Customer/Product access operations for locked lookup and immutable placement data. Customer deletion uses a narrow Order-reference query. These are small application components; do not require interfaces without a concrete need. Never expose another feature's managed entities or broad CRUD services as the integration contract.
 
-Cross-feature workflows share the outer application's transaction. Helper operations must participate rather than independently commit. Dependencies in both directions are limited to narrow contracts and must not become recursive service calls. Modules are code organization, not independently deployable services.
+Cross-feature workflows share the outer application's transaction. Helper operations must participate rather than independently commit. Dependencies in both directions are limited to narrow contracts; they do not permit recursive application-service calls or circular constructor dependencies. Order placement uses a Customer lookup component independent of customer-deletion orchestration. Customer deletion uses an Order-reference query component independent of order-placement orchestration. These responsibilities clarify the boundary without prescribing new class names or interfaces. Modules are code organization, not independently deployable services.
+
+## Use-Case Ownership
+
+| Use case | Application owner | Coordination and persistence ownership |
+| --- | --- | --- |
+| Order placement | Order application operation; retry coordinator outside attempts | Customer/Product provider-owned locked access participates in the Order-owned attempt transaction. Order domain owns consolidation/pricing/snapshots; Order persistence saves the whole aggregate. |
+| Customer deletion | Customer application operation | Customer persistence owns the customer mutation; narrow Order-owned reference query participates in the same transaction. Accepted behavior is delete if unreferenced, otherwise deactivate; detailed race enforcement remains Proposed in ADR-0002. |
+| Product/customer mutations | Respective feature application operation | Respective feature owns its domain mutation and repository access. Compatible detailed locking paths follow Proposed ADR-0002. |
+| Order retrieval | Order application read operation | Order persistence supplies original order/item facts; narrow Customer-owned read access supplies current details. Fully materialize the result within the read transaction; no entity/lazy state escapes. |
+
+Complete transport-independent order results are materialized inside transactions. API adapters map those results to response DTOs without additional database access; alternatively the response DTO can itself be a transport-neutral immutable carrier. This preserves the materialization convention without introducing an application-to-API dependency.
 
 ## Domain and Transaction Rules
 
