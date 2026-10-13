@@ -20,6 +20,30 @@
               "icon": "lucide-file",
               "title": "0002-transaction-and-locking-strategy"
             }
+          },
+          {
+            "id": "090af5790d49bf5a",
+            "type": "leaf",
+            "state": {
+              "type": "image",
+              "state": {
+                "file": "02-architecture/assets/open-items-overview.png"
+              },
+              "icon": "lucide-image",
+              "title": "open-items-overview"
+            }
+          },
+          {
+            "id": "2118748ee1568a52",
+            "type": "leaf",
+            "state": {
+              "type": "image",
+              "state": {
+                "file": "02-architecture/assets/transaction_locking_strategy.png"
+              },
+              "icon": "lucide-image",
+              "title": "transaction_locking_strategy"
+            }
           }
         ]
       }
@@ -199,12 +223,16 @@
   },
   "active": "17844cdd48270744",
   "lastOpenFiles": [
-    "02-architecture/rest-api-design.md",
+    "02-architecture/assets/transaction_locking_strategy.png",
     "03-decisions/0002-transaction-and-locking-strategy.md",
-    "01-requirements/product-requirements.md",
+    "02-architecture/assets/open-items-overview.png",
+    "02-architecture/assets",
     "03-decisions/0001-order-placement-concurrency.md",
     "02-architecture/order-item-snapshots.md",
+    "00-overview/open-items.md",
+    "02-architecture/rest-api-design.md",
     "02-architecture/domain-model.md",
+    "01-requirements/product-requirements.md",
     "00_Project/Metadata.md",
     "Chapters/English",
     "social_media/insta/01_post/slide_05.png",
@@ -219,8 +247,6 @@
     "social_media/insta/01_post/Nicht bestätigt 989891.crdownload",
     "social_media/insta/01_post/slide_03.png",
     "social_media/insta/01_post/Nicht bestätigt 481101.crdownload",
-    "social_media/tiktok/01_post/slide_05.png",
-    "social_media/tiktok/01_post/slide_04.png",
     "social_media/tiktok/01_post/caption.md",
     "social_media/insta/01_post/caption.md",
     "social_media/insta/01_post/caption.md.sb-5afa3c78-KoLd4g",
@@ -230,7 +256,6 @@
     "social_media/insta/prompts.md",
     "social_media/infos.md",
     "social_media/insta/01_post",
-    "social_media/insta",
     "output/KI Prompts.md",
     "00_Project/Book Blurp.md",
     "Chapters/Chapter 34 - On the Record.md",
@@ -243,8 +268,6 @@
     "Chapters/Chapter 22 - Both Lives.md",
     "Chapters/Chapter 20 - What We Can Defend.md",
     "Chapters/Chapter 21 - Live.md",
-    "Chapters/Chapter 33 - Uncalled.md",
-    "Chapters/Chapter 32 - Leave the Race.md",
     "Unbenannt.canvas"
   ]
 }

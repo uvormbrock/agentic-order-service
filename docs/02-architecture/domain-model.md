@@ -89,7 +89,7 @@ classDiagram
 
 **Aggregate root:** `Customer`
 
-- Represents a customer with a stable identity, name, email address, and active status.
+- Represents a customer with a stable identity, name, email address, and active status. Customer names are trimmed and limited to 1–200 characters (PRD BR-011).
 - A new order may only be placed for an existing, active customer.
 - An inactive customer can remain referenced by historical orders.
 - Delete unreferenced customers physically; deactivate referenced customers instead (PRD BR-003). Deactivation is irreversible within the MVP.
@@ -98,7 +98,7 @@ classDiagram
 
 **Aggregate root:** `Product`
 
-- Represents the **current** catalog product, including name, price, and active status.
+- Represents the **current** catalog product, including name, price, and active status. Product names are trimmed and limited to 1–200 characters; gross EUR prices range from EUR 0.00 to EUR 999,999.99 with at most two decimal places (PRD BR-001, BR-011, BR-013).
 - Only active products are eligible for new orders.
 - Later name or price changes must not change original order product names, prices, or amounts (PRD BR-010).
 - Product deactivation preserves the catalog identity for existing references.
@@ -110,7 +110,7 @@ classDiagram
 
 - At placement, every order references an existing active customer by `customerId`. Later customer deactivation does not invalidate that order.
 - A placed order contains at least one item.
-- Each item has a positive integer quantity.
+- Each item has a positive integer quantity; after duplicate consolidation, the quantity must not exceed 10,000 per product per order (PRD BR-005).
 - Duplicate references to the same product within one order are consolidated by summing their quantities (PRD BR-005).
 - The order governs its own totals and discount invariants.
 - Changes to order items must be controlled through the `Order` aggregate root, not through an independent `OrderItem` repository API.
@@ -131,10 +131,11 @@ classDiagram
 
 ### EmailAddress
 
-`EmailAddress` is an immutable value object representing a customer's validated email rather than a separately identified entity. Equality is value-based; the exact normalization and comparison policy remains unresolved.
+`EmailAddress` is an immutable value object representing a customer's validated email rather than a separately identified entity. Equality is value-based using the trimmed, lowercase address; uniqueness comparisons are case-insensitive (PRD BR-011).
 
 - Encapsulates the email string and appropriate domain validation.
-- Emails must be unique across stored customers, including inactive customers. Exact syntax, normalization, and case handling remain business clarifications. Cross-customer uniqueness is coordinated outside this value object.
+- Trim emails and normalize them to lowercase before storage. Require a valid basic local part and domain and at most 254 characters after normalization; do not apply provider-specific dot or plus-address rules (PRD BR-011).
+- Emails must be unique case-insensitively across active and inactive customers. Cross-customer uniqueness is coordinated outside this value object. Only exact basic email syntax and the character-counting convention remain unresolved business validation details.
 
 ## 5. Historical Order Item Snapshots
 
@@ -183,14 +184,15 @@ The domain model shows `subtotal`, `discount`, and `total` as observable domain 
 | Atomic storage, referential integrity, cross-customer email uniqueness enforcement | Persistence boundary |
 | Historical product names/prices/amounts plus current customer details | Order response assembly |
 
-Concurrency is documented separately in [Order Placement Concurrency](../03-decisions/0001-order-placement-concurrency.md). Its business policy is accepted; no locking or isolation mechanism is selected here.
+Concurrency is documented separately in [Order Placement Concurrency](../03-decisions/0001-order-placement-concurrency.md). Its business policy is accepted. [ADR-0002](../03-decisions/0002-transaction-and-locking-strategy.md) describes the Proposed technical transaction and locking strategy; it is not implementation-verified.
 
 Remaining design questions:
 
 1. Does `OrderItem` need a separate UUID, or is `(orderId, productId)` sufficient after consolidation? Item identity is local to its order; it does not imply an independent lifecycle. The diagram's item UUID is provisional, not an API requirement.
 2. How will persistence preserve original monetary results without recalculation using future rules?
-3. Which constraints and transaction mechanism will enforce the approved invariants and concurrency policy?
-4. What email syntax/comparison and field/value limits will be agreed in the PRD?
+3. Which concrete constraints and JPA mappings will implement the invariants, and how will the Proposed strategy in ADR-0002 be verified?
+4. What exact basic email syntax and character-counting convention will apply, as tracked in the PRD?
+5. How will monetary storage accommodate a maximum line amount of EUR 9,999,999,900.00 (EUR 999,999.99 × 10,000) and larger totals across multiple distinct products? Database numeric precision, overall order size, and total monetary limits remain open; no new limits are assumed.
 
 UUIDs in the diagram are a proposed identity format, not a finalized requirement.
 

@@ -6,14 +6,14 @@ The Agentic Order Service is a small order management application. It supports m
 
 ## Functional Requirements
 
-| ID | Requirement |
-| --- | --- |
-| FR-001 | Create, retrieve individually, update, list, and deactivate products. Each product has an ID, name, gross price in EUR, and active status. |
+| ID     | Requirement                                                                                                                                                                                                                 |
+| ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| FR-001 | Create, retrieve individually, update, list, and deactivate products. Each product has an ID, name, gross price in EUR, and active status.                                                                                  |
 | FR-002 | Create, retrieve individually, update, list, and delete customers. Each customer has an ID, name, email address, and active status. Deactivate customers referenced by existing orders instead of physically deleting them. |
-| FR-003 | Create and store an order for an existing active customer with one or more line items referencing eligible products and specifying quantities. Consolidate duplicate product references. |
-| FR-004 | Capture original product names and calculate and preserve product prices, line item amounts, subtotal, discount, and payable total on the server. |
-| FR-005 | Retrieve stored orders individually and list them. An individually retrieved order includes its customer reference, line items, original product names and prices, and calculated amounts. |
-| FR-006 | Expose the MVP operations through the REST contract below. Lists include active and inactive records. |
+| FR-003 | Create and store an order for an existing active customer with one or more line items referencing eligible products and specifying quantities. Consolidate duplicate product references.                                    |
+| FR-004 | Capture original product names and calculate and preserve product prices, line item amounts, subtotal, discount, and payable total on the server.                                                                           |
+| FR-005 | Retrieve stored orders individually and list them. An individually retrieved order includes its customer reference, line items, original product names and prices, and calculated amounts.                                  |
+| FR-006 | Expose the MVP operations through the REST contract below. Lists include active and inactive records.                                                                                                                       |
 
 ## Business Rules
 
@@ -22,7 +22,7 @@ The Agentic Order Service is a small order management application. It supports m
 | BR-001 | Product prices must be between EUR 0.00 and EUR 999,999.99 inclusive. All prices are gross amounts in EUR. |
 | BR-002 | Deactivated products cannot be included in new orders. Products referenced by existing orders must not be physically deleted. |
 | BR-003 | Customers referenced by existing orders must be deactivated instead of physically deleted. Deactivated customers cannot place new orders. |
-| BR-004 | Every order belongs to an existing active customer and contains at least one line item. |
+| BR-004 | At order placement, the customer must exist and be active, and the order must contain at least one line item. Subsequent customer deactivation does not invalidate historical orders. |
 | BR-005 | Quantities must be positive integers. Duplicate references to the same product within an order are consolidated into one line item by summing their quantities. The consolidated quantity must not exceed 10,000 per product per order; reject quantities outside these limits. |
 | BR-006 | Server-side product prices exclusively determine order amounts. Caller-supplied prices and calculated amounts must not override them. |
 | BR-007 | Each line item amount equals its product price multiplied by its quantity. The subtotal equals the sum of line item amounts. |
@@ -75,7 +75,7 @@ Errors return a JSON body containing `code` and `message`, describing the failed
 
 | Status | Condition |
 | --- | --- |
-| 400 | Malformed request, missing required fields, blank names, invalid email syntax, negative or over-precision product price, invalid quantity, empty order, or unsupported request fields or activation requests. |
+| 400 | Malformed request, missing required fields, names outside 1–200 characters after trimming, invalid email syntax or email longer than 254 characters after normalization, product price outside EUR 0.00–999,999.99 or with more than two decimal places, nonpositive or fractional quantities or consolidated quantity above 10,000 per product per order, empty order, or unsupported request fields or activation requests. |
 | 404 | Requested resource or customer/product referenced by a new order does not exist. |
 | 409 | Customer email already belongs to another stored customer, or an order references an inactive customer or product. |
 | 405 | Unsupported resource operation, including product deletion and order updates or deletion. |

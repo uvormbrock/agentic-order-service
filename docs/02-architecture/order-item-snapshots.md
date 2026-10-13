@@ -57,7 +57,7 @@ The authoritative product name, price, and eligibility follow the consistent ope
 - Ensure duplicate consolidation leaves one item per product within an order.
 - Preserve original monetary results across later price or calculation-rule changes.
 
-The storage representation, foreign keys, locking/isolation mechanism, and item identity remain persistence design decisions. They must satisfy these invariants and ADR-0001; this document does not select a database schema.
+The storage representation, concrete constraints, JPA mappings, and item identity remain persistence design decisions. [ADR-0002](../03-decisions/0002-transaction-and-locking-strategy.md) proposes technical enforcement of the accepted ADR-0001 business policy; it remains Proposed and implementation-unverified. This document does not select a database schema.
 
 ## 6. Historical Calculations
 
@@ -85,6 +85,6 @@ The storage representation must preserve the amounts originally accepted; its de
 
 - Item identity: separate UUID or identity within its order; the PRD does not expose an item ID.
 - Storage representation for original monetary results and enforcement of invariants.
-- Concrete concurrency mechanism and bounded handling of transaction failures, as listed in ADR-0001.
+- Implementation and deterministic verification of the Proposed strategy in ADR-0002, including unresolved timeout, retry-delay, and uncertain-outcome details.
 
-Resolved business rules must not be reopened as technical questions. Email details and field/value limits remain tracked in the PRD.
+Resolved business rules must not be reopened as technical questions. Approved validation rules and the remaining exact email-syntax and character-counting questions are tracked in the PRD.

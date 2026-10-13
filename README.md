@@ -1,15 +1,15 @@
 # Agentic Order Service
 
-Dieses Repository startet mit der Projektdokumentation. Quellcode (`src/`) und Maven-Konfiguration (`pom.xml`) folgen später.
+This repository starts with project documentation. Source code (`src/`) and Maven configuration (`pom.xml`) will follow later.
 
-## Dokumentation
+## Documentation
 
-- [Überblick](docs/00-overview/)
-- [Anforderungen](docs/01-requirements/)
-- [Architektur](docs/02-architecture/)
-- [Entscheidungen](docs/03-decisions/)
+- [Overview](docs/00-overview/)
+- [Requirements](docs/01-requirements/)
+- [Architecture](docs/02-architecture/)
+- [Decisions](docs/03-decisions/)
 - [Agentic Coding](docs/04-agentic-coding/)
 - [Testing](docs/05-testing/)
-- [Betrieb](docs/06-operations/)
+- [Operations](docs/06-operations/)
 
-Der Projektordner kann als Obsidian-Vault geöffnet werden.
+The project folder can be opened as an Obsidian vault.

@@ -16,7 +16,7 @@ The Product Requirements Document (PRD) is authoritative for endpoint behavior a
 - Use separate response DTOs for externally exposed fields.
 - For order creation, accept `customerId` and a nonempty `items` collection containing only `productId` and `quantity`.
 - Generate IDs on the server; do not accept client-assigned record IDs.
-- Calculate product prices, line totals, subtotal, discount, and payable total exclusively on the server.
+- Resolve authoritative server-side unit prices and calculate line totals, subtotal, discount, and payable total exclusively on the server.
 
 **Illustrative request DTOs (design sketch, not implementation):**
 
@@ -74,7 +74,7 @@ The example error code is provisional; the PRD only requires `code` and `message
 | `409` | Inactive customer or product referenced by a new order; duplicate normalized customer email |
 | `405` | Unsupported resource methods, as defined by the PRD |
 
-Technical transaction failures and uncertain commit outcomes are **not** automatically mapped to business-validation conflicts; their handling remains open under [ADR-0001](../03-decisions/0001-order-placement-concurrency.md).
+Technical transaction failures and uncertain commit outcomes are **not** automatically mapped to business-validation conflicts; the accepted business policy is defined in [ADR-0001](../03-decisions/0001-order-placement-concurrency.md). [ADR-0002](../03-decisions/0002-transaction-and-locking-strategy.md) proposes technical locking, retries, and error handling; it remains Proposed and implementation-unverified, including handling where no HTTP response is possible.
 
 ## 6. Integration-Test Checklist
 
@@ -96,6 +96,17 @@ Tests should send actual HTTP requests through Spring MVC's JSON binding and val
 | Invalid request is rejected | No order or order items persisted |
 | Unknown fields in product/customer request | `400 Bad Request` |
 | Client attempts to reactivate a record | `400 Bad Request` |
+| Product/customer name has 1 or 200 characters after trimming | Accepted on create/update with otherwise valid input; stored name is trimmed. |
+| Product/customer name is missing, empty after trimming, or has 201 characters | `400 Bad Request` |
+| Email ` Alice@Example.com ` | Stored as `alice@example.com` on create/update. |
+| Otherwise valid email has 254 characters after normalization | Accepted on create/update. |
+| Email is missing, syntactically invalid, or has 255 characters after normalization | `400 Bad Request` |
+| Another active or inactive customer owns `alice@example.com`; submit `ALICE@example.com` | `409 Conflict` on create/update. |
+| Email differs only by provider-specific dots or plus addressing | Do not collapse distinct addresses using provider-specific rules. |
+| Product price is EUR 0.00 or EUR 999,999.99 | Accepted on create/update. |
+| Product price is EUR -0.01, EUR 1,000,000.00, or EUR 1.001 | `400 Bad Request` |
+| Quantity is 1 or 10,000; duplicate quantities 6,000 and 4,000 | Accepted for eligible references; duplicates consolidate to one item with quantity 10,000. |
+| Quantity is 10,001 or duplicate quantities are 6,000 and 4,001 | `400 Bad Request`; no order persisted. |
 
 Also verify that every error response contains `code` and `message`.
 
@@ -104,8 +115,8 @@ Also verify that every error response contains `code` and `message`.
 - Final Spring Boot and Jackson versions and the concrete strict-deserialization configuration.
 - DTO field types, Bean Validation annotations, and exception-to-HTTP mapping.
 - Exact error `code` taxonomy and safe error-message details.
-- Integration-test tooling and database setup.
-- Detailed handling of concurrency and unknown commit outcomes in accordance with ADR-0001.
+- Concrete integration-test setup; ADR-0002 proposes PostgreSQL/Testcontainers for deterministic concurrency verification.
+- Technical implementation and verification of the Proposed ADR-0002 strategy under accepted ADR-0001, including timeouts, retry delays, and uncertain commit reconciliation.
 
 ## 8. Implementation Reminder
 
