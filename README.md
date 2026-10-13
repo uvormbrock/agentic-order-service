@@ -17,6 +17,7 @@ The repository `docs/` directory is the single source of truth. Open it directly
 - [Coding guidelines](docs/04-agentic-coding/coding-guidelines.md)
 - [Testing strategy](docs/05-testing/testing-strategy.md)
 - [AI development workflow](docs/04-agentic-coding/ai-development-workflow.md)
+- [Prompt playbook](docs/04-agentic-coding/prompts/00-index.md)
 - [Implementation plan](docs/07-implementation/implementation-plan.md)
 - Deferred evidence areas: [Agentic Coding](docs/04-agentic-coding), [Testing](docs/05-testing), [Operations](docs/06-operations).
 

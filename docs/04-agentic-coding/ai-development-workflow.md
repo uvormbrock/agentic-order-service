@@ -27,3 +27,7 @@ No autonomous database migration, source generation, dependency addition, or arc
 ## Review Record
 
 For each increment report changed files, why, gates run/results, remaining risks, and the Git diff. Link artifacts rather than copying whole documents into chat. Preserve the original ADR history when relocating files; the numbered documentation directories remain the single authority; do not recreate parallel hierarchies.
+
+## Version-Controlled Prompts
+
+The [prompt playbook](prompts/00-index.md) records agreed prompts and real execution evidence. Prompt storage does not authorize execution or replace requirements/ADRs. Keep unexecuted prompts Planned and do not fabricate results or lessons learned.
