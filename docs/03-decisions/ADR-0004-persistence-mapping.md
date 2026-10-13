@@ -2,7 +2,7 @@
 
 **Status:** Accepted Increment 3 mapping decisions; deferred details Open; implementation-unverified
 **Recorded:** 2026-10-13
-**Implementation:** Not started
+**Implementation:** Increment 3 executed; scoped tests passed; human acceptance Pending
 
 ## Context and Accepted Decision
 
@@ -63,3 +63,7 @@ Rationale: generated UUIDs keep Spring Data insertion/newness simple; ordinary c
 Concrete SQL declarations/constraint expressions and mapping compatibility require implementation review/evidence, not repeat approval of already selected D1–D10 policies. Do not infer a new collation setting, business limit or permission if a genuine gap appears; report it for approval. List/pagination plans, production privileges/execution and full ADR-0002 implementation remain outside these selections.
 
 Verify generated IDs/newness/proxies, converter discovery/hydration, root/item round trips, both relationship ends, no deletion cascades, maximum line and larger totals, all-customer case-insensitive uniqueness, negative named constraints, migration/Hibernate validation, query counts and closed-context materialization on PostgreSQL/Testcontainers. Domain tests cover accepted Money/email/name invariants. Actual REST DTO and concurrency gates remain later Pending. No code, migration, database changes or executed Increment 3 tests are claimed.
+
+## Increment 3 Execution Evidence — Pending Human Review
+
+On 2026-10-13 the human explicitly authorized the finalized implementation prompt. The [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review) records generated mappings/repositories/V1, 25 passing fast tests and 14 passing PostgreSQL integration tests, including Hibernate validation, converter round trips, unconstrained NUMERIC capacity/negative checks, migration checksums/repeat execution and root-owned item persistence. Earlier statements of no implementation/evidence describe the recorded pre-execution state. No decision or historical proposal is replaced by these results; implementation acceptance remains Pending. ADR-0002 stays Proposed and implementation-unverified. Local development data/volumes were preserved; production, HTTP/application and concurrency verification remain outside this increment.

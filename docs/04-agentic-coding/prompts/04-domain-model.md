@@ -1,24 +1,24 @@
 # Domain Model & Persistence – Increment 3
 
-**Status:** Planning Reviewed – Implementation Pending Human Approval
+**Status:** Executed – Pending Human Review
 
-Historical planning is executed; Variant A for D1–D10 is explicitly Accepted. Increment 3 implementation/tests have not started. Concrete SQL review and runtime evidence remain Pending; deferred production/list/concurrency matters remain unresolved.
+Historical planning and the explicitly authorized Increment 3 implementation have executed. Variant A for D1–D10 remains Accepted. Domain/persistence verification passed; implementation acceptance awaits explicit human review. Production/list/concurrency matters remain deferred.
 
 ## Objective
 
-Prepare one coherent Domain Model & Persistence increment applying Accepted D1–D10, with one complete implementation prompt awaiting final execution approval.
+Implement and verify one coherent Domain Model & Persistence increment applying Accepted D1–D10, preserving its approved implementation prompt and historical planning evidence.
 
 ## Context and Approved Scope
 
-Increments 1 and 2 are accepted and committed. This task authorizes documentation updates recording Accepted D1–D10 and aligning their affected references. It authorizes no implementation, migration execution, database/container operation, dependency change or Git commit. ADR-0002 and unrelated decisions remain unchanged; preserve unrelated work.
+Increments 1 and 2 are accepted and committed. The earlier documentation task recorded Accepted D1–D10 without implementation authorization. The human subsequently explicitly approved execution of the finalized implementation prompt below, including domain/JPA/schema/repository tests in disposable PostgreSQL databases. No REST, application orchestration, locking/retries, production migration execution or Git commit is authorized. ADR-0002 remains Proposed and implementation-unverified.
 
 Follow [AGENTS.md](../../../AGENTS.md), the [PRD](../../01-requirements/product-requirements.md), [domain model](../../02-architecture/domain-model.md), [ADR-0004](../../03-decisions/ADR-0004-persistence-mapping.md), [ADR-0005](../../03-decisions/ADR-0005-technology-stack.md), [coding guidelines](../coding-guidelines.md), [Java/Spring guidelines](../java-spring-guidelines.md), [persistence guidelines](../persistence-guidelines.md), [open items](../../00-overview/open-items.md), [implementation plan](../../07-implementation/implementation-plan.md), and [testing strategy](../../05-testing/testing-strategy.md). The [playbook index](00-index.md) uses the same title/status.
 
 Increment 3 remains one development increment. Internal sequencing and human review gates do not create separate increments or phase-specific prompt files. Accepted requirements and direct aggregate mapping remain unchanged; ADR-0002 stays Proposed and implementation-unverified.
 
-## Implementation Prompt – Increment 3 (Pending Human Approval)
+## Implementation Prompt – Increment 3 (Approved Historical Record)
 
-This is the single implementation prompt. It has not been executed or authorized by this documentation task. After human approval and execution, preserve its text verbatim and append actual execution evidence below.
+The human explicitly approved execution of this single finalized implementation prompt. Its text is preserved verbatim; the earlier approval prerequisites inside it record the state at preparation. Actual execution evidence follows below.
 
 ```text
 # Task: Implement Increment 3 – Domain Model & Persistence
@@ -104,7 +104,7 @@ Update Result/Verification Evidence/Problems Encountered/Lessons Learned/Intervi
 Present implementation summary, complete staged/unstaged/new-file Git diff, test and database evidence, boundary review, remaining Open decisions/risks and Pending gates. Mark execution Executed – Pending Human Review; if blocked, record the blocker honestly. Agent self-review does not replace human review. Wait for explicit human acceptance before Increment 3 is complete; do not start the next increment or commit without separate explicit authorization.
 ```
 
-## Design Decisions and Approval Prerequisites
+## Historical Design Decisions and Approval Prerequisites
 
 The human reviewer explicitly accepted Variant A for every D1–D10 selection. Acceptance is not runtime verification or authorization to execute this prompt. Do not ask for repeat approval of selected policies; concrete SQL still needs review against those policies and genuinely new decisions require approval.
 
@@ -192,16 +192,52 @@ Concrete SQL declarations/check expressions must be reviewed against the PRD/Acc
 
 Passed: D1–D10 table/authoritative decisions/prompt alignment; one implementation prompt with no obsolete repeat-approval checklist and retained genuine-gap stop conditions; verbatim historical planning prompt; 250 internal Markdown links/anchors and table structure; preserved requirement IDs, endpoints/response fields, calculation examples and unrelated rules; five unique ADR identifiers with ADR-0001/0002/0003 unchanged. Standard unstaged/staged whitespace and separate untracked-entry checks passed. No implementation, migration, dependency or runtime tests were executed. The already consistent index is unchanged; an unrelated Obsidian Git setting change is preserved outside this task's edits.
 
-## Implementation Results (Pending)
+## Implementation Results — Executed, Pending Human Review
 
-- No Increment 3 Java classes have been generated.
-- No Increment 3 domain or persistence tests have been executed.
-- No domain Flyway migration has been created or run.
-- Variant A for all D1–D10 is explicitly Accepted; implementation and runtime verification are not accepted by that decision.
-- ADR-0002 remains Proposed and implementation-unverified.
-- Java implementation requires separate explicit human execution authorization; ask only about genuinely unresolved requirements, not already Accepted D1–D10. Earlier foundation-test results do not pass Increment 3 gates.
+Execution date: 2026-10-13. The working tree was clean at entry. D1–D10 remain Accepted; execution/test success does not constitute human acceptance. The planning sections above are historical preparation evidence; current runtime results below supersede their Pending implementation statements.
+
+### Actual Files and Persistence Contracts
+
+Created all 12 Java classes, the V1 migration and all nine test classes listed in the planned-files tables above. Updated PostgreSqlFoundationIT for four entities/V1/four domain tables while retaining the database/version/OSIV/SQL-init checks. Made PostgreSqlTestConfiguration reusable by feature tests and added an explicit test-only transaction harness that rolls back failures and closes each EntityManager. Updated local/integration-test Flyway settings to validate migrations, prohibit automatic baseline and disable clean. No POM, dependency, image, credential or Compose change was needed.
+
+CustomerRepository, ProductRepository and OrderRepository extend Spring Data's minimal Repository marker and expose save/findById; Order adds transactional read-only findByIdWithItems with an explicit JOIN FETCH. This avoids unused inherited delete/list capabilities without another repository layer. Save remains a technical persistence operation, including merge capability for existing roots; it does not authorize Order update use cases. Generated null IDs select insertion; repository-save/root-cascade tests verify that path. The read method joins an existing application transaction when one is present; later application use cases still own complete result materialization. No independent OrderItem repository exists.
+
+Concrete SQL was reviewed against Accepted D6–D8 and the PRD before execution. Six monetary columns are unconstrained NUMERIC. Named finite/scale/range checks reject invalid stored amounts without coercion. Name checks use the Java strip whitespace set and PostgreSQL code-point counting; email normalization/length and full-customer lower(email) uniqueness are enforced. Full email grammar remains domain validation, not a duplicated SQL grammar. Scalar customer/product references use restrictive FKs; no cross-row totals/eligibility triggers were added.
+
+### Verification Evidence
+
+Commands used command-local Java 21 from the repository root:
+
+```sh
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw -B -ntp test
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw -B -ntp verify
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw -B -ntp dependency:tree
+git diff --check
+git diff --cached --check
+```
+
+- **Fast verification:** 25 Surefire tests passed: 10 existing smoke/image-configuration tests and 15 domain unit tests. No Docker is required for this suite. Boundary expectations are traced to PRD criteria/Accepted decisions; threshold examples include 99.99, 100.00 and 100.05 with independently expected 10.01 discount/90.04 total.
+- **PostgreSQL verification:** 14 Failsafe tests passed, zero failures/errors/skips, using isolated postgres:17.11-bookworm containers. Actual server 17.11, SELECT 1, four JPA entities and ddl-auto=validate passed. V1 applied to fresh databases, history/checksum validation passed and repeat migration applied zero new scripts. No persistent Compose database was changed.
+- **Mapping and constraints:** both autoApply converters hydrated after flush/clear; generated IDs, controlled updates, Unicode names and inactive-inclusive email uniqueness passed. Database negative cases verified named monetary/quantity/name/uniqueness/FK constraints, including 10.000, NaN and both infinities. Exact maximum line 9,999,999,900.00 and two-line subtotal 19,999,999,800.00/discount 1,999,999,980.00/total 17,999,999,820.00 round-tripped without fixed numeric capacity.
+- **Ownership/fetch/rollback:** saving only the Order through its production repository persisted owned items. Lazy state was inspected through PersistenceUnitUtil. Two orders with two items each used two explicit fetch queries, not additional item queries. Immutable test snapshots were captured inside a transaction and used after closure without SQL. Product edits/deactivation preserved original item/order data. A controlled failure after root flush produced confirmed rollback, no root/item rows and preserved pre-existing records; restrictive deletion did not cascade.
+- **Boundary review (manual):** domain imports only Java, shared domain types and Accepted JPA metadata; converters/repositories remain feature-owned persistence components, with no foreign persistence imports, API/application classes or entity REST exposure. Automated architecture tooling remains Open; this inspection is not an automated enforcement test.
+- **Dependencies:** Java 21.0.6, Maven 3.9.9, Boot/Spring Data JPA 4.1.1, Hibernate 7.4.5.Final, JDBC 42.7.13, Flyway 12.4.0, Testcontainers 2.0.5, Jupiter/Platform 6.0.3. Dependency-tree inspection succeeded without POM/version changes.
+
+Final verification passed: 261 internal Markdown links/anchors, five unique ADR identifiers with all status lines unchanged, both immutable prompt blocks byte-for-byte preserved, standard staged/unstaged diff whitespace checks and whitespace checks for all new files. Manual secret-pattern/scope review found no credentials or unrelated file changes. The complete diff includes tracked and new files; nothing is staged or committed. Build reports are in target/surefire-reports and target/failsafe-reports; those generated outputs are excluded from Git.
+
+### Problems Encountered
+
+Docker access was denied by the initial tool sandbox; the integration run failed rather than skipped. After authorized Docker access, one test incorrectly inspected the read-only item-list wrapper as Hibernate's collection. The assertion was corrected to inspect JPA property load state through PersistenceUnitUtil, retaining the required lazy-loading check. Subsequent complete verification passed. No Accepted mapping change, new dependency or unsupported technical requirement was needed. Existing Mockito dynamic-agent warnings do not fail the build.
+
+### Remaining Risks and Pending Gates
+
+Explicit human implementation acceptance and commit authorization are Pending. No local-volume migration was exercised; existing development data/volumes were preserved, and local startup will apply V1 under the approved profile. Production migration execution/privileges, list/pagination fetch plans and architecture enforcement tooling remain Open/deferred. Active reference eligibility, customer deletion orchestration/current customer response assembly, actual REST serialization/strict fractional JSON rejection, application transaction ownership, concurrent uniqueness handling and all ADR-0002 race/retry/uncertain-outcome gates remain Pending. Entity reference equality does not assert equality across independently loaded instances or proxies; no logging of lazy graphs was introduced. SQL constraints do not prove cross-row totals or active eligibility. No Git commit was created.
 
 ## Lessons Learned
+
+- Real PostgreSQL/Hibernate verification confirmed unconstrained NUMERIC and autoApply converters; annotations alone could not establish either mapping.
+- Inspect JPA collection load state rather than an aggregate's read-only wrapper; capture immutable values before closing the transaction.
+- Expected constraint failures need a discarded persistence context and committed-state checks after rollback.
 
 - Direct JPA mapping still needs package-boundary review: a converter annotation can introduce a forbidden dependency even when the converter itself is correctly placed in persistence.
 - Two decimal places do not define storage capacity. An individual maximum line amount cannot establish a maximum order total.
@@ -209,6 +245,9 @@ Passed: D1–D10 table/authoritative decisions/prompt alignment; one implementat
 - Keep PostgreSQL verification alongside schema/mapping changes within the increment, and preserve approval boundaries for business grammar, schema, and concurrency.
 
 ## Interview Talking Points
+
+- Demonstrate the tested maximum two-line total, finite/scale checks, root-only cascade persistence and explicit per-order fetch query counts.
+- Explain why successful persistence tests do not establish application eligibility, HTTP serialization or the Proposed concurrency protocol.
 
 - Explain the difference between aggregate ownership and the child-owned relational foreign key.
 - Compare provider-generated UUIDs, composite child identity, and assigned-ID newness detection without introducing a generic entity framework.

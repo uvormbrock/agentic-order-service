@@ -1,6 +1,6 @@
 # System Architecture
 
-**Status:** Accepted architecture baseline; technical foundation incremental; domain implementation Pending
+**Status:** Accepted architecture baseline; technical foundation accepted; Increment 3 domain/persistence executed, human review Pending
 
 ## Authority and Decision Status
 
@@ -103,7 +103,7 @@ The [domain model](domain-model.md) defines aggregate ownership. Historical name
 
 ## Scope and Remaining Decisions
 
-No microservices, event sourcing, CQRS infrastructure, generic repository hierarchy, or idempotency-key feature is approved. D1–D10 identity/converter/storage/name/email/schema and local/test migration selections are Accepted under ADR-0004/0005; implementation authorization, concrete SQL review and runtime evidence remain Pending. List/pagination fetching, production execution/privileges and detailed concurrency configuration remain deferred/Open in [open items](../00-overview/open-items.md). Follow the [implementation plan](../07-implementation/implementation-plan.md) for approval gates.
+No microservices, event sourcing, CQRS infrastructure, generic repository hierarchy, or idempotency-key feature is approved. D1–D10 identity/converter/storage/name/email/schema and local/test migration selections are Accepted under ADR-0004/0005; Increment 3 was explicitly authorized, concrete SQL reviewed and scoped domain/persistence verification passed; explicit human implementation acceptance remains Pending. See the [execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). List/pagination fetching, production execution/privileges and detailed concurrency configuration remain deferred/Open in [open items](../00-overview/open-items.md). Follow the [implementation plan](../07-implementation/implementation-plan.md) for approval gates.
 
 ## Approved PostgreSQL Foundation Increment
 

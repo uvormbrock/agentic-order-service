@@ -13,7 +13,7 @@ import java.nio.file.Path;
 import java.util.Properties;
 
 @TestConfiguration(proxyBeanMethods = false)
-class PostgreSqlTestConfiguration {
+public class PostgreSqlTestConfiguration {
 
     @Bean
     DockerImageName postgresImage() {
@@ -43,5 +43,21 @@ class PostgreSqlTestConfiguration {
                 .withUsername("integration_test")
                 .withPassword("integration_test")
                 .withReuse(false);
+    }
+    /** Test-harness transaction only; no production use-case coordination. */
+    public static <T> T inTransaction(jakarta.persistence.EntityManagerFactory factory,
+                                      java.util.function.Function<jakarta.persistence.EntityManager, T> action) {
+        try (var manager = factory.createEntityManager()) {
+            var transaction = manager.getTransaction();
+            transaction.begin();
+            try {
+                T value = action.apply(manager);
+                transaction.commit();
+                return value;
+            } catch (RuntimeException | Error failure) {
+                if (transaction.isActive()) { transaction.rollback(); }
+                throw failure;
+            }
+        }
     }
 }

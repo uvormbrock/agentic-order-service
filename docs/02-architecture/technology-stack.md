@@ -2,7 +2,7 @@
 
 **Status:** Authoritative inventory of Accepted, Proposed, and Open selections
 **Last reviewed:** 2026-10-13
-**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; domain/persistence/concurrency gates Pending
+**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; Increment 3 domain/persistence verification passed, human review Pending; application/concurrency gates Pending
 
 ## Purpose and Authority
 
@@ -48,9 +48,9 @@ No separate DI framework is selected.
 | --- | --- | --- | --- |
 | Spring Data JPA | Boot 4.1.1-compatible managed version | Repository queries and explicitly verified locked access | **Accepted** |
 | Hibernate ORM / Jakarta Persistence | Boot-compatible managed provider/API versions; verify resolved dependency graph | Direct aggregate mapping, persistence context and SQL execution | **Accepted** baseline |
-| JPA AttributeConverters for Money/EmailAddress | Boot-managed JPA provider; persistence-package AttributeConverters with autoApply=true | Map immutable values to reviewed database representations | **Accepted** under ADR-0004; verification Pending |
+| JPA AttributeConverters for Money/EmailAddress | Boot-managed JPA provider; persistence-package AttributeConverters with autoApply=true | Map immutable values to reviewed database representations | **Accepted** under ADR-0004; scoped discovery/hydration tests passed, human review Pending |
 
-[ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) accepts UUID identity, field-access mappings, autoApply converters, unconstrained NUMERIC with reviewed checks and D1–D9 schema/fetch/equality selections. Concrete SQL review and provider/database verification remain Pending; list/pagination details are deferred. Open EntityManager in View is disabled; managed entities are never REST response objects. Complete response data must be materialized inside application transactions.
+[ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) accepts UUID identity, field-access mappings, autoApply converters, unconstrained NUMERIC with reviewed checks and D1–D9 schema/fetch/equality selections. Concrete SQL review and scoped provider/database verification passed in Increment 3; list/pagination details are deferred. Open EntityManager in View is disabled; managed entities are never REST response objects. Complete response data must be materialized inside application transactions.
 
 ## 6. Database
 
@@ -91,14 +91,14 @@ Reject ambient transactions before coordination; use fresh transaction-scoped st
 | --- | --- | --- | --- |
 | JUnit 6 / Jupiter and Platform | Use versions managed by Boot **4.1.1**; 6.0.3 in ADR-0005's recorded inspection, with no override to retain JUnit 5 | Domain and application unit tests | **Accepted** |
 
-Keep test API, engine, and Platform versions aligned through Boot 4.1.1 dependency management. The user explicitly replaced JUnit 5 with JUnit 6; [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) preserves that history. Boot-managed JUnit build/runtime verification passed in Increment 1 and the foundation tests; domain test implementation remains Pending.
+Keep test API, engine, and Platform versions aligned through Boot 4.1.1 dependency management. The user explicitly replaced JUnit 5 with JUnit 6; [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) preserves that history. Boot-managed JUnit build/runtime verification passed in Increment 1 and the foundation tests; Increment 3 domain tests passed; implementation acceptance awaits human review.
 
 ## 11. Integration Testing
 
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
-| Testcontainers with PostgreSQL | Boot-managed modules; `postgres:17.11-bookworm`, isolated random-port database | Disposable real database for mappings, migrations and deterministic concurrency tests | **Accepted** test infrastructure; concrete setup Pending |
-| Spring Boot test infrastructure | Boot **4.1.1**, with its managed JUnit 6 stack | Application-context and transaction-boundary integration tests | **Accepted** framework baseline; foundation test configuration approved, domain/transaction tests Pending |
+| Testcontainers with PostgreSQL | Boot-managed modules; `postgres:17.11-bookworm`, isolated random-port database | Disposable real database for mappings, migrations and deterministic concurrency tests | **Accepted** test infrastructure; concrete setup and scoped domain persistence tests verified |
+| Spring Boot test infrastructure | Boot **4.1.1**, with its managed JUnit 6 stack | Application-context and transaction-boundary integration tests | **Accepted** framework baseline; foundation configuration approved; domain/persistence tests passed, transaction coordination tests Pending |
 
 Container execution needs a compatible container runtime; no host/container-runtime product is selected here. H2 and mock-only tests cannot verify PostgreSQL locking semantics.
 
@@ -168,7 +168,7 @@ flowchart TB
 3. Before build approval, verify Boot 4 artifact/starter coordinates, resolved transitive versions, Java compatibility, test API/engine alignment, and driver/Flyway/PostgreSQL support. The earlier Boot 3.5 skeleton is not an approved dependency list.
 4. Use the Accepted JUnit 6 baseline and Boot 4.1.1-managed Jupiter/Platform versions under ADR-0005. Verify the resolved graph; do not add JUnit 5-retention overrides.
 5. Pin the selected database image and match integration tests to deployment major version. Inspect actual Hibernate locking SQL and transaction behavior with deterministic PostgreSQL tests.
-6. Record dependency-tree/build evidence and relevant runtime tests; verify strict unknown-field/numeric parsing, context startup, mappings/migrations, and DTO serialization with OSIV disabled. Foundation dependency resolution/context startup/OSIV evidence is in Increment 2; domain binding, mappings/migrations, and concurrency checks remain **Pending**.
+6. Record dependency-tree/build evidence and relevant runtime tests; verify strict unknown-field/numeric parsing, context startup, mappings/migrations, and DTO serialization with OSIV disabled. Foundation dependency resolution/context startup/OSIV evidence is in Increment 2; scoped mappings/migrations passed in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review); HTTP binding and concurrency checks remain **Pending**.
 7. Keep decisions in ADRs, version roles in this inventory, and unresolved execution details in [open items](../00-overview/open-items.md). Avoid maintaining duplicate version lists with competing authority.
 
 For recorded upstream compatibility observations and links, consult [ADR-0005](../03-decisions/ADR-0005-technology-stack.md). This reference changes no business rules, ADR statuses, or tool approvals.

@@ -66,7 +66,7 @@ class PostgreSqlFoundationIT {
     @Test
     void initializesJpaWithSchemaValidationAndWithoutOpenEntityManagerInView() {
         assertThat(entityManagerFactory.isOpen()).isTrue();
-        assertThat(entityManagerFactory.getMetamodel().getEntities()).isEmpty();
+        assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(4);
         assertThat(environment.getProperty("spring.jpa.open-in-view", Boolean.class)).isFalse();
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
         assertThat(entityManagerFactory.getProperties().get("hibernate.hbm2ddl.auto")).isEqualTo("validate");
@@ -76,9 +76,9 @@ class PostgreSqlFoundationIT {
     }
 
     @Test
-    void initializesOnlyFlywayMetadataWithoutApplicationMigrations() throws SQLException {
+    void initializesApprovedDomainMigrationAndFlywayMetadata() throws SQLException {
         assertThat(environment.getProperty("spring.flyway.enabled", Boolean.class)).isTrue();
-        assertThat(flyway.info().all()).isEmpty();
+        assertThat(flyway.info().applied()).hasSize(1);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         try (var connection = dataSource.getConnection();
              var statement = connection.createStatement()) {
@@ -93,10 +93,10 @@ class PostgreSqlFoundationIT {
                     tables.add(result.getString(1));
                 }
             }
-            assertThat(tables).containsExactly("public.flyway_schema_history");
+            assertThat(tables).containsExactly("public.customers", "public.flyway_schema_history", "public.order_items", "public.orders", "public.products");
             try (var result = statement.executeQuery("SELECT count(*) FROM flyway_schema_history")) {
                 assertThat(result.next()).isTrue();
-                assertThat(result.getLong(1)).isZero();
+                assertThat(result.getLong(1)).isEqualTo(1);
             }
         }
     }

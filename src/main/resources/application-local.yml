@@ -5,3 +5,6 @@ spring:
     password: ${POSTGRES_PASSWORD}
   flyway:
     enabled: true
+    validate-on-migrate: true
+    baseline-on-migrate: false
+    clean-disabled: true

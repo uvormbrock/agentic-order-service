@@ -1,3 +1,6 @@
 spring:
   flyway:
     enabled: true
+    validate-on-migrate: true
+    baseline-on-migrate: false
+    clean-disabled: true

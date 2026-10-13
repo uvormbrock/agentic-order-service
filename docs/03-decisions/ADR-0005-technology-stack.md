@@ -2,7 +2,7 @@
 
 **Status:** Accepted baseline and Increment 3 local/test migration policy; production details Open
 **Recorded:** 2026-10-13
-**Implementation:** Increments 1 and 2 accepted; Increment 3 not started; domain/persistence/concurrency verification Pending
+**Implementation:** Increments 1 and 2 accepted; Increment 3 executed, human review Pending; application/concurrency gates Pending
 
 ## Operational Reference
 
@@ -67,3 +67,7 @@ The human reviewer explicitly accepted D10 with D1–D9; [ADR-0004](ADR-0004-per
 Rationale: versioned DDL adds reviewed domain schema to the accepted database foundation without Hibernate schema mutation. Alternatives: metadata-only startup remains the historical foundation stage; mutable applied scripts, automatic repair/clean and production execution were not selected. Consequences: approved local startup will apply V1, so concrete DDL and existing database compatibility must be reviewed; checksum failures stop rather than repair.
 
 Verification is Pending until Increment 3 executes against real PostgreSQL. No new dependencies, version overrides, migrations, database operations or changes to Proposed ADR-0002 are made by this documentation task. Earlier scopes and decision history above are preserved; the new selection supersedes only now-resolved local/test migration/versioning questions.
+
+## Increment 3 Execution Evidence — Pending Human Review
+
+On 2026-10-13 the human explicitly authorized the finalized implementation prompt. The [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review) records generated mappings/repositories/V1, 25 passing fast tests and 14 passing PostgreSQL integration tests, including Hibernate validation, converter round trips, unconstrained NUMERIC capacity/negative checks, migration checksums/repeat execution and root-owned item persistence. Earlier statements of no implementation/evidence describe the recorded pre-execution state. No decision or historical proposal is replaced by these results; implementation acceptance remains Pending. ADR-0002 stays Proposed and implementation-unverified. Local development data/volumes were preserved; production, HTTP/application and concurrency verification remain outside this increment.

@@ -1,6 +1,6 @@
 # Domain Model — Agentic Order Service
 
-**Status:** Accepted aggregate and Increment 3 persistence design; implementation and verification Pending
+**Status:** Accepted aggregate and Increment 3 persistence design; scoped implementation verified, human review Pending
 **Scope:** MVP domain design
 **Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Order Item Snapshots](order-item-snapshots.md)
 
@@ -8,7 +8,7 @@
 
 The Agentic Order Service models product catalog management, customer management, and order placement. The aggregate baseline contains three aggregate roots (`Customer`, `Product`, and `Order`), one child entity (`OrderItem`), and two value objects (`Money` and `EmailAddress`).
 
-The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model. Direct JPA mapping is accepted in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md); D1–D10 mapping/storage selections are Accepted there; concrete SQL declarations require review against the PRD and runtime verification remains Pending.
+The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model. Direct JPA mapping is accepted in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md); D1–D10 mapping/storage selections are Accepted there; concrete SQL was reviewed against the PRD and scoped runtime verification passed as recorded in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). Implementation acceptance remains Pending.
 
 ## 2. Domain Model Diagram
 
@@ -126,7 +126,7 @@ classDiagram
 
 Do not impose a universal maximum amount or prohibit negative intermediate arithmetic without a specific accepted invariant. Product enforces the PRD price range. Order owns the 10% discount beginning at EUR 100.00 and its HALF_UP rounding; rounded discount results are constructed as Money. See PRD BR-001/BR-008/BR-009/BR-013.
 
-Java semantics and SQL enforcement are distinct: the subsequent D1–D10 approval selects an auto-applied BigDecimal converter and unconstrained PostgreSQL NUMERIC with finite, scale ≤2 and invariant-specific non-negative checks. No fixed order-total maximum is selected. [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) owns those Accepted mapping decisions; runtime evidence is Pending.
+Java semantics and SQL enforcement are distinct: the subsequent D1–D10 approval selects an auto-applied BigDecimal converter and unconstrained PostgreSQL NUMERIC with finite, scale ≤2 and invariant-specific non-negative checks. No fixed order-total maximum is selected. [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) owns those Accepted mapping decisions; scoped runtime evidence is recorded in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review).
 
 ### EmailAddress
 
@@ -209,4 +209,4 @@ UUID identity in the diagram is now Accepted, including OrderItem's private pers
 
 ## 10. Status and Next Step
 
-Aggregate boundaries, snapshots, names/value objects and D1–D10 persistence selections are Accepted. Implementation/tests are not started; concrete DDL review and compatibility evidence are Pending. Deferred list fetching and production/locking questions remain unresolved. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.
+Aggregate boundaries, snapshots, names/value objects and D1–D10 persistence selections are Accepted. Increment 3 implementation, concrete DDL review and scoped compatibility tests executed successfully; explicit human acceptance is Pending. See the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). Deferred list fetching and production/locking questions remain unresolved. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.

@@ -1,10 +1,10 @@
 # Testing Strategy
 
-**Status:** Approved quality requirements; foundation tests implemented; domain/persistence/concurrency tests Pending
+**Status:** Approved quality requirements; foundation/domain/persistence tests executed; Increment 3 human review and application/concurrency gates Pending
 
 ## Scope and Prerequisites
 
-The [PRD acceptance criteria](../01-requirements/product-requirements.md) define behavior; [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) defines concurrency outcomes. The [Proposed ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) defines technical verification scenarios. JUnit 6 is Accepted under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md), explicitly replacing JUnit 5. Use Jupiter and Platform versions managed by Spring Boot 4.1.1 without JUnit 5-retention overrides; foundation build verification passed; domain and concurrency verification remain Pending.
+The [PRD acceptance criteria](../01-requirements/product-requirements.md) define behavior; [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) defines concurrency outcomes. The [Proposed ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) defines technical verification scenarios. JUnit 6 is Accepted under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md), explicitly replacing JUnit 5. Use Jupiter and Platform versions managed by Spring Boot 4.1.1 without JUnit 5-retention overrides; foundation and Increment 3 domain/persistence verification passed; application and concurrency gates remain Pending.
 
 ## Quality Gate Applicability
 
@@ -63,7 +63,7 @@ Use independent transactions/connections/contexts, barriers/latches, and bounded
 
 Record test locations/commands, selected PostgreSQL image, outcomes, and limitations in the increment report. Increment 2 explicitly accepts Surefire for Docker-free tests and Failsafe for PostgreSQL `*IT` during `verify`. Include serialization after the persistence context closes and prove it emits complete DTO data without additional queries.
 
-Foundation tests have been run as recorded in Increment 2; no domain/mapping/concurrency test evidence is claimed. Passing tests does not automatically accept ADR-0002; explicit ADR acceptance and implementation verification are independent gates.
+Foundation tests and the scoped Increment 3 domain/persistence tests have run; see the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). No concurrency evidence is claimed. Passing tests does not automatically accept ADR-0002; explicit ADR acceptance and implementation verification are independent gates.
 
 ## Increment 2 Test Responsibilities
 
@@ -71,9 +71,16 @@ The current test classes verify the technical foundation:
 
 - `AgenticOrderServiceApplicationTest`: web application context, DispatcherServlet, and Validation wiring. DataSource, Hibernate JPA, and Flyway auto-configuration are excluded only in this smoke test; it provides no persistence evidence.
 - `PostgreSqlImageConfigurationTest`: understandable failures for missing files/properties, empty or malformed image values, and malformed properties syntax, using temporary files.
-- `PostgreSqlFoundationIT`: isolated container startup, configured image and actual server version, JDBC `SELECT 1`, EntityManagerFactory initialization with zero entities, disabled OSIV, Hibernate validation, disabled SQL initialization, and only empty Flyway metadata with no application migrations or domain tables.
+- `PostgreSqlFoundationIT`: isolated container startup, configured image and actual server version, JDBC `SELECT 1`, EntityManagerFactory initialization with four approved entities, disabled OSIV, Hibernate validation, disabled SQL initialization, V1 migration/history and exactly the four domain tables plus Flyway metadata. The earlier zero-entity/metadata-only assertions are preserved in Increment 2 history.
 
-Entity round trips, application migrations, domain rules, transaction guards, and concurrency behavior remain Pending. Actual foundation results are recorded in the [Increment 2 execution record](../04-agentic-coding/prompts/03-postgresql-foundation.md).
+Historical foundation results are recorded in the [Increment 2 execution record](../04-agentic-coding/prompts/03-postgresql-foundation.md). Increment 3 extends the current suite:
+
+- MoneyTest, EmailAddressTest, CustomerTest, ProductTest and OrderTest: exact values, normalization/grammar, Unicode and field limits, controlled lifecycle, consolidation, discount rounding and large totals.
+- CustomerPersistenceIT and ProductPersistenceIT: converter hydration after flush/clear, generated identity, controlled updates and inactive-inclusive email uniqueness.
+- OrderPersistenceIT: production root save/cascade, original snapshots after catalog changes, lazy/explicit fetch counts, immutable closed-context values, restrictive FKs and confirmed full rollback.
+- DomainSchemaIT: unconstrained NUMERIC, named negative constraints, actual V1/checksum/repeat migration and normalized unique email index.
+
+The scoped execution passed 25 fast tests (10 foundation, 15 domain) and 14 PostgreSQL integration tests. Increment 3 is Executed – Pending Human Review. Application/HTTP, transaction coordination, concurrent uniqueness response handling and ADR-0002 gates remain Pending; see the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review).
 
 ## Running Tests
 
@@ -86,7 +93,7 @@ Run commands from the repository root using the Maven Wrapper. Both test groups 
 | Maven plugin | Surefire | Failsafe |
 | Project naming convention | `*Test` | `*IT` |
 | Execution phase | `test` | `integration-test`, with results checked in `verify` |
-| Current scope | Smoke and image-configuration checks | Full application context with real PostgreSQL |
+| Current scope | Smoke, image-configuration and pure domain checks | Real PostgreSQL foundation, migrations, mappings and constraints |
 | PostgreSQL / Docker required | No | Yes |
 | Command | `./mvnw test` | `./mvnw verify` also runs the fast tests |
 
@@ -143,4 +150,4 @@ Local Compose commands require `--env-file .env --env-file config/postgres.prope
 3. Inspect results in `target/surefire-reports/` and `target/failsafe-reports/`, review the actual Git diff, and run whitespace checks. Report failures and applicable verification limitations.
 4. Obtain human acceptance and explicit commit authorization through the [AI workflow](../04-agentic-coding/ai-development-workflow.md).
 
-Documentation-only changes use documentation gates. Passing the current foundation tests does not establish completion of future domain, migration, transaction, or concurrency gates.
+Documentation-only changes use documentation gates. Passing the current tests does not establish completion of future application, HTTP, transaction coordination or concurrency gates.
