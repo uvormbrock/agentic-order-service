@@ -1,10 +1,10 @@
 # Agentic Order Service
 
-This repository starts with project documentation. Source code (`src/`) and Maven configuration (`pom.xml`) will follow later.
+This repository contains the engineering documentation and the accepted Java/Spring Boot and PostgreSQL foundations. Domain and business implementation require separately approved increments.
 
 ## Documentation
 
-The repository `docs/` directory is the single source of truth. Open it directly in Obsidian; Codex reads the same Markdown files. Source implementation has not started.
+The repository `docs/` directory is the single source of truth. Open it directly in Obsidian; Codex reads the same Markdown files. Implementation evidence and human acceptance are recorded in the prompt playbook.
 
 - [Open items](docs/00-overview/open-items.md)
 - [Product requirements](docs/01-requirements/product-requirements.md)
@@ -15,6 +15,8 @@ The repository `docs/` directory is the single source of truth. Open it directly
 - [REST API design](docs/02-architecture/rest-api-design.md)
 - [Historical snapshots](docs/02-architecture/order-item-snapshots.md)
 - [Coding guidelines](docs/04-agentic-coding/coding-guidelines.md)
+- [Java and Spring Boot guidelines — Accepted implementation guidance](docs/04-agentic-coding/java-spring-guidelines.md)
+- [Persistence and PostgreSQL guidelines — Accepted implementation guidance](docs/04-agentic-coding/persistence-guidelines.md)
 - [Testing strategy](docs/05-testing/testing-strategy.md)
 - [AI development workflow](docs/04-agentic-coding/ai-development-workflow.md)
 - [Prompt playbook](docs/04-agentic-coding/prompts/00-index.md)

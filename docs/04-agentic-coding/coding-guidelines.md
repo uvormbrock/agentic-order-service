@@ -6,6 +6,15 @@
 
 Read [system architecture](../02-architecture/system-architecture.md), [PRD](../01-requirements/product-requirements.md), and relevant ADRs. Java 21 / Spring Boot 4.1.1 are accepted in [ADR-0005](../03-decisions/ADR-0005-technology-stack.md). Proposed details remain subject to approval.
 
+## Supplementary Implementation Guidelines
+
+The following accepted documents provide specialized implementation guidance:
+
+- [Java and Spring Boot guidelines](java-spring-guidelines.md): Java conventions, feature boundaries, HTTP DTOs, validation, logging, and testing.
+- [Persistence and PostgreSQL guidelines](persistence-guidelines.md): aggregate mapping, fetching, schema/constraint review, Flyway scope, and database verification.
+
+Both are **Accepted implementation guidance**, subordinate to accepted requirements/ADRs and these approved coding/workflow rules. Their acceptance does not approve implementation, dependencies, schema changes, or migrations. Explicitly Proposed/Open subdecisions retain their existing status and approval gates, including ADR-0002.
+
 ## Java and Feature Boundaries
 
 Use English names/comments, ordinary Java conventions, explicit types at boundaries, constructor injection, and small cohesive classes. Use records where appropriate for immutable DTOs and value carriers, not automatically for JPA entities. Avoid generic CRUD bases, unnecessary interfaces, broad utility packages, and new dependencies without approval. Put feature behavior in product/customer/order packages; keep cross-feature access narrow and explicit.
@@ -44,7 +53,7 @@ Do not invent entity identity, relationship/cascade mappings, column precision, 
 
 ## Maven and Configuration
 
-One Maven module; Java 21 compilation; Boot 4.1.1 alignment. Prefer managed dependency versions and explain overrides. Use Accepted JUnit 6 with Boot 4.1.1-managed Jupiter and Platform versions; do not override them to retain JUnit 5. Keep credentials external and never commit secrets. No automatic schema update or autonomous migration execution. Flyway tool selection is accepted; execution strategy still needs approval.
+One Maven module; Java 21 compilation; Boot 4.1.1 alignment. Prefer managed dependency versions and explain overrides. Use Accepted JUnit 6 with Boot 4.1.1-managed Jupiter and Platform versions; do not override them to retain JUnit 5. Keep credentials external and never commit secrets. No automatic schema update or autonomous migration execution. Flyway and local/integration-test metadata initialization are accepted; domain migration scripts require separate approval, and production execution/privileges remain Open under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md).
 
 ## Completion Criteria
 
