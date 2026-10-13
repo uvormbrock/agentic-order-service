@@ -15,6 +15,7 @@ target/
 .obsidian/workspace.json
 .obsidian/workspace-mobile.json
 .obsidian/cache/
+/docs/.obsidian/workspace.json
 
 # Lokale Geheimnisse
 .env

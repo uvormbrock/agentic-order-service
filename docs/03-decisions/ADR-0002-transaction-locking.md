@@ -6,7 +6,7 @@
 
 The MVP is a Java 21 / Spring Boot modular monolith using Spring Data JPA and PostgreSQL. Customer, Product, and Order are independent aggregates; Order owns its items.
 
-[ADR-0001](0001-order-placement-concurrency.md) defines the accepted business consistency policy. This ADR proposes its technical enforcement without changing that policy or the [Product Requirements](../01-requirements/product-requirements.md). Related designs: [Domain Model](../02-architecture/domain-model.md), [Order Item Snapshots](../02-architecture/order-item-snapshots.md), and [REST API Design](../02-architecture/rest-api-design.md).
+[ADR-0001](ADR-0001-order-placement-concurrency.md) defines the accepted business consistency policy. This ADR proposes its technical enforcement without changing that policy or the [Product Requirements](../01-requirements/product-requirements.md). Related designs: [Domain Model](../02-architecture/domain-model.md), [Order Item Snapshots](../02-architecture/order-item-snapshots.md), and [REST API Design](../02-architecture/rest-api-design.md).
 
 The strategy is not implementation-verified. Deterministic PostgreSQL/Testcontainers integration tests must verify the multi-product locking protocol and customer deletion race handling before implementation is considered correct.
 
@@ -149,3 +149,13 @@ No code, dependencies, migrations, idempotency keys, or retry framework is presc
 - [Spring transaction propagation](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/tx-propagation.html)
 - [Spring transaction annotations](https://docs.spring.io/spring-framework/reference/data-access/transaction/declarative/annotations.html)
 - [Jakarta Persistence specification](https://jakarta.ee/specifications/persistence/3.2/jakarta-persistence-spec-3.2.html)
+
+## Decision History and Later Baseline Clarifications
+
+- Original record: `docs/03-decisions/0002-transaction-and-locking-strategy.md`, retained in Git history. Status remains **Proposed**, implementation-unverified.
+- 2026-10-13: Relocated without replacing its rationale, alternatives, consequences, scenarios, or open questions.
+- The user adopted TransactionTemplate, READ COMMITTED, deterministic pessimistic locking, and application-owned transaction boundaries as the architecture baseline. This adoption does not promote this complete protocol ADR to Accepted.
+- Required conventions: reject an ambient transaction before starting the retry coordinator; disable Open EntityManager in View; use a fresh transaction-scoped persistence context per attempt; fully materialize order results inside transactions before returning after commit.
+- Java 21 and Spring Boot 4.1.1 are now accepted under [ADR-0005](ADR-0005-technology-stack.md). The earlier open-version list is historical; remaining provider/driver/server alignment is tracked there.
+
+The operational explanation is maintained in [Transaction and Locking](../02-architecture/transaction-locking.md). Acceptance requires explicit human approval separately from deterministic PostgreSQL verification.

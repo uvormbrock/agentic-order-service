@@ -1,14 +1,14 @@
 # Domain Model — Agentic Order Service
 
-**Status:** Proposed
+**Status:** Accepted aggregate baseline; detailed identity and schema mappings remain Proposed/Open
 **Scope:** MVP domain design
 **Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Order Item Snapshots](order-item-snapshots.md)
 
 ## 1. Overview
 
-The Agentic Order Service models product catalog management, customer management, and order placement. The proposed domain model contains three aggregate roots (`Customer`, `Product`, and `Order`), one child entity (`OrderItem`), and two value objects (`Money` and `EmailAddress`).
+The Agentic Order Service models product catalog management, customer management, and order placement. The aggregate baseline contains three aggregate roots (`Customer`, `Product`, and `Order`), one child entity (`OrderItem`), and two value objects (`Money` and `EmailAddress`).
 
-The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model, not a JPA entity mapping or database schema.
+The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model. Direct JPA mapping is accepted in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md); detailed annotations and schema remain open.
 
 ## 2. Domain Model Diagram
 
@@ -172,7 +172,7 @@ The domain model shows `subtotal`, `discount`, and `total` as observable domain 
 - Aggregate boundaries express where business invariants must be protected.
 - They do **not** automatically prescribe Java packages, JPA relationships, or SQL foreign keys.
 - `Order` can reference `Customer` by `customerId`; `OrderItem` can reference `Product` by `productId` while retaining original product names, prices, and monetary results. Only customer details are resolved from current records for responses.
-- The actual tables, foreign-key policies, locking strategy, and transaction boundaries will be specified separately in the persistence design.
+- Direct JPA aggregate mapping is accepted. Concrete tables, mappings, and monetary capacity remain open; ADR-0002 proposes restrictive foreign keys and locking, with application transaction ownership accepted in [ADR-0003](../03-decisions/ADR-0003-application-architecture.md).
 
 ## 8. Responsibilities and Open Design Questions
 
@@ -184,7 +184,7 @@ The domain model shows `subtotal`, `discount`, and `total` as observable domain 
 | Atomic storage, referential integrity, cross-customer email uniqueness enforcement | Persistence boundary |
 | Historical product names/prices/amounts plus current customer details | Order response assembly |
 
-Concurrency is documented separately in [Order Placement Concurrency](../03-decisions/0001-order-placement-concurrency.md). Its business policy is accepted. [ADR-0002](../03-decisions/0002-transaction-and-locking-strategy.md) describes the Proposed technical transaction and locking strategy; it is not implementation-verified.
+Concurrency is documented separately in [Order Placement Concurrency](../03-decisions/ADR-0001-order-placement-concurrency.md). Its business policy is accepted. [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) describes the Proposed technical transaction and locking strategy; it is not implementation-verified.
 
 Remaining design questions:
 
@@ -211,4 +211,4 @@ UUIDs in the diagram are a proposed identity format, not a finalized requirement
 
 ## 10. Status and Next Step
 
-This document is a **proposed conceptual domain model** for discussion and review. After confirming the open decisions, document significant choices in `docs/03-decisions/` as Architecture Decision Records (ADRs) and then design persistence and application services.
+Aggregate boundaries and snapshot semantics are the accepted baseline. Identity details, value-object converter choices, schema, and monetary storage remain open or proposed. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.

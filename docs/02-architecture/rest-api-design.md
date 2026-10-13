@@ -38,7 +38,7 @@ public record CreateOrderRequest(
 - Reject read-only fields such as `id` in create/update bodies unless explicitly permitted by the PRD.
 - Apply the same strictness to relevant product and customer requests.
 - Configure and verify Jackson's unknown-property handling explicitly; **do not rely on framework defaults**.
-- The exact Spring Boot/Jackson configuration is **TBD** and must match the versions actually selected. Do not copy a Jackson 2 configuration into a Jackson 3 application without verifying compatibility.
+- Spring Boot **4.1.1** is accepted in [ADR-0005](../03-decisions/ADR-0005-technology-stack.md). The exact strict-deserialization configuration must match its selected Jackson stack; do not reuse the unapproved Boot 3.5 skeleton configuration.
 
 ## 4. Request Validation
 
@@ -74,7 +74,7 @@ The example error code is provisional; the PRD only requires `code` and `message
 | `409` | Inactive customer or product referenced by a new order; duplicate normalized customer email |
 | `405` | Unsupported resource methods, as defined by the PRD |
 
-Technical transaction failures and uncertain commit outcomes are **not** automatically mapped to business-validation conflicts; the accepted business policy is defined in [ADR-0001](../03-decisions/0001-order-placement-concurrency.md). [ADR-0002](../03-decisions/0002-transaction-and-locking-strategy.md) proposes technical locking, retries, and error handling; it remains Proposed and implementation-unverified, including handling where no HTTP response is possible.
+Technical transaction failures and uncertain commit outcomes are **not** automatically mapped to business-validation conflicts; the accepted business policy is defined in [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md). [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) proposes technical locking, retries, and error handling; it remains Proposed and implementation-unverified, including handling where no HTTP response is possible.
 
 ## 6. Integration-Test Checklist
 
@@ -112,10 +112,10 @@ Also verify that every error response contains `code` and `message`.
 
 ## 7. Open Technical Decisions
 
-- Final Spring Boot and Jackson versions and the concrete strict-deserialization configuration.
+- Boot 4.1.1-compatible Jackson alignment and concrete strict-deserialization configuration; Java 21 and Spring Boot 4.1.1 are already selected.
 - DTO field types, Bean Validation annotations, and exception-to-HTTP mapping.
 - Exact error `code` taxonomy and safe error-message details.
-- Concrete integration-test setup; ADR-0002 proposes PostgreSQL/Testcontainers for deterministic concurrency verification.
+- Concrete integration-test setup under the [testing strategy](../05-testing/testing-strategy.md), including resolution of JUnit 5 versus Boot-managed JUnit 6. PostgreSQL/Testcontainers is adopted; the protocol remains unverified.
 - Technical implementation and verification of the Proposed ADR-0002 strategy under accepted ADR-0001, including timeouts, retry delays, and uncertain commit reconciliation.
 
 ## 8. Implementation Reminder

@@ -4,12 +4,21 @@ This repository starts with project documentation. Source code (`src/`) and Mave
 
 ## Documentation
 
-- [Overview](docs/00-overview/)
-- [Requirements](docs/01-requirements/)
-- [Architecture](docs/02-architecture/)
-- [Decisions](docs/03-decisions/)
-- [Agentic Coding](docs/04-agentic-coding/)
-- [Testing](docs/05-testing/)
-- [Operations](docs/06-operations/)
+The repository `docs/` directory is the single source of truth. Open it directly in Obsidian; Codex reads the same Markdown files. Source implementation has not started.
+
+- [Open items](docs/00-overview/open-items.md)
+- [Product requirements](docs/01-requirements/product-requirements.md)
+- [System architecture and ADR status matrix](docs/02-architecture/system-architecture.md)
+- [Domain model](docs/02-architecture/domain-model.md)
+- [Transaction and locking conventions](docs/02-architecture/transaction-locking.md)
+- [REST API design](docs/02-architecture/rest-api-design.md)
+- [Historical snapshots](docs/02-architecture/order-item-snapshots.md)
+- [Coding guidelines](docs/04-agentic-coding/coding-guidelines.md)
+- [Testing strategy](docs/05-testing/testing-strategy.md)
+- [AI development workflow](docs/04-agentic-coding/ai-development-workflow.md)
+- [Implementation plan](docs/07-implementation/implementation-plan.md)
+- Deferred evidence areas: [Agentic Coding](docs/04-agentic-coding), [Testing](docs/05-testing), [Operations](docs/06-operations).
+
+Java 21 and Spring Boot 4.1.1 are accepted. ADR-0002 remains Proposed and implementation-unverified; implementation needs scoped approval. The test-engine alignment issue is recorded in ADR-0005.
 
 The project folder can be opened as an Obsidian vault.

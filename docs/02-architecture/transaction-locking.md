@@ -1,0 +1,39 @@
+# Transaction and Locking Conventions
+
+**Status:** Accepted application conventions; detailed protocol Proposed and implementation-unverified
+
+## Authority
+
+[ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) owns the accepted business policy. [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) preserves the detailed proposal. Adoption of READ COMMITTED and pessimistic locking does not promote the complete ADR or establish correctness of actual JPA SQL.
+
+## Accepted Boundaries
+
+- The application use case owns a transaction spanning all participating database operations. No repository operation or module helper independently commits part of an order.
+- The order retry coordinator explicitly rejects an active ambient transaction before entering any attempt. It must neither join it nor silently suspend it. An explicit runtime guard also protects internal/self-invoked paths.
+- Use TransactionTemplate for each complete order attempt. REQUIRED propagation is a proposed configuration made safe by the nonambient entry condition; do not substitute REQUIRES_NEW as a way to hide an ambient transaction.
+- Open EntityManager in View is disabled (`spring.jpa.open-in-view=false`). Use transaction-scoped persistence contexts and fresh authoritative reads for each attempt; never reuse failed-attempt entities or an extended request context.
+- Fully construct immutable Order DTOs and materialize all required items, monetary facts, and current customer details inside the relevant transaction. Read operations use read-only application transactions. Creation returns its materialized result only after successful commit; HTTP serialization afterward performs no lazy reads.
+
+## Completion and Retry Boundary
+
+The coordinator surrounds TransactionTemplate execution, including commit/rollback, rather than retrying its callback or individual queries. Callback return and flush do not establish success. Commit exceptions must reach the coordinator. A new attempt begins only after the previous transaction ended, its context was released, and noncommit is known. Let invalidating failures escape; explicitly handle rollback semantics for checked failures. Do not continue a rollback-only attempt or use a self-invoked transactional annotation as the boundary.
+
+ADR-0002 proposes at most two additional attempts, finite waits, and bounded delays/budget. Proposed retry candidates are `40P01` deadlocks, `40001` serialization failures, and a confirmed lock-timeout path such as `55P03`, only after full confirmed rollback. Do not retry all cancellations (`57014`), integrity errors, or connection failures indiscriminately. Duplicate normalized-email violations are business conflicts, not generic retry candidates. Precise exception classification and delays remain open.
+
+Confirmed rollback means no order/items from the attempt. Lost commit confirmation means a complete order may exist. Never replay automatically or claim rollback for an unknown outcome. ADR-0002 proposes 503 on transient exhaustion and 500 for unexpected/unknown outcomes where a response is possible; a failed HTTP connection can prevent any response. Error taxonomy and reconciliation remain open.
+
+## Proposed Locking Protocol
+
+1. Validate and consolidate product quantities before locking.
+2. Begin an attempt and lock Customer by ID without an active-status filter.
+3. Lock distinct Products individually in a deterministic shared ID order. The exact identity/comparator is still open; bulk ORDER BY is not acquisition proof.
+4. Validate fresh protected eligibility and capture names/prices after all locks are held.
+5. Calculate and atomically persist original order/item facts; hold locks through completion.
+
+Product name/price updates and deactivation lock their product first. Customer updates/deactivation/deletion lock their customer. Any operation touching both uses customer before products; multi-product writes use the shared ordering. Prevent pre-lock dirty mutations, autoflush surprises, stale caches, reverse-order paths, and unreviewed bypass operations.
+
+Deletion locks the Customer and then checks Order references in a separate subsequent READ COMMITTED statement. If placement committed first, deletion must observe the reference and deactivate; if deletion committed first, placement finds no customer. Restrictive foreign keys backstop integrity, but do not protect active status or prices. Normalized-email uniqueness requires its own database constraint.
+
+## Verification Gate
+
+Deterministic PostgreSQL/Testcontainers tests must prove both operation orders, multi-product consistency, the deletion race, atomic rollback, actual generated locking SQL, complete transaction retries, and unknown-outcome nonreplay. Use independent connections and barriers/latches with bounded blocking observation. No implementation or concurrency behavior is verified by these documents. See the [testing strategy](../05-testing/testing-strategy.md).

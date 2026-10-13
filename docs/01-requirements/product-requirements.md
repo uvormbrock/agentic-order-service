@@ -103,7 +103,7 @@ Errors return a JSON body containing `code` and `message`, describing the failed
 | AC-017 | FR-003–FR-004 | The order and all items are saved atomically. Validation rejection or confirmed transaction rollback leaves no order or items from that attempt. An uncertain commit outcome is not proof of rollback. |
 | AC-018 | FR-003–FR-004, BR-010 | Concurrent product changes and customer deactivation/deletion follow the accepted ordering policy in ADR-0001. Product names, prices, and eligibility are captured consistently; no dangling references or partial orders result. |
 
-Atomicity and concurrency behavior are specified in [ADR-0001](../03-decisions/0001-order-placement-concurrency.md); the technical enforcement mechanism remains open.
+Atomicity and concurrency behavior are specified in [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md); the detailed enforcement strategy remains Proposed in [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md). See [transaction conventions](../02-architecture/transaction-locking.md) for adopted application boundaries.
 
 ### Calculation Examples
 

@@ -49,3 +49,12 @@ Do not report an uncertain outcome as a confirmed rollback or automatically repl
 ## Remaining Technical Decisions
 
 Before implementation, select and document the transaction/locking strategy, resource acquisition order where applicable, and enforcement of referential integrity. Define bounded retries, timeout behavior, and API responses for exhausted transient failures without conflating these with the PRD's business-validation conflicts.
+
+## Decision History and Alternatives
+
+- Original record: `docs/03-decisions/0001-order-placement-concurrency.md`, retained in Git history. The accepted policy is unchanged.
+- 2026-10-13: Relocated to the authoritative ADR directory. Application and technical choices are tracked separately in ADR-0002 through ADR-0005.
+- Rationale: order placement and related mutations must have explainable outcomes without invalid references or inconsistent historical facts.
+- Alternatives: accepting unprotected stale reads violates eligibility/snapshot invariants; rejecting every overlap creates business conflicts not required by the accepted policy.
+
+Verification criteria remain the scenarios above. No implementation or test evidence is claimed by this relocation.

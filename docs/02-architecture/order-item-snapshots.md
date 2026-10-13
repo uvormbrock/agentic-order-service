@@ -1,7 +1,7 @@
 # Order Item Snapshots and DDD Aggregate Boundaries
 
 **Status:** Proposed domain design aligned with the approved MVP requirements
-**Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Domain Model](domain-model.md) · [Order Placement Concurrency](../03-decisions/0001-order-placement-concurrency.md)
+**Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Domain Model](domain-model.md) · [Order Placement Concurrency](../03-decisions/ADR-0001-order-placement-concurrency.md)
 
 ## 1. Context
 
@@ -47,7 +47,7 @@ flowchart LR
 5. For a subtotal of at least EUR 100.00, round its 10% discount to two decimal places using HALF_UP; otherwise use zero. Subtract the rounded discount to obtain the payable total.
 6. Atomically save the order, items, and original monetary facts while preserving the validated eligibility and reference relationships.
 
-The authoritative product name, price, and eligibility follow the consistent operation ordering defined in [ADR-0001](../03-decisions/0001-order-placement-concurrency.md). Reading a price and later saving an order without protecting that decision is insufficient.
+The authoritative product name, price, and eligibility follow the consistent operation ordering defined in [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md). Reading a price and later saving an order without protecting that decision is insufficient.
 
 ## 5. Persistence Requirements
 
@@ -57,7 +57,7 @@ The authoritative product name, price, and eligibility follow the consistent ope
 - Ensure duplicate consolidation leaves one item per product within an order.
 - Preserve original monetary results across later price or calculation-rule changes.
 
-The storage representation, concrete constraints, JPA mappings, and item identity remain persistence design decisions. [ADR-0002](../03-decisions/0002-transaction-and-locking-strategy.md) proposes technical enforcement of the accepted ADR-0001 business policy; it remains Proposed and implementation-unverified. This document does not select a database schema.
+The storage representation, concrete constraints, JPA mappings, and item identity remain persistence design decisions. [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) proposes technical enforcement of the accepted ADR-0001 business policy; it remains Proposed and implementation-unverified. This document does not select a database schema.
 
 ## 6. Historical Calculations
 
