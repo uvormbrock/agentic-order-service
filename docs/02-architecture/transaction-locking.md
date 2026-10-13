@@ -10,7 +10,7 @@
 
 Accepted: application ownership, TransactionTemplate, ambient rejection, disabled OSIV, fresh attempt contexts, complete materialization, atomicity, READ COMMITTED/deterministic pessimistic locking baseline, and no uncertain-outcome replay.
 
-Proposed: the full ADR-0002 protocol, precise propagation setup, lock-query paths, ordering comparator, retry eligibility/count and technical HTTP responses. Open: concrete timeouts/budgets/delays, error classifiers, comparator/identity choices, and reconciliation. Wording in a Proposed section describes the candidate implementation, not additional acceptance. Verification remains Pending.
+Proposed: the full ADR-0002 protocol, precise propagation setup, lock-query paths, ordering comparator, retry eligibility/count and technical HTTP responses. Open: concrete timeouts/budgets/delays, error classifiers, the locking comparator, and reconciliation. UUID identities are now Accepted in ADR-0004; that does not select the comparator or accept the protocol. Wording in a Proposed section describes the candidate implementation, not additional acceptance. Verification remains Pending.
 
 ## Accepted Boundaries
 
@@ -36,7 +36,7 @@ Confirmed rollback means no order/items from the attempt. Lost commit confirmati
 
 1. Validate and consolidate product quantities before locking.
 2. Begin an attempt and lock Customer by ID without an active-status filter.
-3. Lock distinct Products individually in a deterministic shared ID order. The exact identity/comparator is still open; bulk ORDER BY is not acquisition proof.
+3. Lock distinct Products individually in a deterministic shared ID order. UUID identities are Accepted under ADR-0004; the shared ordering comparator remains Open. Bulk ORDER BY is not acquisition proof.
 4. Validate fresh protected eligibility and capture names/prices after all locks are held.
 5. Calculate and atomically persist original order/item facts; hold locks through completion.
 

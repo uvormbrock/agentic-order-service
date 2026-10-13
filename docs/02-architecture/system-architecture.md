@@ -11,7 +11,7 @@ The [PRD](../01-requirements/product-requirements.md) owns business rules and RE
 | [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) | Business concurrency policy | Accepted | Implementation pending |
 | [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) | Detailed transaction/locking protocol | Proposed | Implementation-unverified |
 | [ADR-0003](../03-decisions/ADR-0003-application-architecture.md) | Application architecture | Accepted baseline | Implementation pending |
-| [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) | Direct aggregate mapping | Accepted baseline; converter details Proposed, schema Open | Implementation pending |
+| [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) | Direct aggregate mapping | Accepted Increment 3 mapping/schema selections; concrete DDL review Pending | Implementation pending |
 | [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) | Java 21 / Spring Boot 4.1.1 and stack | Accepted baseline; scoped foundation choices approved, production details Open | Foundation verified; human review passed, implementation accepted |
 
 ## Technology Reference
@@ -103,10 +103,10 @@ The [domain model](domain-model.md) defines aggregate ownership. Historical name
 
 ## Scope and Remaining Decisions
 
-No microservices, event sourcing, CQRS infrastructure, generic repository hierarchy, or idempotency-key feature is approved. Fine-grained converter choices, identity/schema/capacity, exact email syntax, dependency alignment, migration execution, and timeout values are tracked in [open items](../00-overview/open-items.md). Follow the [implementation plan](../07-implementation/implementation-plan.md) for approval gates.
+No microservices, event sourcing, CQRS infrastructure, generic repository hierarchy, or idempotency-key feature is approved. D1–D10 identity/converter/storage/name/email/schema and local/test migration selections are Accepted under ADR-0004/0005; implementation authorization, concrete SQL review and runtime evidence remain Pending. List/pagination fetching, production execution/privileges and detailed concurrency configuration remain deferred/Open in [open items](../00-overview/open-items.md). Follow the [implementation plan](../07-implementation/implementation-plan.md) for approval gates.
 
 ## Approved PostgreSQL Foundation Increment
 
 Increment 2 wires Boot-managed JPA/JDBC/Flyway to PostgreSQL 17.11 (`postgres:17.11-bookworm`). Local development uses explicit Compose lifecycle, localhost-bound configurable ports, environment credentials, and a named persistent volume. Integration tests use a separate Spring-managed Testcontainers database with random ports and independent credentials; they never reuse the Compose database.
 
-OSIV is disabled, Hibernate uses `validate`, and SQL initialization is disabled. Flyway is disabled by default and enabled only in local/integration-test profiles; only metadata initialization is approved. No entities, repositories, application migrations, transaction coordinator, retries, or locks exist in this increment. Deployment/security/domain-schema questions remain Open; ADR-0002 remains Proposed. See [the execution record](../04-agentic-coding/prompts/03-postgresql-foundation.md).
+OSIV is disabled, Hibernate uses `validate`, and SQL initialization is disabled. Flyway is disabled by default and enabled only in local/integration-test profiles; the historical Increment 2 scope approved metadata initialization only. No entities, repositories, application migrations, transaction coordinator, retries, or locks exist in this increment. Deployment/security and detailed concurrency questions remain Open; ADR-0002 remains Proposed. The subsequent Increment 3 design approval selects the four domain tables/mappings and local/test V1 policy; implementation is not yet authorized or verified. See [the execution record](../04-agentic-coding/prompts/03-postgresql-foundation.md).

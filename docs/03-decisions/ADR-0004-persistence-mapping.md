@@ -1,6 +1,6 @@
 # ADR-0004: Persistence Mapping
 
-**Status:** Accepted baseline; detailed converter choices Proposed; schema decisions Open
+**Status:** Accepted Increment 3 mapping decisions; deferred details Open; implementation-unverified
 **Recorded:** 2026-10-13
 **Implementation:** Not started
 
@@ -10,7 +10,9 @@ Map Customer, Product, and Order aggregate roots directly with JPA/Hibernate; ma
 
 Historical productName, quantity, unitPrice, lineTotal, subtotal, discount, and total remain original. Customer details remain current. See the [domain model](../02-architecture/domain-model.md) and [PRD](../01-requirements/product-requirements.md).
 
-## Proposed Mapping Conventions
+## Historical Proposed Mapping Conventions
+
+The following proposal is preserved as recorded history. The Accepted Increment 3 selections below supersede its explicit-conversion preference and then-open identity/storage/name/email selections.
 
 - Money: immutable amount/currency value; explicit JPA AttributeConverter to BigDecimal for the EUR-only MVP, reconstructing EUR and rejecting other currencies. No binary floating point and no scale-based inequality for equivalent values. Column precision/capacity and converter details are not selected by this proposal.
 - EmailAddress: immutable normalized string value with an explicit converter to text. The accepted business policy trims, lowercases, limits to 254 characters after normalization, and enforces case-insensitive uniqueness across active/inactive customers. Do not use provider-specific dot/plus rules.
@@ -30,8 +32,34 @@ The domain intentionally carries JPA metadata and entity construction constraint
 
 PostgreSQL round trips for aggregates and both value objects; unchanged original snapshot fields after product edits; normalized email uniqueness under concurrent create/update; valid boundary values; complete DTO materialization with OSIV disabled. Verify numeric capacity and inspect generated SQL/cascades. No mapping evidence exists yet.
 
-## Open Decisions and History
+## Historical Open Decisions and History
+
+This section records the pre-approval state; current selections and remaining boundaries follow below.
 
 OrderItem persistence identity, concrete constraints/JPA mapping, and original monetary storage representation remain Open. One line can reach EUR 9,999,999,900.00, and several distinct products can exceed it; numeric precision/scale and overall order-size/total limits are not selected. Business calculation scale is two decimal places; database declaration remains a persistence decision.
 
 Direct mapping and immutable values were explicitly adopted by the user. The earlier separate-model recommendation is superseded by this baseline, not erased from history. Converter details came from a later unapproved skeleton proposal and remain Proposed. See [implementation gates](../07-implementation/implementation-plan.md).
+
+## Accepted Increment 3 Selections and Replacement History
+
+The human reviewer explicitly accepted Variant A for D1–D10. This accepts design choices, not implementation or runtime correctness; Increment 3 execution still requires explicit authorization. The [PRD](../01-requirements/product-requirements.md) owns business validation and [ADR-0005](ADR-0005-technology-stack.md#accepted-increment-3-localtest-migration-policy) owns migration execution policy.
+
+- **D1/D2:** Customer/Product/Order and each owned OrderItem have Java UUID/PostgreSQL uuid IDs generated with `@GeneratedValue(strategy = GenerationType.UUID)`. New entity IDs are null until persistence assigns them. No custom generator, database UUID extension or BaseEntity. Unique `(order_id, product_id)`; no independent item repository/CRUD/API identity.
+- **D3:** Direct field-access mappings, protected no-argument constructors and controlled mutation; no unrestricted setters. Immutable Money/EmailAddress remain JPA-annotation-free. MoneyConverter implements AttributeConverter<Money, BigDecimal>; EmailAddressConverter implements AttributeConverter<EmailAddress, String>. Both use `@Converter(autoApply = true)` in corresponding persistence packages. Domain never depends on those packages.
+- **D4:** Order.items uses `@OneToMany(mappedBy = "order", cascade = CascadeType.PERSIST, fetch = FetchType.LAZY)`, orphanRemoval false. OrderItem.order uses `@ManyToOne(fetch = FetchType.LAZY, optional = false)` and owns the non-null order_items.order_id FK. Order maintains both ends. No CascadeType.REMOVE; customer/product references are UUID values with restrictive FKs, not managed cross-aggregate associations.
+- **D5:** Lazy items and explicit single-order JOIN FETCH or equivalent reviewed fetch plan, such as findByIdWithItems(UUID). Materialize inside transactions; OSIV remains disabled. No blanket EAGER. List/pagination-specific plans remain deferred.
+- **D6:** Unconstrained PostgreSQL NUMERIC for all monetary columns, without fixed precision/scale. Named checks reject NaN/positive or negative Infinity and scale greater than two rather than coercing it. Apply non-negative checks to persisted fields whose invariants require them, including product price 0.00–999,999.99; no universal ban on signed Money arithmetic or artificial Order-total cap. Store original amounts explicitly and verify exact BigDecimal round trips/Hibernate compatibility.
+- **D7:** Customer/product names use String.strip(), 1–200 Unicode code points, preserving case/umlauts/accents/valid Unicode. Preserve approved ASCII EmailAddress semantics. Store normalized email with unique lower(email) index across all active/inactive customers; no partial uniqueness or citext. Uniqueness stays outside the value object. Verify Java/PostgreSQL normalization/case/collation consistency.
+- **D8:** customers/products/orders/order_items, UUID PKs, required NOT NULLs, restrictive FKs without deletion cascades, named approved name/quantity/price/monetary checks and uniqueness. Index orders.customer_id and order_items.product_id; avoid redundant/speculative indexes. Store original item productName/unitPrice/lineTotal and Order subtotal/discount/total. Review concrete column/check declarations against the PRD before recording final SQL; no added business restrictions.
+- **D9:** Customer/Product/Order/OrderItem keep reference identity: do not override equals/hashCode or generate entity-wide equals/hashCode/toString. Compare UUIDs explicitly; no lazy traversal or database access from object/logging methods. Values retain value equality/hash.
+- **D10:** First domain migration V1__create_order_domain_schema.sql and local/test policy are Accepted in ADR-0005; production remains Open.
+
+**Explicit replacement:** autoApply=true replaces the earlier Proposed preference for explicit converter assignment. Auto-application preserves domain dependency directions without converter imports or extra XML configuration. The historical proposal above remains intact; it is not the current instruction.
+
+Rationale: generated UUIDs keep Spring Data insertion/newness simple; ordinary child FK ownership supports aggregate persistence; explicit lazy fetch plans expose query behavior; unconstrained NUMERIC avoids silently inventing a fixed total capacity. Considered alternatives include bigint/assigned IDs, composite child keys, explicit XML conversion/embeddables, unidirectional collections, fixed decimals and ID-based equality. They were not selected for this MVP. Consequences: global conversion must stay consistent for each value type; reference equality differs across instances; database storage has physical limits and constraints cannot prove active eligibility/cross-row totals.
+
+## Remaining Review and Verification Boundaries
+
+Concrete SQL declarations/constraint expressions and mapping compatibility require implementation review/evidence, not repeat approval of already selected D1–D10 policies. Do not infer a new collation setting, business limit or permission if a genuine gap appears; report it for approval. List/pagination plans, production privileges/execution and full ADR-0002 implementation remain outside these selections.
+
+Verify generated IDs/newness/proxies, converter discovery/hydration, root/item round trips, both relationship ends, no deletion cascades, maximum line and larger totals, all-customer case-insensitive uniqueness, negative named constraints, migration/Hibernate validation, query counts and closed-context materialization on PostgreSQL/Testcontainers. Domain tests cover accepted Money/email/name invariants. Actual REST DTO and concurrency gates remain later Pending. No code, migration, database changes or executed Increment 3 tests are claimed.

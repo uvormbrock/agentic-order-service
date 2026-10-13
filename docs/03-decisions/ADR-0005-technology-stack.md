@@ -1,8 +1,8 @@
 # ADR-0005: Technology Stack
 
-**Status:** Accepted baseline; dependency alignment and migration execution details Open
+**Status:** Accepted baseline and Increment 3 local/test migration policy; production details Open
 **Recorded:** 2026-10-13
-**Implementation:** Increment 1 accepted; PostgreSQL foundation in progress; domain/persistence/concurrency verification Pending
+**Implementation:** Increments 1 and 2 accepted; Increment 3 not started; domain/persistence/concurrency verification Pending
 
 ## Operational Reference
 
@@ -25,7 +25,7 @@ Java 21 and Spring Boot support the selected imperative application style. Postg
 
 Prefer Spring Boot 4.1.1 dependency management for compatible libraries. Verify actual starter/artifact coordinates, Jackson behavior, Hibernate SQL, JDBC driver, Flyway PostgreSQL support, and Testcontainers modules before approving a POM. Record resolved versions and justify overrides. The original baseline left Maven tool/wrapper and PostgreSQL server/image versions Open; the subsequent approvals below resolve those selections.
 
-Flyway is accepted; when/how migrations run, versioning conventions, deployment privileges, validation/repair policy, and schema review strategy remain Open. The original baseline authorized no migration execution or database change; the scoped metadata initialization approval below is the only exception. Hibernate must not silently create/update schema in the intended managed-schema setup; exact validation configuration is planned, not generated.
+Flyway is Accepted; the local/test versioning/execution policy is now selected by the Increment 3 approval below. Production execution/privileges remain Open. The original baseline authorized no migrations; Increment 2 subsequently permitted metadata only, and the latest Increment 3 design permits the specified domain migration after implementation authorization. Hibernate remains ddl-auto=validate and must not create/update schema.
 
 ## Test Framework Decision and Replacement History
 
@@ -48,8 +48,22 @@ The stack families were explicitly adopted by the user; Java 21 and Spring Boot 
 
 The user explicitly approved PostgreSQL **17.11**, official image `postgres:17.11-bookworm`, Spring Data JPA/Hibernate, the PostgreSQL JDBC driver, Flyway PostgreSQL support, Testcontainers, and Maven Failsafe integration-test execution. Maven **3.9.9** via Apache Maven Wrapper was previously accepted during Increment 1. Dependencies use Boot 4.1.1 management; this approval adds no overrides.
 
-Flyway startup is approved only in the `local` and `integration-test` profiles, including initialization of `flyway_schema_history` in project-specific development/disposable test databases. No application migration scripts or domain tables are authorized. Default/production migration execution is disabled; production strategy, privileges, migration conventions, and schema decisions remain Open.
+For the historical Increment 2 scope, Flyway startup was approved only in the `local` and `integration-test` profiles, including initialization of `flyway_schema_history` in project-specific development/disposable test databases. No application migration scripts or domain tables are authorized. Default/production migration execution is disabled; production strategy, privileges, migration conventions, and schema decisions remain Open.
 
 Rationale: use the same explicit PostgreSQL image locally and in isolated real-database tests; exercise Boot integration without inventing domain schema. Alternatives: PostgreSQL 18, external local database management, deployment-only Flyway execution, or Surefire-only integration testing. Consequences: `verify` requires Docker, image tags remain mutable, development data persists in a named volume, and Flyway metadata is the only authorized schema addition.
 
 Verification criteria: real server version and JDBC `SELECT 1`, JPA startup with validation, disabled OSIV, zero application migrations and only Flyway metadata, Docker-free smoke test, isolated Testcontainers cleanup, and local Compose startup. Results are tracked in the [Increment 2 record](../04-agentic-coding/prompts/03-postgresql-foundation.md); approval alone is not passing evidence. ADR-0002 remains Proposed and implementation-unverified.
+
+## Accepted Increment 3 Local/Test Migration Policy
+
+The human reviewer explicitly accepted D10 with D1–D9; [ADR-0004](ADR-0004-persistence-mapping.md#accepted-increment-3-selections-and-replacement-history) owns the mapping/schema choices. This extends Increment 2's metadata-only scope for subsequent authorized Increment 3 implementation; it does not execute a migration or accept implementation.
+
+- First domain script: `src/main/resources/db/migration/V1__create_order_domain_schema.sql`, creating customers, products, orders and order_items with the approved constraints/indexes. Review concrete SQL against the PRD before recording final declarations.
+- Flyway owns schema creation/versioned changes; Hibernate remains `ddl-auto=validate`. Applied migrations are immutable; subsequent changes need new versioned migrations.
+- Validate migration history/checksums. No automatic baseline, repair or clean; clean remains disabled.
+- Permit execution in existing project-specific local development and isolated PostgreSQL/Testcontainers integration environments once implementation is explicitly authorized. Default/production execution remains disabled; production execution and production privileges stay Open.
+- Preserve existing development data/volumes; never erase/recreate them. Test fresh migration, schema validation, history/checksums and repeated startup.
+
+Rationale: versioned DDL adds reviewed domain schema to the accepted database foundation without Hibernate schema mutation. Alternatives: metadata-only startup remains the historical foundation stage; mutable applied scripts, automatic repair/clean and production execution were not selected. Consequences: approved local startup will apply V1, so concrete DDL and existing database compatibility must be reviewed; checksum failures stop rather than repair.
+
+Verification is Pending until Increment 3 executes against real PostgreSQL. No new dependencies, version overrides, migrations, database operations or changes to Proposed ADR-0002 are made by this documentation task. Earlier scopes and decision history above are preserved; the new selection supersedes only now-resolved local/test migration/versioning questions.

@@ -29,9 +29,24 @@ The Agentic Order Service is a small order management application. It supports m
 | BR-008 | A subtotal of at least EUR 100.00 qualifies for a 10% discount on the subtotal. Below that threshold, the discount is zero. |
 | BR-009 | Monetary calculations use two decimal places. Discounts are rounded to two decimal places using HALF_UP. The payable total equals the subtotal minus the rounded discount. |
 | BR-010 | Stored orders preserve their original product names, product prices, and calculated amounts. Customer details reflect the current customer record when an order is retrieved. Deactivation does not prevent order retrieval. |
-| BR-011 | Product and customer names are required, trimmed, and must contain 1–200 characters after trimming. Customer emails are required, trimmed, normalized to lowercase before storage, and limited to 254 characters after normalization. Emails must contain a valid basic local part and domain and be unique case-insensitively across active and inactive customers. Do not apply provider-specific normalization, including Gmail dot or plus-address handling. Reject values outside these limits. |
+| BR-011 | Product and customer names are required, normalized with `String.strip()`, and must contain 1–200 Unicode code points after normalization. Preserve case, umlauts, accents, and valid Unicode characters; do not lowercase names. Customer emails are required, normalized deterministically with `String.strip()` and `Locale.ROOT` lowercase before storage, and limited to 254 Unicode code points after normalization. Emails must follow the approved ASCII policy below and be unique case-insensitively across active and inactive customers. Do not apply provider-specific normalization, including Gmail dot or plus-tag removal. Reject values outside these limits. |
 | BR-012 | New products and customers are active by default. Deactivation is irreversible within the MVP; updating details does not reactivate a record. |
 | BR-013 | Product prices supplied with more than two decimal places are rejected rather than rounded. No separate tax rates or tax breakdowns are recorded or returned in the MVP. |
+
+### Approved Email Validation Policy
+
+For BR-011, remove leading/trailing whitespace with `String.strip()` and lowercase using `Locale.ROOT`. Normalization is deterministic and idempotent. Reject null, empty, or invalid email input. The normalized address has at most **254 Unicode code points** and exactly one separating `@`.
+
+- The local part contains ASCII letters, digits, dots, and the unquoted punctuation characters ``!#$%&'*+-/=?^_`{|}~``. Dots cannot be leading, trailing, or consecutive. Plus-addressing is supported; dots and plus-tags remain literal data.
+- The domain contains at least two nonempty ASCII labels separated by dots. Labels contain ASCII letters/digits and optional internal hyphens; leading/trailing hyphens are rejected.
+- Reject quoted local parts and internationalized email addresses. Non-ASCII email content is not accepted through lowercase conversion; surrounding whitespace follows `String.strip()`. Do not perform DNS lookups or apply provider-specific transformations.
+- Do not add independent local-part/domain-label length limits or other restrictions beyond this approved policy. Case-insensitive uniqueness includes inactive customers.
+
+This approval resolves email grammar, email counting, and email normalization. Names use String.strip() and Unicode code-point counting under the accepted name policy below.
+
+### Approved Name Validation Policy
+
+For BR-011, remove leading/trailing whitespace with `String.strip()` and require 1–200 Unicode code points. Preserve case, umlauts, accents, and valid Unicode characters. Do not lowercase names or impose an ASCII-only rule. Apply this policy on customer/product creation and update.
 
 ## REST Contract
 
@@ -75,7 +90,7 @@ Errors return a JSON body containing `code` and `message`, describing the failed
 
 | Status | Condition |
 | --- | --- |
-| 400 | Malformed request, missing required fields, names outside 1–200 characters after trimming, invalid email syntax or email longer than 254 characters after normalization, product price outside EUR 0.00–999,999.99 or with more than two decimal places, nonpositive or fractional quantities or consolidated quantity above 10,000 per product per order, empty order, or unsupported request fields or activation requests. |
+| 400 | Malformed request, missing required fields, names outside 1–200 Unicode code points after String.strip(), invalid email syntax under BR-011 or email longer than 254 Unicode code points after normalization, product price outside EUR 0.00–999,999.99 or with more than two decimal places, nonpositive or fractional quantities or consolidated quantity above 10,000 per product per order, empty order, or unsupported request fields or activation requests. |
 | 404 | Requested resource or customer/product referenced by a new order does not exist. |
 | 409 | Customer email already belongs to another stored customer, or an order references an inactive customer or product. |
 | 405 | Unsupported resource operation, including product deletion and order updates or deletion. |
@@ -94,7 +109,7 @@ Errors return a JSON body containing `code` and `message`, describing the failed
 | AC-008 | FR-004, BR-008–BR-009 | The calculation examples below produce the stated discount and payable total, including the threshold and HALF_UP rounding cases. |
 | AC-009 | FR-004–FR-005, BR-010 | After an order is stored, changing a product price does not change its original product prices or calculated amounts when retrieved. Product or customer changes and deactivation do not prevent retrieval of the stored order. |
 | AC-010 | FR-005 | A stored order can be retrieved individually with its line items and calculated amounts and appears in the order list. |
-| AC-011 | FR-001–FR-002, BR-011–BR-013 | On product/customer creation and update, trimmed names of 1 or 200 characters are accepted; missing, empty after trimming, or 201-character names return 400. Missing or syntactically invalid emails, normalized emails longer than 254 characters, and a product price of EUR 1.001 return 400; otherwise valid normalized emails of 254 characters are accepted. ` Alice@Example.com ` is stored as `alice@example.com`; submitting `ALICE@example.com` for another customer returns 409, including when the existing customer is inactive. Dot and plus-address variants are not collapsed by provider-specific rules. |
+| AC-011 | FR-001–FR-002, BR-011–BR-013 | On product/customer creation and update, names normalized with String.strip() to 1 or 200 Unicode code points are accepted; missing, empty after stripping, or 201-code-point names return 400. Case, umlauts, accents and valid Unicode characters are preserved; a supplementary character counts as one code point. Missing or syntactically invalid emails, normalized emails longer than 254 Unicode code points, and product prices of EUR 1.001 or EUR 10.000 return 400; otherwise valid normalized emails of 254 Unicode code points are accepted. ` Alice@Example.com ` is stored as `alice@example.com`; submitting `ALICE@example.com` for another customer returns 409, including when the existing customer is inactive. Dot and plus-address variants are not collapsed by provider-specific rules. The email-policy examples below are part of this criterion. |
 | AC-012 | FR-006, BR-012 | Creation returns 201 with an assigned ID and Location header; new products and customers are active. Deactivation returns 200 with `active: false`; repeating it succeeds. A request to reactivate returns 400. Updating details retains inactive status. |
 | AC-013 | FR-006 | Lists return 200 and include inactive records; an empty list returns `[]`. An unknown resource ID or order reference returns 404. Successful customer deletion returns 204 with no body; a referenced customer remains retrievable with `active: false`. |
 | AC-014 | FR-003, FR-006 | An empty order or invalid quantity returns 400; an inactive customer or product returns 409. Rejected requests create no order. Supplying `unitPrice`, `subtotal`, `discount`, or `total` in an order request returns 400. |
@@ -104,6 +119,20 @@ Errors return a JSON body containing `code` and `message`, describing the failed
 | AC-018 | FR-003–FR-004, BR-010 | Concurrent product changes and customer deactivation/deletion follow the accepted ordering policy in ADR-0001. Product names, prices, and eligibility are captured consistently; no dangling references or partial orders result. |
 
 Atomicity and concurrency behavior are specified in [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md); the detailed enforcement strategy remains Proposed in [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md). See [transaction conventions](../02-architecture/transaction-locking.md) for adopted application boundaries.
+
+### Email Policy Examples (AC-011)
+
+| Input / scenario | Expected behavior |
+| --- | --- |
+| Spaces or tabs around `Alice+Orders@Example.COM` | Store `alice+orders@example.com`; repeating normalization leaves it unchanged. |
+| `a.b@example.com`, `ab@example.com`, `a+tag@example.com` | Valid, distinct normalized addresses; no dot or plus-tag removal. |
+| `o'hara+tag@example-domain.com` | Valid local punctuation and internal domain hyphen. |
+| `.alice@example.com`, `alice.@example.com`, `a..b@example.com` | Reject with 400. |
+| `alice@@example.com`, `alice@example`, `alice@ex..com` | Reject with 400: invalid separator or domain labels. |
+| `alice@-example.com`, `alice@example-.com` | Reject with 400. |
+| `"alice"@example.com`, `álîce@example.com`, `alice@exämple.com` | Reject with 400: quoted/internationalized email content. |
+| Local part of 242 ASCII `a` characters followed by `@example.com` | 254 normalized code points; accept with otherwise valid input. A 243-character local part yields 255 and is rejected with 400. |
+| Normalized address already owned by an active or inactive customer | Reject another customer's create/update with 409, regardless of input case. |
 
 ### Calculation Examples
 
@@ -130,5 +159,4 @@ Updating and deleting orders, physical product deletion, reactivation, and separ
 
 ## Remaining Business Clarifications
 
-- The exact syntax covered by “valid basic local part and domain” remains unspecified, including support for quoted local parts, internationalized addresses, and domains without a dot. No additional syntax restrictions are assumed.
-- The character-counting convention for name and email limits (for example, Unicode code points versus grapheme clusters) remains unspecified.
+Name/email validation is resolved by BR-011 and the policies above. Any additional overall order-size/total restriction remains undecided and requires approval; no new limit is introduced.

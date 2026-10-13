@@ -48,9 +48,9 @@ No separate DI framework is selected.
 | --- | --- | --- | --- |
 | Spring Data JPA | Boot 4.1.1-compatible managed version | Repository queries and explicitly verified locked access | **Accepted** |
 | Hibernate ORM / Jakarta Persistence | Boot-compatible managed provider/API versions; verify resolved dependency graph | Direct aggregate mapping, persistence context and SQL execution | **Accepted** baseline |
-| JPA AttributeConverters for Money/EmailAddress | Selected JPA provider; converter details not yet accepted | Map immutable values to reviewed database representations | **Proposed** under ADR-0004 |
+| JPA AttributeConverters for Money/EmailAddress | Boot-managed JPA provider; persistence-package AttributeConverters with autoApply=true | Map immutable values to reviewed database representations | **Accepted** under ADR-0004; verification Pending |
 
-[ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) retains Open identity, schema, numeric precision/scale, and concrete mapping details. Open EntityManager in View is disabled; managed entities are never REST response objects. Complete response data must be materialized inside application transactions.
+[ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) accepts UUID identity, field-access mappings, autoApply converters, unconstrained NUMERIC with reviewed checks and D1–D9 schema/fetch/equality selections. Concrete SQL review and provider/database verification remain Pending; list/pagination details are deferred. Open EntityManager in View is disabled; managed entities are never REST response objects. Complete response data must be materialized inside application transactions.
 
 ## 6. Database
 
@@ -65,7 +65,7 @@ No separate DI framework is selected.
 | --- | --- | --- | --- |
 | Flyway with PostgreSQL support | Boot-compatible managed artifacts; exact module coordinates verified before POM approval | Git-versioned schema evolution | **Accepted** tool and local/test startup; production execution Open |
 
-Local and integration-test startup is explicitly approved, including Flyway history metadata only. Default/production migration execution remains disabled. Production execution, migration/versioning conventions, privileges, repair/validation policy, and domain schema approval remain Open; no domain migration is authorized.
+Increment 2 approved local/test metadata only. D10 now accepts V1 domain migration in local/test environments, immutable applied versions, validation, no automatic baseline/repair/clean and Hibernate validate. This is design/execution-policy acceptance; the implementation prompt still needs explicit authorization. No domain migration exists or has run. Default/production execution stays disabled; production execution/privileges remain Open.
 
 ## 8. Transaction Management
 

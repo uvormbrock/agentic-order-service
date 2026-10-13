@@ -49,11 +49,11 @@ Never serialize managed JPA entities. Materialize complete immutable response DT
 
 Classify root SQLSTATE and the known constraint rather than localized messages or broad exception types. Map a confirmed normalized-email uniqueness violation to the PRD's business conflict; do not map every integrity failure to 409 or retry it. Unexpected foreign-key/check failures may indicate a defect and require safe technical handling. Let invalidating failures reach the transaction boundary so partial work rolls back; do not swallow failures or expose SQL details.
 
-Do not invent entity identity, relationship/cascade mappings, column precision, or schema limits to make code compile. Preserve the Open OrderItem identity/schema decisions and Proposed converter details in ADR-0004; obtain approval for concrete mappings before implementation.
+Do not invent entity identity, relationship/cascade mappings, column precision, or schema limits to make code compile. Follow the Accepted D1–D9 mapping selections in ADR-0004; review concrete SQL declarations/constraint expressions against those selections and the PRD. Do not require repeat approval of selected policies; implementation authorization and genuinely new decisions still require approval.
 
 ## Maven and Configuration
 
-One Maven module; Java 21 compilation; Boot 4.1.1 alignment. Prefer managed dependency versions and explain overrides. Use Accepted JUnit 6 with Boot 4.1.1-managed Jupiter and Platform versions; do not override them to retain JUnit 5. Keep credentials external and never commit secrets. No automatic schema update or autonomous migration execution. Flyway and local/integration-test metadata initialization are accepted; domain migration scripts require separate approval, and production execution/privileges remain Open under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md).
+One Maven module; Java 21 compilation; Boot 4.1.1 alignment. Prefer managed dependency versions and explain overrides. Use Accepted JUnit 6 with Boot 4.1.1-managed Jupiter and Platform versions; do not override them to retain JUnit 5. Keep credentials external and never commit secrets. No automatic schema update or autonomous migration execution. Flyway and D10 local/test V1 execution/versioning policy are Accepted; actual Increment 3 implementation still requires explicit authorization and concrete SQL review. Production execution/privileges remain Open under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md).
 
 ## Completion Criteria
 

@@ -1,6 +1,6 @@
 # Order Item Snapshots and DDD Aggregate Boundaries
 
-**Status:** Proposed domain design aligned with the approved MVP requirements
+**Status:** Accepted snapshot/aggregate semantics and Increment 3 persistence selections; implementation Pending
 **Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Domain Model](domain-model.md) · [Order Placement Concurrency](../03-decisions/ADR-0001-order-placement-concurrency.md)
 
 ## 1. Context
@@ -21,7 +21,7 @@ For example, an order placed for *MacBook Pro M4* at EUR 1,999.00 still uses EUR
 
 The order additionally preserves `customerId`, `subtotal`, `discount`, and `total`. Product names are read from the item snapshots; customer details are resolved from current records. No SKU is required in the MVP.
 
-These are ordinary persisted business facts, not event sourcing or automatic database versioning. The logical snapshot fields do not prescribe individual database columns.
+These are ordinary persisted business facts, not event sourcing or automatic database versioning. D8 now selects explicit original productName/unitPrice/lineTotal and Order subtotal/discount/total storage; concrete SQL declarations require review under ADR-0004.
 
 ## 3. Aggregate Boundaries
 
@@ -57,13 +57,13 @@ The authoritative product name, price, and eligibility follow the consistent ope
 - Ensure duplicate consolidation leaves one item per product within an order.
 - Preserve original monetary results across later price or calculation-rule changes.
 
-The storage representation, concrete constraints, JPA mappings, and item identity remain persistence design decisions. [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) proposes technical enforcement of the accepted ADR-0001 business policy; it remains Proposed and implementation-unverified. This document does not select a database schema.
+[ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) now accepts item UUID identity, direct mappings, restrictive references and unconstrained NUMERIC original-amount storage under D1–D9. Concrete declarations and runtime behavior still require review/verification. [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) proposes technical enforcement of the accepted ADR-0001 business policy; it remains Proposed and implementation-unverified. This document does not select a database schema.
 
 ## 6. Historical Calculations
 
 `lineTotal` is reproducible from immutable unit price and quantity. Discounts and totals must not be recalculated using whatever business rules are current at read time.
 
-The storage representation must preserve the amounts originally accepted; its design remains open. EUR 100.05 produces a discount of EUR 10.01 and a total of EUR 90.04, including after future rule changes.
+Explicit original amounts with unconstrained NUMERIC are selected; exact round trips and compatibility remain unverified. EUR 100.05 produces a discount of EUR 10.01 and a total of EUR 90.04, including after future rule changes.
 
 ## 7. Acceptance Tests
 
@@ -83,8 +83,7 @@ The storage representation must preserve the amounts originally accepted; its de
 
 ## 8. Remaining Design Decisions
 
-- Item identity: separate UUID or identity within its order; the PRD does not expose an item ID.
-- Storage representation for original monetary results and enforcement of invariants.
+- Item identity and original-amount representation are Accepted; item IDs remain internal. Concrete SQL constraint review and real persistence/snapshot evidence are Pending.
 - Implementation and deterministic verification of the Proposed strategy in ADR-0002, including unresolved timeout, retry-delay, and uncertain-outcome details.
 
-Resolved business rules must not be reopened as technical questions. Approved validation rules and the remaining exact email-syntax and character-counting questions are tracked in the PRD.
+Resolved business rules must not be reopened as technical questions. The PRD now resolves name counting/trimming and email syntax/counting; no new validation restrictions may be inferred.

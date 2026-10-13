@@ -1,6 +1,6 @@
 # Domain Model — Agentic Order Service
 
-**Status:** Accepted aggregate baseline; detailed identity and schema mappings remain Proposed/Open
+**Status:** Accepted aggregate and Increment 3 persistence design; implementation and verification Pending
 **Scope:** MVP domain design
 **Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Order Item Snapshots](order-item-snapshots.md)
 
@@ -8,7 +8,7 @@
 
 The Agentic Order Service models product catalog management, customer management, and order placement. The aggregate baseline contains three aggregate roots (`Customer`, `Product`, and `Order`), one child entity (`OrderItem`), and two value objects (`Money` and `EmailAddress`).
 
-The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model. Direct JPA mapping is accepted in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md); detailed annotations and schema remain open.
+The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model. Direct JPA mapping is accepted in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md); D1–D10 mapping/storage selections are Accepted there; concrete SQL declarations require review against the PRD and runtime verification remains Pending.
 
 ## 2. Domain Model Diagram
 
@@ -89,7 +89,7 @@ classDiagram
 
 **Aggregate root:** `Customer`
 
-- Represents a customer with a stable identity, name, email address, and active status. Customer names are trimmed and limited to 1–200 characters (PRD BR-011).
+- Represents a customer with a stable identity, name, email address, and active status. Customer names use String.strip() and 1–200 Unicode code points, preserving case and valid Unicode (PRD BR-011).
 - A new order may only be placed for an existing, active customer.
 - An inactive customer can remain referenced by historical orders.
 - Delete unreferenced customers physically; deactivate referenced customers instead (PRD BR-003). Deactivation is irreversible within the MVP.
@@ -98,7 +98,7 @@ classDiagram
 
 **Aggregate root:** `Product`
 
-- Represents the **current** catalog product, including name, price, and active status. Product names are trimmed and limited to 1–200 characters; gross EUR prices range from EUR 0.00 to EUR 999,999.99 with at most two decimal places (PRD BR-001, BR-011, BR-013).
+- Represents the **current** catalog product, including name, price, and active status. Product names use String.strip() and 1–200 Unicode code points, preserving case and valid Unicode; gross EUR prices range from EUR 0.00 to EUR 999,999.99 with at most two decimal places (PRD BR-001, BR-011, BR-013).
 - Only active products are eligible for new orders.
 - Later name or price changes must not change original order product names, prices, or amounts (PRD BR-010).
 - Product deactivation preserves the catalog identity for existing references.
@@ -122,20 +122,17 @@ classDiagram
 
 ### Money
 
-`Money` is an immutable value object representing an amount and currency without a distinct business identity. Equality is based on monetary value and currency, not object identity or decimal scale.
+**Accepted Java semantics for Increment 3:** Immutable `BigDecimal` amount/currency value, EUR-only in the MVP. Reject null/invalid inputs and source amounts with more than two decimal places, including trailing zeros such as `10.000`. Normalize accepted values to scale two without rounding; `1`, `1.0`, and `1.00` have equal monetary values and matching hashes. Use exact decimal arithmetic, never `float`/`double`, and reject incompatible-currency operations.
 
-- Use decimal arithmetic (e.g., Java `BigDecimal`), not binary floating-point arithmetic.
-- Require compatible currencies for arithmetic.
-- The MVP supports EUR only.
-- Amounts use two decimal places. Reject product prices with more than two decimal places; round discounts using `HALF_UP` (PRD BR-009 and BR-013). Persistence mapping remains a separate design decision.
+Do not impose a universal maximum amount or prohibit negative intermediate arithmetic without a specific accepted invariant. Product enforces the PRD price range. Order owns the 10% discount beginning at EUR 100.00 and its HALF_UP rounding; rounded discount results are constructed as Money. See PRD BR-001/BR-008/BR-009/BR-013.
+
+Java semantics and SQL enforcement are distinct: the subsequent D1–D10 approval selects an auto-applied BigDecimal converter and unconstrained PostgreSQL NUMERIC with finite, scale ≤2 and invariant-specific non-negative checks. No fixed order-total maximum is selected. [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) owns those Accepted mapping decisions; runtime evidence is Pending.
 
 ### EmailAddress
 
-`EmailAddress` is an immutable value object representing a customer's validated email rather than a separately identified entity. Equality is value-based using the trimmed, lowercase address; uniqueness comparisons are case-insensitive (PRD BR-011).
+**Accepted validation semantics:** Immutable normalized value using `String.strip()` and `Locale.ROOT` lowercase, at most 254 Unicode code points after normalization, deterministic/idempotent normalization, and equality/hashing on the normalized value. The [PRD email policy](../01-requirements/product-requirements.md#approved-email-validation-policy) owns the exact ASCII grammar and examples: one `@`, unquoted local-part punctuation/dots/plus-addressing, at least two nonempty domain labels with internal hyphens, and rejection of quoted/internationalized forms. No DNS lookup or provider-specific transformation is permitted.
 
-- Encapsulates the email string and appropriate domain validation.
-- Trim emails and normalize them to lowercase before storage. Require a valid basic local part and domain and at most 254 characters after normalization; do not apply provider-specific dot or plus-address rules (PRD BR-011).
-- Emails must be unique case-insensitively across active and inactive customers. Cross-customer uniqueness is coordinated outside this value object. Only exact basic email syntax and the character-counting convention remain unresolved business validation details.
+Case-insensitive uniqueness spans active and inactive customers. It is coordinated/enforced outside EmailAddress; this value object performs no database lookup. D3/D7 now select an auto-applied String converter, normalized email storage and an all-customer unique lower(email) index, without citext. Verify Java/PostgreSQL case/collation consistency. Customer/product names separately use String.strip() and 1–200 code points, preserving case and Unicode.
 
 ## 5. Historical Order Item Snapshots
 
@@ -165,14 +162,17 @@ For the approved MVP requirements:
 
 For example, EUR 100.05 yields a rounded discount of EUR 10.01 and a payable total of EUR 90.04; EUR 99.99 receives no discount.
 
-The domain model shows `subtotal`, `discount`, and `total` as observable domain values. Their original results must be preserved. Reads must not apply current pricing rules to historical orders. The storage representation remains a persistence decision; it must preserve original results even after rules change.
+The domain model shows `subtotal`, `discount`, and `total` as observable domain values. Their original results must be preserved. Reads must not apply current pricing rules to historical orders. D6/D8 select explicit original monetary columns using unconstrained NUMERIC; persisted reads preserve original results even after rules change. Compatibility and exact round trips remain unverified.
 
 ## 7. Aggregate vs. Persistence Model
 
 - Aggregate boundaries express where business invariants must be protected.
 - They do **not** automatically prescribe Java packages, JPA relationships, or SQL foreign keys.
 - `Order` can reference `Customer` by `customerId`; `OrderItem` can reference `Product` by `productId` while retaining original product names, prices, and monetary results. Only customer details are resolved from current records for responses.
-- Direct JPA aggregate mapping is accepted. Concrete tables, mappings, and monetary capacity remain open; ADR-0002 proposes restrictive foreign keys and locking, with application transaction ownership accepted in [ADR-0003](../03-decisions/ADR-0003-application-architecture.md).
+- Customer, Product, Order and OrderItem use JPA-generated UUIDs, PostgreSQL uuid, and null IDs before persistence. Entities retain reference equality; compare persisted business identity by UUID explicitly.
+- Order.items is lazy one-to-many mapped by OrderItem.order, cascade PERSIST only, orphan removal false. The lazy, mandatory child association owns the non-null order_id FK. Maintain both sides through Order; cross-aggregate references stay scalar UUIDs with restrictive FKs and no deletion cascades.
+- Direct field-access mappings, protected hydration constructors and persistence-package autoApply converters are Accepted. Value objects remain free of JPA annotations; domain has no persistence-package dependency. The four tables and required constraints/indexes are selected in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md).
+- Single-order reads use an explicit item fetch plan and materialize within transactions with OSIV disabled. List/pagination fetch details remain deferred. Application transaction ownership follows [ADR-0003](../03-decisions/ADR-0003-application-architecture.md); ADR-0002's detailed locking protocol remains Proposed.
 
 ## 8. Responsibilities and Open Design Questions
 
@@ -188,13 +188,11 @@ Concurrency is documented separately in [Order Placement Concurrency](../03-deci
 
 Remaining design questions:
 
-1. Does `OrderItem` need a separate UUID, or is `(orderId, productId)` sufficient after consolidation? Item identity is local to its order; it does not imply an independent lifecycle. The diagram's item UUID is provisional, not an API requirement.
-2. How will persistence preserve original monetary results without recalculation using future rules?
-3. Which concrete constraints and JPA mappings will implement the invariants, and how will the Proposed strategy in ADR-0002 be verified?
-4. What exact basic email syntax and character-counting convention will apply, as tracked in the PRD?
-5. How will monetary storage accommodate a maximum line amount of EUR 9,999,999,900.00 (EUR 999,999.99 × 10,000) and larger totals across multiple distinct products? Database numeric precision, overall order size, and total monetary limits remain open; no new limits are assumed.
+1. Concrete SQL column/check declarations must be reviewed against the Accepted schema/PRD; prove converter hydration, unconstrained NUMERIC capacity and Java/PostgreSQL normalization/collation consistency. No runtime evidence exists yet.
+2. List/pagination-specific fetching, production migration execution/privileges and the detailed ADR-0002 protocol remain Open/Proposed for later work.
+3. A line can reach EUR 9,999,999,900.00 and multi-product totals can exceed it. No artificial fixed maximum is selected for Order totals; any additional overall order-size restriction requires approval.
 
-UUIDs in the diagram are a proposed identity format, not a finalized requirement.
+UUID identity in the diagram is now Accepted, including OrderItem's private persistence identity and unique (order_id, product_id); it does not introduce an item API field.
 
 ## 9. Suggested Acceptance Tests
 
@@ -211,4 +209,4 @@ UUIDs in the diagram are a proposed identity format, not a finalized requirement
 
 ## 10. Status and Next Step
 
-Aggregate boundaries and snapshot semantics are the accepted baseline. Identity details, value-object converter choices, schema, and monetary storage remain open or proposed. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.
+Aggregate boundaries, snapshots, names/value objects and D1–D10 persistence selections are Accepted. Implementation/tests are not started; concrete DDL review and compatibility evidence are Pending. Deferred list fetching and production/locking questions remain unresolved. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.
