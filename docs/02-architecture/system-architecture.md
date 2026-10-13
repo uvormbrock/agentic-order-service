@@ -14,6 +14,10 @@ The [PRD](../01-requirements/product-requirements.md) owns business rules and RE
 | [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) | Direct aggregate mapping | Accepted baseline; converter details Proposed, schema Open | Implementation pending |
 | [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) | Java 21 / Spring Boot 4.1.1 and stack | Accepted baseline; dependency alignment Open | Implementation pending |
 
+## Technology Reference
+
+The [technology stack reference](technology-stack.md) inventories selected technologies, version policies, Proposed tooling, and Open compatibility choices. ADR-0005 remains authoritative for selection rationale.
+
 ## Runtime and Responsibilities
 
 One Spring Boot application, one Maven module, and one PostgreSQL database. Organize packages by `product`, `customer`, and `order`; introduce `api`, `application`, `domain`, and `persistence` packages only as actual code requires them. Small configuration and shared Money packages are permitted; no generic framework is needed.

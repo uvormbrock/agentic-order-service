@@ -44,7 +44,7 @@ Do not invent entity identity, relationship/cascade mappings, column precision, 
 
 ## Maven and Configuration
 
-One Maven module; Java 21 compilation; Boot 4.1.1 alignment. Prefer managed dependency versions, explain overrides, and resolve the JUnit compatibility issue first. Keep credentials external and never commit secrets. No automatic schema update or autonomous migration execution. Flyway tool selection is accepted; execution strategy still needs approval.
+One Maven module; Java 21 compilation; Boot 4.1.1 alignment. Prefer managed dependency versions and explain overrides. Use Accepted JUnit 6 with Boot 4.1.1-managed Jupiter and Platform versions; do not override them to retain JUnit 5. Keep credentials external and never commit secrets. No automatic schema update or autonomous migration execution. Flyway tool selection is accepted; execution strategy still needs approval.
 
 ## Completion Criteria
 

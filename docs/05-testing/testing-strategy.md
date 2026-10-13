@@ -4,7 +4,7 @@
 
 ## Scope and Prerequisites
 
-The [PRD acceptance criteria](../01-requirements/product-requirements.md) define behavior; [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) defines concurrency outcomes. The [Proposed ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) defines technical verification scenarios. Resolve JUnit 5 versus Boot 4.1.1 managed JUnit 6 under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) before creating the test build.
+The [PRD acceptance criteria](../01-requirements/product-requirements.md) define behavior; [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) defines concurrency outcomes. The [Proposed ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) defines technical verification scenarios. JUnit 6 is Accepted under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md), explicitly replacing JUnit 5. Use Jupiter and Platform versions managed by Spring Boot 4.1.1 without JUnit 5-retention overrides; build verification remains Pending.
 
 ## Quality Gate Applicability
 
@@ -25,7 +25,7 @@ Before declaring the MVP complete, every required implementation gate must have 
 | Gate | Required evidence |
 | --- | --- |
 | Documentation | Working links, unique ADR identifiers, correct statuses, preserved approved rules, reviewed diff |
-| Build | Java 21 compile, compatible Boot 4.1.1 dependency graph, approved test-engine alignment |
+| Build | Java 21 compile, compatible Boot 4.1.1 dependency graph, Boot 4.1.1-managed JUnit 6 API/engine/Platform alignment |
 | Domain | Pricing/consolidation/limits, EUR 99.99/100.00/100.05 discount cases, immutable snapshot behavior |
 | HTTP | Actual request binding; unknown root/nested fields, price overrides, fractional/missing/null quantities, all approved boundary cases and error shape |
 | Persistence | PostgreSQL round trips, reviewed schema/migrations, constraints, email uniqueness, monetary capacity, rollback, no lazy access after DTO return |

@@ -6,7 +6,7 @@
 
 [ADR-0003](../03-decisions/ADR-0003-application-architecture.md) accepts the modular monolith; [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) accepts direct JPA and immutable values. [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) fixes Java 21 / Spring Boot 4.1.1 and Flyway. [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) remains Proposed and unverified. No stage below authorizes code or migration execution by itself.
 
-Before affected implementation: resolve the JUnit 5 / Boot-managed JUnit 6 mismatch, exact starter/dependency alignment and PostgreSQL test image. Before persistence: approve detailed converter conventions, OrderItem identity, schema constraints, monetary precision/scale and original-result storage. Resolve exact email syntax/counting before validation implementation. Define migration execution strategy and timeout/error details before their respective increments.
+Before affected implementation: verify exact starter/dependency alignment and select the PostgreSQL test image. JUnit 6 is Accepted, replacing JUnit 5, and must use Boot 4.1.1-managed Jupiter/Platform versions without JUnit 5-retention overrides. Before persistence: approve detailed converter conventions, OrderItem identity, schema constraints, monetary precision/scale and original-result storage. Resolve exact email syntax/counting before validation implementation. Define migration execution strategy and timeout/error details before their respective increments.
 
 The earlier Boot 3.5.16 dependency list and skeleton were proposals and are superseded by the accepted Boot 4.1.1 version. Base package/groupId, exact class names, wrapper version, and image tag remain proposals. Do not instantiate empty services or fake successful endpoints.
 

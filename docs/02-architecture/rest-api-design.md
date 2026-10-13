@@ -115,7 +115,7 @@ Also verify that every error response contains `code` and `message`.
 - Boot 4.1.1-compatible Jackson alignment and concrete strict-deserialization configuration; Java 21 and Spring Boot 4.1.1 are already selected.
 - DTO field types, Bean Validation annotations, and exception-to-HTTP mapping.
 - Exact error `code` taxonomy and safe error-message details.
-- Concrete integration-test setup under the [testing strategy](../05-testing/testing-strategy.md), including resolution of JUnit 5 versus Boot-managed JUnit 6. PostgreSQL/Testcontainers is adopted; the protocol remains unverified.
+- Concrete integration-test setup under the [testing strategy](../05-testing/testing-strategy.md), using Accepted JUnit 6 and Boot 4.1.1-managed Jupiter/Platform versions. PostgreSQL/Testcontainers is adopted; the protocol remains unverified.
 - Technical implementation and verification of the Proposed ADR-0002 strategy under accepted ADR-0001, including timeouts, retry delays, and uncertain commit reconciliation.
 
 ## 8. Implementation Reminder

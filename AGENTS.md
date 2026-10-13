@@ -46,12 +46,12 @@ Agentic Order Service
 Repository `docs/` is the single source of truth. Read these documents before proposing or implementing changes:
 
 1. [Product requirements](docs/01-requirements/product-requirements.md) and relevant acceptance criteria.
-2. [System architecture](docs/02-architecture/system-architecture.md), [domain model](docs/02-architecture/domain-model.md), and [transaction conventions](docs/02-architecture/transaction-locking.md).
+2. [System architecture](docs/02-architecture/system-architecture.md), [technology stack reference](docs/02-architecture/technology-stack.md), [domain model](docs/02-architecture/domain-model.md), and [transaction conventions](docs/02-architecture/transaction-locking.md).
 3. Relevant ADRs linked in system architecture, especially Accepted ADR-0001/0003, Proposed ADR-0002, and ADR-0004/0005 with Accepted baselines and explicitly Proposed/Open subdecisions.
 4. [Coding guidelines](docs/04-agentic-coding/coding-guidelines.md), [testing strategy](docs/05-testing/testing-strategy.md), and [AI workflow](docs/04-agentic-coding/ai-development-workflow.md).
 5. [Implementation plan](docs/07-implementation/implementation-plan.md), [open items](docs/00-overview/open-items.md), and [REST design](docs/02-architecture/rest-api-design.md).
 
-Accepted baseline: Java 21, Spring Boot 4.1.1, one Maven module, feature-oriented modular monolith, direct JPA aggregates, immutable value objects, Hibernate/Spring Data JPA, PostgreSQL, Flyway, application-owned transactions, TransactionTemplate, and deterministic READ COMMITTED pessimistic locking. ADR-0002 remains Proposed and implementation-unverified. Resolve the documented JUnit 5 / Boot-managed JUnit 6 alignment before test implementation; do not silently change either selection.
+Accepted baseline: Java 21, Spring Boot 4.1.1, one Maven module, feature-oriented modular monolith, direct JPA aggregates, immutable value objects, Hibernate/Spring Data JPA, PostgreSQL, Flyway, application-owned transactions, TransactionTemplate, and deterministic READ COMMITTED pessimistic locking. ADR-0002 remains Proposed and implementation-unverified. JUnit 6 is Accepted and replaces the earlier JUnit 5 selection. Use Spring Boot 4.1.1-managed Jupiter and Platform versions without overrides to retain JUnit 5.
 
 Do not equate a recorded proposal, documentation approval, passing tests, or package sketch with approval to implement or accept an ADR. New implementation increments require explicit scope approval. Proposed subdecisions remain proposals even inside an Accepted baseline ADR.
 

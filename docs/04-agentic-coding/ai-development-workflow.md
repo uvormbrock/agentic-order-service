@@ -22,7 +22,7 @@ Start with root [AGENTS.md](../../AGENTS.md), then [system architecture](../02-a
 
 Accepted requirements and architecture govern behavior; change them only with explicit human approval and an authoritative decision record preserving history. Proposed details are not silently promoted. Ask about genuinely unresolved business or architecture decisions; do not repeatedly reopen accepted choices without a concrete incompatibility. ADR acceptance is a human decision, separate from test verification. Keep ADR-0002 Proposed until explicit approval.
 
-No autonomous database migration, source generation, dependency addition, or architecture change follows from this documentation task. Implementation stages are listed in the [plan](../07-implementation/implementation-plan.md). The JUnit compatibility issue requires an explicit resolution before test implementation.
+No autonomous database migration, source generation, dependency addition, or architecture change follows from this documentation task. Implementation stages are listed in the [plan](../07-implementation/implementation-plan.md). JUnit 6 replaces the earlier JUnit 5 selection under ADR-0005. Its Boot 4.1.1-managed Jupiter/Platform versions are required; actual test-build verification remains Pending.
 
 ## Review Record
 

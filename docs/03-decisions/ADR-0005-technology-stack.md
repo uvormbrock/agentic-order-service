@@ -4,11 +4,15 @@
 **Recorded:** 2026-10-13
 **Implementation:** Not started
 
+## Operational Reference
+
+The [technology stack reference](../02-architecture/technology-stack.md) inventories roles and version-management policies without replacing this decision record or its status/history.
+
 ## Accepted Decision
 
 - Java **21** and Spring Boot **4.1.1** are selected, not open version questions.
 - One Maven module, Spring Data JPA / Hibernate, PostgreSQL, and Flyway.
-- JUnit 5 and Testcontainers were adopted for tests; see the concrete alignment issue below.
+- **JUnit 6** and Testcontainers are Accepted for tests. Use JUnit Jupiter and Platform versions managed by Spring Boot **4.1.1**, without overrides to retain JUnit 5.
 - TransactionTemplate, READ COMMITTED, and deterministic pessimistic locking are the adopted technical baseline. The complete [ADR-0002](ADR-0002-transaction-locking.md) remains Proposed and implementation-unverified.
 
 The prior Spring Boot 3.5.16 skeleton suggestion was unapproved and is not the selected baseline. Do not copy its dependency coordinates/configuration into a Boot 4 build without checking compatibility.
@@ -23,9 +27,11 @@ Prefer Spring Boot 4.1.1 dependency management for compatible libraries. Verify 
 
 Flyway is accepted; when/how migrations run, versioning conventions, deployment privileges, validation/repair policy, and schema review strategy remain Open. No migration execution or database change is authorized by this ADR. Hibernate must not silently create/update schema in the intended managed-schema setup; exact validation configuration is planned, not generated.
 
-## Concrete Compatibility Issue Requiring Approval
+## Test Framework Decision and Replacement History
 
-Spring Boot 4.1.1 manages JUnit Jupiter/Platform **6.0.3**, whereas the earlier user baseline specified **JUnit 5**. Preserve Java 21 and Boot 4.1.1. Before test build implementation, obtain approval either to align the test baseline with Boot-managed JUnit 6 or to retain JUnit 5 with an explicitly verified compatible override. Neither resolution is silently adopted here.
+The earlier user baseline selected **JUnit 5**. The prior review identified that Spring Boot 4.1.1 manages JUnit Jupiter/Platform **6.0.3** and left alignment unresolved.
+
+On 2026-10-13, the user explicitly replaced the earlier JUnit 5 decision with **JUnit 6**. Use the Jupiter and Platform versions managed by Boot **4.1.1**; do not override them to retain JUnit 5. This resolves the selection question, not implementation verification. Java 21 and Spring Boot 4.1.1 remain unchanged; all other Open dependency and migration details remain Open.
 
 ## Consequences and Verification Criteria
 
