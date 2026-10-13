@@ -42,4 +42,5 @@ jobs:
         run: |
           ./mvnw -B -ntp package -DskipTests \
             org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.projectKey=uvormbrock_agentic-order-service
+            -Dsonar.projectKey=uvormbrock_agentic-order-service \
+            -Dsonar.qualitygate.wait=true
