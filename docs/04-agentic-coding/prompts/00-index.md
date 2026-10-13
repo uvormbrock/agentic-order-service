@@ -25,6 +25,8 @@ Interview talking points may describe intended methodology while Planned, but mu
 | 01       | [Environment and bootstrap readiness assessment](01-environment-assessment.md) | Executed                            |
 | 02       | [Technical bootstrap – Increment 1](02-technical-bootstrap.md)                 | **Reviewed – Accepted** |
 
+| 03 | [PostgreSQL foundation – Increment 2](03-postgresql-foundation.md) | **Reviewed – Accepted** |
+
 ## Authority and Workflow
 
 Prompts do not change Accepted decisions, resolve Open questions, promote Proposed ADRs, or authorize code/migrations/commits. Requirements and uniquely numbered ADRs retain authority. Follow [AGENTS.md](../../../AGENTS.md), the [AI workflow](../ai-development-workflow.md), and the [system architecture](../../02-architecture/system-architecture.md). Storing a prompt and executing it are separate actions; observe the user's authorized scope.

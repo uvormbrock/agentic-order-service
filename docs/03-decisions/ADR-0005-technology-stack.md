@@ -2,7 +2,7 @@
 
 **Status:** Accepted baseline; dependency alignment and migration execution details Open
 **Recorded:** 2026-10-13
-**Implementation:** Not started
+**Implementation:** Increment 1 accepted; PostgreSQL foundation in progress; domain/persistence/concurrency verification Pending
 
 ## Operational Reference
 
@@ -23,9 +23,9 @@ Java 21 and Spring Boot support the selected imperative application style. Postg
 
 ## Dependency and Migration Policy
 
-Prefer Spring Boot 4.1.1 dependency management for compatible libraries. Verify actual starter/artifact coordinates, Jackson behavior, Hibernate SQL, JDBC driver, Flyway PostgreSQL support, and Testcontainers modules before approving a POM. Record resolved versions and justify overrides. Maven tool/wrapper and PostgreSQL server/image versions remain open.
+Prefer Spring Boot 4.1.1 dependency management for compatible libraries. Verify actual starter/artifact coordinates, Jackson behavior, Hibernate SQL, JDBC driver, Flyway PostgreSQL support, and Testcontainers modules before approving a POM. Record resolved versions and justify overrides. The original baseline left Maven tool/wrapper and PostgreSQL server/image versions Open; the subsequent approvals below resolve those selections.
 
-Flyway is accepted; when/how migrations run, versioning conventions, deployment privileges, validation/repair policy, and schema review strategy remain Open. No migration execution or database change is authorized by this ADR. Hibernate must not silently create/update schema in the intended managed-schema setup; exact validation configuration is planned, not generated.
+Flyway is accepted; when/how migrations run, versioning conventions, deployment privileges, validation/repair policy, and schema review strategy remain Open. The original baseline authorized no migration execution or database change; the scoped metadata initialization approval below is the only exception. Hibernate must not silently create/update schema in the intended managed-schema setup; exact validation configuration is planned, not generated.
 
 ## Test Framework Decision and Replacement History
 
@@ -35,7 +35,7 @@ On 2026-10-13, the user explicitly replaced the earlier JUnit 5 decision with **
 
 ## Consequences and Verification Criteria
 
-The fixed runtime baseline reduces drift. Dependency overrides increase verification obligations. Boot 4 starter/module names and strict JSON behavior must be checked against selected versions. Compile and run on Java 21; inspect the dependency tree for conflicting engines/frameworks; prove context startup, HTTP binding, PostgreSQL migrations/mappings, and provider locking behavior through appropriate tests. No build or test implementation exists.
+The fixed runtime baseline reduces drift. Dependency overrides increase verification obligations. Boot 4 starter/module names and strict JSON behavior must be checked against selected versions. Compile and run on Java 21; inspect the dependency tree for conflicting engines/frameworks; prove context startup, HTTP binding, PostgreSQL migrations/mappings, and provider locking behavior through appropriate tests. Increment 1 build/test evidence is recorded in its prompt record; database foundation evidence is recorded separately below.
 
 ## History and Sources
 
@@ -43,3 +43,13 @@ The stack families were explicitly adopted by the user; Java 21 and Spring Boot 
 
 - [Spring Boot system requirements](https://docs.spring.io/spring-boot/system-requirements.html): inspected as version 4.1.1; Java 21 is supported.
 - [Spring Boot managed dependencies](https://docs.spring.io/spring-boot/appendix/dependency-versions/coordinates.html): inspected as version 4.1.1, including JUnit 6.0.3. These live pages may change; verify against the selected release before building.
+
+## Increment 2 Approval and History
+
+The user explicitly approved PostgreSQL **17.11**, official image `postgres:17.11-bookworm`, Spring Data JPA/Hibernate, the PostgreSQL JDBC driver, Flyway PostgreSQL support, Testcontainers, and Maven Failsafe integration-test execution. Maven **3.9.9** via Apache Maven Wrapper was previously accepted during Increment 1. Dependencies use Boot 4.1.1 management; this approval adds no overrides.
+
+Flyway startup is approved only in the `local` and `integration-test` profiles, including initialization of `flyway_schema_history` in project-specific development/disposable test databases. No application migration scripts or domain tables are authorized. Default/production migration execution is disabled; production strategy, privileges, migration conventions, and schema decisions remain Open.
+
+Rationale: use the same explicit PostgreSQL image locally and in isolated real-database tests; exercise Boot integration without inventing domain schema. Alternatives: PostgreSQL 18, external local database management, deployment-only Flyway execution, or Surefire-only integration testing. Consequences: `verify` requires Docker, image tags remain mutable, development data persists in a named volume, and Flyway metadata is the only authorized schema addition.
+
+Verification criteria: real server version and JDBC `SELECT 1`, JPA startup with validation, disabled OSIV, zero application migrations and only Flyway metadata, Docker-free smoke test, isolated Testcontainers cleanup, and local Compose startup. Results are tracked in the [Increment 2 record](../04-agentic-coding/prompts/03-postgresql-foundation.md); approval alone is not passing evidence. ADR-0002 remains Proposed and implementation-unverified.

@@ -9,7 +9,10 @@ import org.springframework.web.context.WebApplicationContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.autoconfigure.exclude="
+        + "org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration,"
+        + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
+        + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration")
 class AgenticOrderServiceApplicationTest {
 
     @Autowired

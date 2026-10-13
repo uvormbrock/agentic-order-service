@@ -1,10 +1,10 @@
 # Testing Strategy
 
-**Status:** Approved quality requirements; test implementation pending
+**Status:** Approved quality requirements; foundation tests implemented; domain/persistence/concurrency tests Pending
 
 ## Scope and Prerequisites
 
-The [PRD acceptance criteria](../01-requirements/product-requirements.md) define behavior; [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) defines concurrency outcomes. The [Proposed ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) defines technical verification scenarios. JUnit 6 is Accepted under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md), explicitly replacing JUnit 5. Use Jupiter and Platform versions managed by Spring Boot 4.1.1 without JUnit 5-retention overrides; build verification remains Pending.
+The [PRD acceptance criteria](../01-requirements/product-requirements.md) define behavior; [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) defines concurrency outcomes. The [Proposed ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) defines technical verification scenarios. JUnit 6 is Accepted under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md), explicitly replacing JUnit 5. Use Jupiter and Platform versions managed by Spring Boot 4.1.1 without JUnit 5-retention overrides; foundation build verification passed; domain and concurrency verification remain Pending.
 
 ## Quality Gate Applicability
 
@@ -61,6 +61,14 @@ Use independent transactions/connections/contexts, barriers/latches, and bounded
 
 ## Evidence and Release Readiness
 
-Record test locations/commands, selected PostgreSQL image, outcomes, and limitations in the increment report. Proposed command conventions are unit tests through Surefire and PostgreSQL `*IT` through Failsafe; no POM exists yet. Include serialization after the persistence context closes and prove it emits complete DTO data without additional queries.
+Record test locations/commands, selected PostgreSQL image, outcomes, and limitations in the increment report. Increment 2 explicitly accepts Surefire for Docker-free tests and Failsafe for PostgreSQL `*IT` during `verify`. Include serialization after the persistence context closes and prove it emits complete DTO data without additional queries.
 
-No tests have been run or generated for this baseline. Passing tests does not automatically accept ADR-0002; explicit ADR acceptance and implementation verification are independent gates.
+Foundation tests have been run as recorded in Increment 2; no domain/mapping/concurrency test evidence is claimed. Passing tests does not automatically accept ADR-0002; explicit ADR acceptance and implementation verification are independent gates.
+
+## Increment 2 Test Responsibilities
+
+`AgenticOrderServiceApplicationTest` retains MVC/Validation assertions while excluding DataSource, Hibernate JPA, and Flyway auto-configuration only through its test annotation. It verifies web-context wiring, not persistence readiness, and must run without Docker through `./mvnw test`.
+
+`PostgreSqlFoundationIT` uses the full application context, the `integration-test` profile, and a Spring-managed PostgreSQL bean with `@ServiceConnection`. It verifies JDBC/server version, EntityManagerFactory with zero entities, disabled OSIV, validation/no SQL initialization, zero application migrations, and only Flyway metadata. Failsafe executes it through `./mvnw verify`; Docker unavailability fails startup, with no disabled-without-Docker skip. Context teardown stops the test database; reuse is disabled. Credentials/ports are independent of Compose.
+
+No entity round trips, application migrations, domain rules, transaction guards, or concurrency behavior are verified by this increment. Those gates remain Pending. Actual results: [Increment 2 execution record](../04-agentic-coding/prompts/03-postgresql-foundation.md).

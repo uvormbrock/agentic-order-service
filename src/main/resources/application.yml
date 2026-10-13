@@ -1,3 +1,12 @@
 spring:
   application:
     name: agentic-order-service
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  sql:
+    init:
+      mode: never
+  flyway:
+    enabled: false

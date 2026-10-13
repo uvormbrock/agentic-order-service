@@ -2,7 +2,7 @@
 
 **Status:** Authoritative inventory of Accepted, Proposed, and Open selections
 **Last reviewed:** 2026-10-13
-**Implementation verification:** Pending
+**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; domain/persistence/concurrency gates Pending
 
 ## Purpose and Authority
 
@@ -56,16 +56,16 @@ No separate DI framework is selected.
 
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
-| PostgreSQL | Server major/patch and pinned container image Open; tests must match the selected server major | Durable orders/catalog/customer data, constraints and row locking | **Accepted** database; version Open |
-| PostgreSQL JDBC driver | Prefer Boot-compatible managed version; verify server/provider compatibility | JDBC access beneath Hibernate and transaction management | **Accepted** integration requirement; resolved version Pending |
+| PostgreSQL | **17.11**; official `postgres:17.11-bookworm` for local development and integration tests; production deployment details Open | Durable orders/catalog/customer data, constraints and row locking | **Accepted** database, version, and development/test image |
+| PostgreSQL JDBC driver | Prefer Boot-compatible managed version; verify server/provider compatibility | JDBC access beneath Hibernate and transaction management | **Accepted** integration requirement; 42.7.13 resolved and foundation-tested |
 
 ## 7. Database Migrations
 
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
-| Flyway with PostgreSQL support | Boot-compatible managed artifacts; exact module coordinates verified before POM approval | Git-versioned schema evolution | **Accepted** tool; execution strategy Open |
+| Flyway with PostgreSQL support | Boot-compatible managed artifacts; exact module coordinates verified before POM approval | Git-versioned schema evolution | **Accepted** tool and local/test startup; production execution Open |
 
-Startup versus deployment execution, migration/versioning conventions, privileges, repair/validation policy, and schema approval remain Open. No migration or schema modification is authorized by this reference.
+Local and integration-test startup is explicitly approved, including Flyway history metadata only. Default/production migration execution remains disabled. Production execution, migration/versioning conventions, privileges, repair/validation policy, and domain schema approval remain Open; no domain migration is authorized.
 
 ## 8. Transaction Management
 
@@ -82,8 +82,8 @@ Reject ambient transactions before coordination; use fresh transaction-scoped st
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
 | Maven, single module | **3.9.9**, pinned by the official Apache Maven Wrapper (wrapper scripts 3.3.4) | Compile/package and execute approved quality gates consistently across developer environments | **Accepted** build tool, structure, and wrapper-managed Maven version |
-| Spring Boot dependency management | **4.1.1** parent/BOM alignment; exact POM form not generated | Keep compatible Spring and supported library versions aligned | **Accepted** version policy |
-| Maven Surefire / Failsafe | Compatible plugin versions verified before build approval | Proposed separation of unit tests and PostgreSQL integration tests | **Proposed** test execution convention |
+| Spring Boot dependency management | **4.1.1** parent/BOM alignment; parent/BOM used by the existing POM | Keep compatible Spring and supported library versions aligned | **Accepted** version policy |
+| Maven Surefire / Failsafe | Boot-managed versions (3.5.6) | Docker-free smoke/unit tests via Surefire; PostgreSQL `*IT` via Failsafe during `verify` | **Accepted** execution convention for Increment 2 |
 
 ## 10. Unit Testing
 
@@ -91,14 +91,14 @@ Reject ambient transactions before coordination; use fresh transaction-scoped st
 | --- | --- | --- | --- |
 | JUnit 6 / Jupiter and Platform | Use versions managed by Boot **4.1.1**; 6.0.3 in ADR-0005's recorded inspection, with no override to retain JUnit 5 | Domain and application unit tests | **Accepted** |
 
-Keep test API, engine, and Platform versions aligned through Boot 4.1.1 dependency management. The user explicitly replaced JUnit 5 with JUnit 6; [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) preserves that history. Build and runtime verification remain Pending.
+Keep test API, engine, and Platform versions aligned through Boot 4.1.1 dependency management. The user explicitly replaced JUnit 5 with JUnit 6; [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) preserves that history. Boot-managed JUnit build/runtime verification passed in Increment 1 and the foundation tests; domain test implementation remains Pending.
 
 ## 11. Integration Testing
 
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
-| Testcontainers with PostgreSQL | Boot-compatible modules; pin the approved PostgreSQL image | Disposable real database for mappings, migrations and deterministic concurrency tests | **Accepted** test infrastructure; concrete setup Pending |
-| Spring Boot test infrastructure | Boot **4.1.1**, with its managed JUnit 6 stack | Application-context and transaction-boundary integration tests | **Accepted** framework baseline; test configuration Open |
+| Testcontainers with PostgreSQL | Boot-managed modules; `postgres:17.11-bookworm`, isolated random-port database | Disposable real database for mappings, migrations and deterministic concurrency tests | **Accepted** test infrastructure; concrete setup Pending |
+| Spring Boot test infrastructure | Boot **4.1.1**, with its managed JUnit 6 stack | Application-context and transaction-boundary integration tests | **Accepted** framework baseline; foundation test configuration approved, domain/transaction tests Pending |
 
 Container execution needs a compatible container runtime; no host/container-runtime product is selected here. H2 and mock-only tests cannot verify PostgreSQL locking semantics.
 
@@ -142,8 +142,8 @@ flowchart TB
     APP["Application use cases and immutable DTOs"]
     TX["TransactionTemplate: ambient rejection and complete attempts"]
     DATA["Spring Data JPA and Hibernate"]
-    PG[("PostgreSQL: version Open")]
-    FLY["Flyway: execution strategy Open"]
+    PG[("PostgreSQL 17.11: approved local/test image")]
+    FLY["Flyway: local/test startup; production Open"]
     BUILD["Maven 3.9.9 via Apache Maven Wrapper"]
     TEST["Accepted JUnit 6 and Testcontainers"]
     QUALITY["Static analysis and CI tooling Open"]
@@ -168,11 +168,40 @@ flowchart TB
 3. Before build approval, verify Boot 4 artifact/starter coordinates, resolved transitive versions, Java compatibility, test API/engine alignment, and driver/Flyway/PostgreSQL support. The earlier Boot 3.5 skeleton is not an approved dependency list.
 4. Use the Accepted JUnit 6 baseline and Boot 4.1.1-managed Jupiter/Platform versions under ADR-0005. Verify the resolved graph; do not add JUnit 5-retention overrides.
 5. Pin the selected database image and match integration tests to deployment major version. Inspect actual Hibernate locking SQL and transaction behavior with deterministic PostgreSQL tests.
-6. Record dependency-tree/build evidence and relevant runtime tests; verify strict unknown-field/numeric parsing, context startup, mappings/migrations, and DTO serialization with OSIV disabled. No implementation evidence exists yet: these checks are **Pending**.
+6. Record dependency-tree/build evidence and relevant runtime tests; verify strict unknown-field/numeric parsing, context startup, mappings/migrations, and DTO serialization with OSIV disabled. Foundation dependency resolution/context startup/OSIV evidence is in Increment 2; domain binding, mappings/migrations, and concurrency checks remain **Pending**.
 7. Keep decisions in ADRs, version roles in this inventory, and unresolved execution details in [open items](../00-overview/open-items.md). Avoid maintaining duplicate version lists with competing authority.
 
 For recorded upstream compatibility observations and links, consult [ADR-0005](../03-decisions/ADR-0005-technology-stack.md). This reference changes no business rules, ADR statuses, or tool approvals.
 
 ### Approved Maven Wrapper Enhancement
 
-The user explicitly approved Maven **3.9.9** via the official Apache Maven Wrapper as a post-review enhancement to Increment 1. The generated `only-script` wrapper uses scripts from wrapper release 3.3.4 and downloads Maven from `https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip`. No wrapper JAR is committed. Java 21 is supplied through a command-local JAVA_HOME; no system configuration is changed. See the [bootstrap execution record](../04-agentic-coding/prompts/02-technical-bootstrap.md#post-review-enhancement--maven-wrapper) for successful version/build/test/dependency evidence and pending human review of this enhancement. This resolves the previously Open Maven/wrapper selection for this increment; ADR-0005's original decision history is preserved. Other Open technology and operational decisions remain unchanged.
+The user explicitly approved Maven **3.9.9** via the official Apache Maven Wrapper as a post-review enhancement to Increment 1. The generated `only-script` wrapper uses scripts from wrapper release 3.3.4 and downloads Maven from `https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip`. No wrapper JAR is committed. Java 21 is supplied through a command-local JAVA_HOME; no system configuration is changed. See the [bootstrap execution record](../04-agentic-coding/prompts/02-technical-bootstrap.md#post-review-enhancement--maven-wrapper) for successful version/build/test/dependency evidence and recorded human acceptance of this enhancement. This resolves the previously Open Maven/wrapper selection for this increment; ADR-0005's original decision history is preserved. Other Open technology and operational decisions remain unchanged.
+
+### PostgreSQL Foundation Scope
+
+[ADR-0005](../03-decisions/ADR-0005-technology-stack.md#increment-2-approval-and-history) records the scoped approval. [Increment 2](../04-agentic-coding/prompts/03-postgresql-foundation.md) records actual resolved versions and verification separately. Empty-schema JPA startup does not verify domain mappings, and no transaction coordinator or locking protocol is implemented.
+
+### PostgreSQL Configuration Source and Local Credentials
+
+The single executable image source is root [config/postgres.properties](../../config/postgres.properties), property `POSTGRES_IMAGE`. Compose uses `${POSTGRES_IMAGE:?Load config/postgres.properties}` without a fallback; Testcontainers reads the same file through standard Java `Properties` and a UTF-8 reader. Tests do not parse Compose YAML, load `.env`, or require Compose services to be running. The configuration file must be available relative to the Maven project working directory. Missing/unreadable properties files, malformed properties syntax, or missing/empty/invalid image values fail with a configuration exception; no default image is selected. The approved PostgreSQL image/version remains unchanged.
+
+Use both environment files for local commands:
+
+```sh
+docker compose --env-file .env --env-file config/postgres.properties config --quiet
+docker compose --env-file .env --env-file config/postgres.properties up -d --wait postgres
+docker compose --env-file .env --env-file config/postgres.properties down
+```
+
+`.env` contains ignored local credentials; `config/postgres.properties` is versioned and contains only the public image reference. Later environment files take precedence over earlier ones, but exported shell variables can override both. Detect an unexpected exported image override without displaying any credentials:
+
+```sh
+if printenv POSTGRES_IMAGE >/dev/null; then
+  echo "POSTGRES_IMAGE is exported; unset it to use config/postgres.properties"
+fi
+docker compose --env-file .env --env-file config/postgres.properties config --images
+```
+
+If the override is unintended, use `unset POSTGRES_IMAGE` in the shell before running Compose. Testcontainers deliberately reads the file directly and ignores this shell override. Check the resolved Compose image to prevent disagreement. Commands without the explicit environment-file options are outside the documented startup contract; the required image substitution fails when no image variable is supplied. No wrapper script was added.
+
+Spring Boot does not read `.env` automatically: export its trusted, shell-compatible values into the application process and use the `local` profile, as shown in the [current enhancement record](../04-agentic-coding/prompts/03-postgresql-foundation.md#post-review-enhancement--central-postgresql-image-configuration). Existing credentials and volume remain preserved, `.env.example` stays credential-free, and the original temporary verification file remains untouched. Production migration strategy and ADR-0002 status are unchanged.
