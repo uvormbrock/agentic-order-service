@@ -6,6 +6,8 @@ import java.util.UUID;
 import com.example.agenticorderservice.PostgreSqlTestConfiguration;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -35,5 +37,49 @@ class ProductPersistenceIT {
             var loaded = repository.findById(id).orElseThrow();
             assertThat(loaded.getPrice()).isEqualTo(Money.of("25.05")); assertThat(loaded.isActive()).isFalse();
         }
+    }
+
+    // Finding 4: accepted D1/D3, BR-001/BR-011/BR-012; updates do not replace UUID identity.
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void retainsGeneratedIdentityAndBothFieldsThroughApprovedAndRejectedUpdates(boolean inactive) {
+        var original = new Product("Original", Money.of("25.00"));
+        assertThat(original.getId()).isNull();
+        UUID id = inTransaction(factory, em -> {
+            em.persist(original);
+            em.flush();
+            UUID assignedId = original.getId();
+            assertThat(assignedId).isNotNull();
+            em.clear();
+            var loaded = em.find(Product.class, assignedId);
+            if (inactive) { loaded.deactivate(); }
+            loaded.update("\u2003 Äpfel😀 ", Money.of("40.05"));
+            em.flush();
+            em.clear();
+            var reloaded = em.find(Product.class, assignedId);
+            assertThat(reloaded.getId()).isEqualTo(assignedId);
+            assertThat(reloaded.getName()).isEqualTo("Äpfel😀");
+            assertThat(reloaded.getPrice()).isEqualTo(Money.of("40.05"));
+            assertThat(reloaded.isActive()).isEqualTo(!inactive);
+            assertThatNullPointerException().isThrownBy(() -> reloaded.update("Unwanted name", null));
+            assertThatIllegalArgumentException().isThrownBy(() -> reloaded.update("Unwanted name", Money.of("1000000.00")));
+            assertThat(reloaded.getName()).isEqualTo("Äpfel😀");
+            assertThat(reloaded.getPrice()).isEqualTo(Money.of("40.05"));
+            assertThat(reloaded.isActive()).isEqualTo(!inactive);
+            assertThat(reloaded.getId()).isEqualTo(assignedId);
+            em.flush();
+            em.clear();
+            var afterRejectedUpdates = em.find(Product.class, assignedId);
+            assertThat(afterRejectedUpdates.getId()).isEqualTo(assignedId);
+            assertThat(afterRejectedUpdates.getName()).isEqualTo("Äpfel😀");
+            assertThat(afterRejectedUpdates.getPrice()).isEqualTo(Money.of("40.05"));
+            assertThat(afterRejectedUpdates.isActive()).isEqualTo(!inactive);
+            return assignedId;
+        });
+        var committed = repository.findById(id).orElseThrow();
+        assertThat(committed.getId()).isEqualTo(id);
+        assertThat(committed.getName()).isEqualTo("Äpfel😀");
+        assertThat(committed.getPrice()).isEqualTo(Money.of("40.05"));
+        assertThat(committed.isActive()).isEqualTo(!inactive);
     }
 }

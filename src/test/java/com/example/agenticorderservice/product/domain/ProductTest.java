@@ -2,6 +2,10 @@ package com.example.agenticorderservice.product.domain;
 
 import com.example.agenticorderservice.shared.domain.Money;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.*;
 
 // PRD AC-001/AC-011/AC-012: lifecycle and independent price/name boundaries.
@@ -32,5 +36,69 @@ class ProductTest {
             assertThatIllegalArgumentException().isThrownBy(() -> product.update("changed", Money.of(invalid)));
             assertThat(product.getName()).isEqualTo("original");
         }
+    }
+
+    // Finding 4: BR-001/BR-011/BR-012. Failed updates retain name, price, identity and status.
+    @ParameterizedTest(name = "{0}, inactive={2}")
+    @MethodSource("rejectedNames")
+    void rejectsNameUpdateWithoutChangingEitherFieldOrLifecycle(String scenario, String name, boolean inactive) {
+        var product = new Product("Original", Money.of("25.00"));
+        if (inactive) { product.deactivate(); }
+        var originalId = product.getId();
+        assertThatThrownBy(() -> product.update(name, Money.of("40.00")))
+                .isInstanceOf(name == null ? NullPointerException.class : IllegalArgumentException.class);
+        assertThat(product.getName()).isEqualTo("Original");
+        assertThat(product.getPrice()).isEqualTo(Money.of("25.00"));
+        assertThat(product.isActive()).isEqualTo(!inactive);
+        assertThat(product.getId()).isEqualTo(originalId);
+    }
+
+    @ParameterizedTest(name = "{0}, inactive={1}")
+    @MethodSource("rejectedPrices")
+    void rejectsPriceAfterValidNameWithoutPartialMutation(String price, boolean inactive) {
+        var product = new Product("Original", Money.of("25.00"));
+        if (inactive) { product.deactivate(); }
+        Money attemptedPrice = price == null ? null : Money.of(price);
+        assertThatThrownBy(() -> product.update("Changed", attemptedPrice))
+                .isInstanceOf(price == null ? NullPointerException.class : IllegalArgumentException.class);
+        assertThat(product.getName()).isEqualTo("Original");
+        assertThat(product.getPrice()).isEqualTo(Money.of("25.00"));
+        assertThat(product.isActive()).isEqualTo(!inactive);
+        assertThat(product.getId()).isNull();
+    }
+
+    static Stream<Arguments> rejectedPrices() {
+        return Stream.of(false, true).flatMap(inactive -> Stream.of(
+                Arguments.of(null, inactive), Arguments.of("-0.01", inactive), Arguments.of("1000000.00", inactive)));
+    }
+
+    @ParameterizedTest
+    @MethodSource("activeStates")
+    void replacesBothValidFieldsAndRetainsLifecycle(boolean inactive) {
+        var product = new Product("Original", Money.of("25.00"));
+        if (inactive) { product.deactivate(); }
+        product.update("\u2003 Äpfel😀 ", Money.of("40.05"));
+        assertThat(product.getName()).isEqualTo("Äpfel😀");
+        assertThat(product.getPrice()).isEqualTo(Money.of("40.05"));
+        assertThat(product.isActive()).isEqualTo(!inactive);
+        assertThat(product.getId()).isNull();
+    }
+
+    @Test
+    void rejectsMissingPriceAndAcceptsMinimumNameWithoutLowercasing() {
+        assertThatNullPointerException().isThrownBy(() -> new Product("Original", null));
+        assertThat(new Product(" Ä ", Money.zero()).getName()).isEqualTo("Ä");
+    }
+
+    static Stream<Boolean> activeStates() { return Stream.of(false, true); }
+
+    static Stream<Arguments> rejectedNames() {
+        return Stream.of(false, true).flatMap(inactive -> Stream.of(
+                Arguments.of("empty", "", inactive),
+                Arguments.of("whitespace", "\u2003\t ", inactive),
+                Arguments.of("201 code points", "😀".repeat(201), inactive),
+                Arguments.of("null", null, inactive),
+                Arguments.of("unpaired high surrogate", "a\uD800b", inactive),
+                Arguments.of("unpaired low surrogate", "a\uDC00b", inactive)));
     }
 }

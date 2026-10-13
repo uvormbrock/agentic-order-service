@@ -1,8 +1,8 @@
 # Domain Model & Persistence – Increment 3
 
-**Status:** Executed – Pending Human Review
+**Status:** Reviewed – Accepted
 
-Historical planning and the explicitly authorized Increment 3 implementation have executed. Variant A for D1–D10 remains Accepted. Domain/persistence verification passed; implementation acceptance awaits explicit human review. Production/list/concurrency matters remain deferred.
+Historical planning and the explicitly authorized Increment 3 implementation have executed. Variant A for D1–D10 remains Accepted. Domain/persistence verification passed and the human explicitly accepted the reviewed implementation and test hardening. Production/list/concurrency matters remain deferred.
 
 ## Objective
 
@@ -10,7 +10,7 @@ Implement and verify one coherent Domain Model & Persistence increment applying 
 
 ## Context and Approved Scope
 
-Increments 1 and 2 are accepted and committed. The earlier documentation task recorded Accepted D1–D10 without implementation authorization. The human subsequently explicitly approved execution of the finalized implementation prompt below, including domain/JPA/schema/repository tests in disposable PostgreSQL databases. No REST, application orchestration, locking/retries, production migration execution or Git commit is authorized. ADR-0002 remains Proposed and implementation-unverified.
+Increments 1 and 2 are accepted and committed. The earlier documentation task recorded Accepted D1–D10 without implementation authorization. The human subsequently explicitly approved execution of the finalized implementation prompt below, including domain/JPA/schema/repository tests in disposable PostgreSQL databases. The execution scope authorized no REST, application orchestration, locking/retries, production migration execution or Git commit. Final human acceptance separately authorizes the reviewed commit below. ADR-0002 remains Proposed and implementation-unverified.
 
 Follow [AGENTS.md](../../../AGENTS.md), the [PRD](../../01-requirements/product-requirements.md), [domain model](../../02-architecture/domain-model.md), [ADR-0004](../../03-decisions/ADR-0004-persistence-mapping.md), [ADR-0005](../../03-decisions/ADR-0005-technology-stack.md), [coding guidelines](../coding-guidelines.md), [Java/Spring guidelines](../java-spring-guidelines.md), [persistence guidelines](../persistence-guidelines.md), [open items](../../00-overview/open-items.md), [implementation plan](../../07-implementation/implementation-plan.md), and [testing strategy](../../05-testing/testing-strategy.md). The [playbook index](00-index.md) uses the same title/status.
 
@@ -491,3 +491,85 @@ Present:
 
 Wait for explicit human review and approval before any implementation work.
 ```
+
+## Post-Implementation Test Hardening – Human Review Findings
+
+**Status:** Reviewed – Accepted
+
+**Execution date:** 2026-10-13
+
+The human authorized comprehensive test hardening of the existing Increment 3 implementation. The working tree was clean before this task. The initial 25 fast/14 PostgreSQL results above remain historical evidence; the results below extend that evidence without accepting the implementation. D1–D10, ADR statuses, production code, mappings, V1, dependencies and versions remain unchanged. No new test class, application feature or implementation increment was introduced.
+
+### Reviewed Findings and Test Mapping
+
+| Finding | Added or expanded test cases | Evidence boundary |
+| --- | --- | --- |
+| 1 — Conflicting duplicates | OrderTest: rejectsConflictingDuplicateFactsWithoutPublishingAPartialAggregate (price/name/both conflicts in both input orders); consolidatesAtMaximumQuantityWithIndependentExpectedAmounts; rejectsQuantityOverflowOnlyReachedAtThirdDuplicate; preservesDistinctProductsAndProducesSameFactsForReversedDuplicates. Existing successful 2+3 consolidation and 10,001 rejection assertions remain intact. | Independent literal quantities/amounts; failed construction returns no usable aggregate and leaves immutable inputs unchanged. Product facts are rejected when inconsistent, never reconciled. |
+| 2 — Historical snapshots | OrderTest: retainsEveryHistoricalFactAcrossProductRenameRepriceAndDeactivation; prohibitsStructuralMutationThroughItemGetter (add/remove/replace/clear/iterator/sublist); exposesNoIndependentPublicOrderItemSnapshotMutator. OrderPersistenceIT: repeatedlyMaterializesOriginalSnapshotsAfterManagedCatalogMutations. | All original name/price/quantity/line/aggregate amounts remain intact. Catalog changes are themselves checked after flush/clear. Repeated fresh-context loads produce equal immutable snapshots; two reads issue two fetch statements and subsequent value access issues none. API-shape checks cover declared business methods/fields/constructors, excluding inherited Object and provider enhancement methods. They do not claim privileged SQL immutability. |
+| 3 — Trusted carrier | OrderTest: rejectsNullTrustedLineFactsAndNullAggregateInputs; rejectsInvalidTrustedNames; stripsNamesAndPreservesExactlyTwoHundredSupplementaryCodePoints; rejectsTrustedPricesOutsideProductRange; acceptsTrustedPriceEndpoints; rejectsExcessSourcePriceScaleBeforeTrustedCarrierConstruction; rejectsInvalidTrustedQuantities. OrderPersistenceIT: preservesTrustedCarrierFactsRatherThanReplacingThemWithCurrentCatalogValues. | Nulls, blank/overlong names, valid supplementary code points versus unpaired surrogates, strip normalization, exact facts, price endpoints/scale and quantity limits. Persistence keeps supplied historical facts rather than substituting current catalog values. This is not an approved public placement path. |
+| 4 — Atomic updates | CustomerTest/ProductTest: rejectsNameUpdateWithoutChangingEitherFieldOrLifecycle; rejectsNullEmailAfterValidNameWithoutPartialMutation / rejectsPriceAfterValidNameWithoutPartialMutation; replacesBothValidFieldsAndRetainsLifecycle. CustomerPersistenceIT/ProductPersistenceIT: retainsGeneratedIdentityAndBothFieldsThroughApprovedAndRejectedUpdates. | Every affected field is asserted separately in active and inactive cases. Valid changes update both fields; invalid changes retain previous fields, UUID and status, including after flush/clear and committed reload. No reactivation is introduced. |
+
+OrderLineInput performs no catalog query and cannot establish that an ID exists, that a product is active, or that its name/price match current database values. Referential integrity at persistence is a separate safeguard, not eligibility enforcement. Authoritative current-facts capture and eligibility checks belong to later application-level Order Placement and the still-Proposed ADR-0002 protocol. Their absence is not an Increment 3 failure. The pure-domain snapshot test uses a supplied UUID; real provider-generated product identity is exercised in the persistence test.
+
+### Additional Coverage Assessment
+
+Existing tests already establish threshold/HALF_UP examples, large NUMERIC round trips, root-only item persistence, restrictive references/uniqueness, confirmed rollback and lazy/explicit fetching. Their assertions were preserved. Distinct additional cases now establish zero-value orders and the 100.05 threshold reached by several distinct products; signed/scientific-source Money normalization, equality/hash/ordering, invalid decimal inputs and immutable exact arithmetic; missing/forbidden email grammar and normalization at the 254 boundary without unapproved label limits; persisted 200-code-point names/254-character emails and database rejection of 255; missing/null item references. Pure domain tests require no Docker; database claims use real PostgreSQL/Testcontainers.
+
+### Exact Changed Test Files
+
+All Java paths below are relative to src/test/java/com/example/agenticorderservice/:
+
+- customer/domain/CustomerTest.java
+- customer/domain/EmailAddressTest.java
+- customer/persistence/CustomerPersistenceIT.java
+- order/domain/OrderTest.java
+- order/persistence/OrderPersistenceIT.java
+- product/domain/ProductTest.java
+- product/persistence/ProductPersistenceIT.java
+- shared/domain/MoneyTest.java
+
+This execution record is the only changed documentation file. No new files were created in the repository.
+
+### Verification Evidence
+
+```sh
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw -B -ntp test
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw -B -ntp verify
+git diff --check
+git diff --cached --check
+```
+
+| Suite/class | Before | After |
+| --- | --- | --- |
+| MoneyTest | 3 | 13 |
+| EmailAddressTest | 3 | 12 |
+| CustomerTest | 2 | 19 |
+| ProductTest | 3 | 24 |
+| OrderTest | 4 | 42 |
+| Existing fast foundation/smoke | 10 | 10 |
+| **Fast total (Surefire)** | **25** | **120** |
+| CustomerPersistenceIT | 1 | 4 |
+| ProductPersistenceIT | 1 | 3 |
+| OrderPersistenceIT | 4 | 6 |
+| Existing PostgreSqlFoundationIT/DomainSchemaIT | 8 | 8 |
+| **PostgreSQL total (Failsafe)** | **14** | **21** |
+
+JUnit counts include parameterized invocations. The Docker-free test command passed 120 tests. Final verify passed 120 fast and 21 PostgreSQL tests: zero failures, errors or skipped tests, BUILD SUCCESS. An earlier intermediate verify passed 120/20 before the last boundary round-trip case was added; the final run supersedes it. Java 21.0.6 / Maven Wrapper 3.9.9 were used with Boot 4.1.1-managed JUnit 6.0.3. Actual PostgreSQL 17.11, V1/checksum/Hibernate validation and the existing numeric/rollback/fetch gates passed again. Testcontainers used the unchanged central image configuration and isolated databases; no local Compose database or volume was modified.
+
+Reports are in target/surefire-reports and target/failsafe-reports (excluded from Git). All existing assertions were retained. Final whitespace, internal links, immutable-prompt and scope checks passed; the staged diff is empty. No dependencies, architecture enforcement tooling, application code or schema changes were required.
+
+### Defects, Limitations and Lessons Learned
+
+No production defect, conflicting Accepted requirement or test failure was discovered. Expected database errors in negative tests and the existing Mockito dynamic-agent warning are not failing tests. Human implementation acceptance is still Pending; no Git commit was created.
+
+Public-domain snapshot protection does not make stored rows immune to privileged SQL changes. The partial-construction assertions establish that no aggregate is returned to the caller; they do not invent a rollback mechanism for pure construction. Test-only immutable snapshots prove transaction materialization, not future REST DTO serialization. HTTP/fractional JSON validation, current-customer response assembly, application eligibility/transactions, concurrent uniqueness handling, customer deletion races, locking/retries/uncertain outcomes and production migration policy remain deferred. ADR-0002 remains Proposed and implementation-unverified.
+
+Human review identified guarantees that the first green suite did not exercise. Parameterized invalid-field/state cases make partial-mutation regressions observable; checking that catalog changes really persisted avoids false-positive snapshot tests. Independent literal amounts and field-by-field assertions strengthen the oracle. Passing tests provide scoped evidence, not automatic acceptance of an implementation or ADR.
+
+## Final Human Review and Acceptance
+
+**Status:** Reviewed – Accepted
+
+On 2026-10-13 the human accepted Increment 3, including all four test-hardening findings, conditional on the local work matching the reviewed diff and documented test runs. Before updating review statuses, the complete working-tree diff was compared byte-for-byte with the presented test-hardening diff and matched exactly. Local Surefire/Failsafe reports confirmed 120 fast and 21 PostgreSQL tests, zero failures/errors/skips. No implementation changes occurred after that verification.
+
+This acceptance supersedes the Pending Human Review state in earlier execution evidence; original prompts, planning history and verification results remain preserved. D1–D10 remain Accepted, and ADR-0002 remains Proposed and implementation-unverified. REST, Application and Concurrency work and production migration decisions remain deferred. The human also authorized review of the final Git diff and a commit of the accepted scope; no next increment is authorized.

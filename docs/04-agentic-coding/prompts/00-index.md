@@ -25,7 +25,7 @@ Interview talking points may describe intended methodology while Planned, but mu
 | 01       | [Environment and bootstrap readiness assessment](01-environment-assessment.md) | Executed                            |
 | 02       | [Technical bootstrap – Increment 1](02-technical-bootstrap.md)                 | **Reviewed – Accepted** |
 | 03 | [PostgreSQL foundation – Increment 2](03-postgresql-foundation.md) | **Reviewed – Accepted** |
-| 04 | [Domain Model & Persistence – Increment 3](04-domain-model.md) | **Executed – Pending Human Review** |
+| 04 | [Domain Model & Persistence – Increment 3](04-domain-model.md) | **Reviewed – Accepted** |
 
 ## Authority and Workflow
 

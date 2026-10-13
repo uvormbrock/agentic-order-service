@@ -2,7 +2,7 @@
 
 **Status:** Accepted baseline and Increment 3 local/test migration policy; production details Open
 **Recorded:** 2026-10-13
-**Implementation:** Increments 1 and 2 accepted; Increment 3 executed, human review Pending; application/concurrency gates Pending
+**Implementation:** Increments 1 and 2 accepted; Increment 3 Reviewed – Accepted; application/concurrency gates Pending
 
 ## Operational Reference
 
@@ -71,3 +71,7 @@ Verification is Pending until Increment 3 executes against real PostgreSQL. No n
 ## Increment 3 Execution Evidence — Pending Human Review
 
 On 2026-10-13 the human explicitly authorized the finalized implementation prompt. The [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review) records generated mappings/repositories/V1, 25 passing fast tests and 14 passing PostgreSQL integration tests, including Hibernate validation, converter round trips, unconstrained NUMERIC capacity/negative checks, migration checksums/repeat execution and root-owned item persistence. Earlier statements of no implementation/evidence describe the recorded pre-execution state. No decision or historical proposal is replaced by these results; implementation acceptance remains Pending. ADR-0002 stays Proposed and implementation-unverified. Local development data/volumes were preserved; production, HTTP/application and concurrency verification remain outside this increment.
+
+## Increment 3 Human Acceptance
+
+On 2026-10-13 the human accepted the reviewed implementation and test hardening after the local diff and 120 fast/21 PostgreSQL reports were confirmed. See the [final acceptance record](../04-agentic-coding/prompts/04-domain-model.md#final-human-review-and-acceptance). Earlier Pending review statements remain historical execution evidence. Accepted decisions and their history are unchanged; ADR-0002 remains Proposed and implementation-unverified, and later application/concurrency and production gates remain deferred.

@@ -2,7 +2,7 @@
 
 **Status:** Authoritative inventory of Accepted, Proposed, and Open selections
 **Last reviewed:** 2026-10-13
-**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; Increment 3 domain/persistence verification passed, human review Pending; application/concurrency gates Pending
+**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; Increment 3 domain/persistence Reviewed – Accepted; application/concurrency gates Pending
 
 ## Purpose and Authority
 
@@ -48,7 +48,7 @@ No separate DI framework is selected.
 | --- | --- | --- | --- |
 | Spring Data JPA | Boot 4.1.1-compatible managed version | Repository queries and explicitly verified locked access | **Accepted** |
 | Hibernate ORM / Jakarta Persistence | Boot-compatible managed provider/API versions; verify resolved dependency graph | Direct aggregate mapping, persistence context and SQL execution | **Accepted** baseline |
-| JPA AttributeConverters for Money/EmailAddress | Boot-managed JPA provider; persistence-package AttributeConverters with autoApply=true | Map immutable values to reviewed database representations | **Accepted** under ADR-0004; scoped discovery/hydration tests passed, human review Pending |
+| JPA AttributeConverters for Money/EmailAddress | Boot-managed JPA provider; persistence-package AttributeConverters with autoApply=true | Map immutable values to reviewed database representations | **Accepted** under ADR-0004; scoped discovery/hydration tests passed; implementation Reviewed – Accepted |
 
 [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) accepts UUID identity, field-access mappings, autoApply converters, unconstrained NUMERIC with reviewed checks and D1–D9 schema/fetch/equality selections. Concrete SQL review and scoped provider/database verification passed in Increment 3; list/pagination details are deferred. Open EntityManager in View is disabled; managed entities are never REST response objects. Complete response data must be materialized inside application transactions.
 
@@ -91,7 +91,7 @@ Reject ambient transactions before coordination; use fresh transaction-scoped st
 | --- | --- | --- | --- |
 | JUnit 6 / Jupiter and Platform | Use versions managed by Boot **4.1.1**; 6.0.3 in ADR-0005's recorded inspection, with no override to retain JUnit 5 | Domain and application unit tests | **Accepted** |
 
-Keep test API, engine, and Platform versions aligned through Boot 4.1.1 dependency management. The user explicitly replaced JUnit 5 with JUnit 6; [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) preserves that history. Boot-managed JUnit build/runtime verification passed in Increment 1 and the foundation tests; Increment 3 domain tests passed; implementation acceptance awaits human review.
+Keep test API, engine, and Platform versions aligned through Boot 4.1.1 dependency management. The user explicitly replaced JUnit 5 with JUnit 6; [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) preserves that history. Boot-managed JUnit build/runtime verification passed in Increment 1 and the foundation tests; Increment 3 domain tests passed; Increment 3 is Reviewed – Accepted.
 
 ## 11. Integration Testing
 

@@ -1,6 +1,6 @@
 # Domain Model — Agentic Order Service
 
-**Status:** Accepted aggregate and Increment 3 persistence design; scoped implementation verified, human review Pending
+**Status:** Accepted aggregate and Increment 3 persistence design; scoped implementation Reviewed – Accepted
 **Scope:** MVP domain design
 **Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Order Item Snapshots](order-item-snapshots.md)
 
@@ -8,7 +8,7 @@
 
 The Agentic Order Service models product catalog management, customer management, and order placement. The aggregate baseline contains three aggregate roots (`Customer`, `Product`, and `Order`), one child entity (`OrderItem`), and two value objects (`Money` and `EmailAddress`).
 
-The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model. Direct JPA mapping is accepted in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md); D1–D10 mapping/storage selections are Accepted there; concrete SQL was reviewed against the PRD and scoped runtime verification passed as recorded in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). Implementation acceptance remains Pending.
+The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model. Direct JPA mapping is accepted in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md); D1–D10 mapping/storage selections are Accepted there; concrete SQL was reviewed against the PRD and scoped runtime verification passed as recorded in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). Increment 3 is Reviewed – Accepted.
 
 ## 2. Domain Model Diagram
 
@@ -209,4 +209,4 @@ UUID identity in the diagram is now Accepted, including OrderItem's private pers
 
 ## 10. Status and Next Step
 
-Aggregate boundaries, snapshots, names/value objects and D1–D10 persistence selections are Accepted. Increment 3 implementation, concrete DDL review and scoped compatibility tests executed successfully; explicit human acceptance is Pending. See the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). Deferred list fetching and production/locking questions remain unresolved. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.
+Aggregate boundaries, snapshots, names/value objects and D1–D10 persistence selections are Accepted. Increment 3 implementation, concrete DDL review and scoped compatibility tests executed successfully; Increment 3 is Reviewed – Accepted. See the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). Deferred list fetching and production/locking questions remain unresolved. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.

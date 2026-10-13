@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Status:** Approved quality requirements; foundation/domain/persistence tests executed; Increment 3 human review and application/concurrency gates Pending
+**Status:** Approved quality requirements; foundation/domain/persistence tests executed; Increment 3 Reviewed – Accepted; application/concurrency gates Pending
 
 ## Scope and Prerequisites
 
@@ -80,7 +80,7 @@ Historical foundation results are recorded in the [Increment 2 execution record]
 - OrderPersistenceIT: production root save/cascade, original snapshots after catalog changes, lazy/explicit fetch counts, immutable closed-context values, restrictive FKs and confirmed full rollback.
 - DomainSchemaIT: unconstrained NUMERIC, named negative constraints, actual V1/checksum/repeat migration and normalized unique email index.
 
-The scoped execution passed 25 fast tests (10 foundation, 15 domain) and 14 PostgreSQL integration tests. Increment 3 is Executed – Pending Human Review. Application/HTTP, transaction coordination, concurrent uniqueness response handling and ADR-0002 gates remain Pending; see the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review).
+The initial execution passed 25 fast/14 PostgreSQL tests. Human-reviewed test hardening increased this to 120 fast tests (10 foundation, 110 domain) and 21 PostgreSQL integration tests, all passing without skips. Increment 3 is Reviewed – Accepted. Application/HTTP, transaction coordination, concurrent uniqueness response handling and ADR-0002 gates remain Pending; see the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review).
 
 ## Running Tests
 

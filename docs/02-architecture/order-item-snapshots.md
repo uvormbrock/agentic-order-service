@@ -1,6 +1,6 @@
 # Order Item Snapshots and DDD Aggregate Boundaries
 
-**Status:** Accepted snapshot/aggregate semantics and Increment 3 persistence selections; implementation Pending
+**Status:** Accepted snapshot/aggregate semantics and Increment 3 persistence selections; Increment 3 implementation Reviewed – Accepted
 **Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Domain Model](domain-model.md) · [Order Placement Concurrency](../03-decisions/ADR-0001-order-placement-concurrency.md)
 
 ## 1. Context
@@ -87,3 +87,7 @@ Explicit original amounts with unconstrained NUMERIC are selected; exact round t
 - Implementation and deterministic verification of the Proposed strategy in ADR-0002, including unresolved timeout, retry-delay, and uncertain-outcome details.
 
 Resolved business rules must not be reopened as technical questions. The PRD now resolves name counting/trimming and email syntax/counting; no new validation restrictions may be inferred.
+
+## Increment 3 Review Status
+
+The human accepted the domain/persistence implementation and test hardening on 2026-10-13. The [execution record](../04-agentic-coding/prompts/04-domain-model.md#final-human-review-and-acceptance) owns the 120 fast/21 PostgreSQL test evidence. Earlier Pending verification statements describe the pre-execution state. Current-customer response assembly and the Proposed ADR-0002 protocol remain deferred; this acceptance does not close those gates.

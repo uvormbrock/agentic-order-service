@@ -3,6 +3,10 @@ package com.example.agenticorderservice.order.persistence;
 import com.example.agenticorderservice.order.domain.Order;
 import com.example.agenticorderservice.order.domain.OrderLineInput;
 import com.example.agenticorderservice.shared.domain.Money;
+import com.example.agenticorderservice.product.domain.Product;
+import jakarta.persistence.EntityManager;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.hibernate.SessionFactory;
 import java.util.List;
 import java.util.UUID;
@@ -143,6 +147,12 @@ class OrderPersistenceIT {
         }
         assertThatThrownBy(() -> jdbc.update("delete from customers where id=?", customer)).hasStackTraceContaining("fk_orders_customer");
         assertThatThrownBy(() -> jdbc.update("delete from products where id=?", product)).hasStackTraceContaining("fk_order_items_product");
+        assertThatThrownBy(() -> jdbc.update("insert into order_items values (?, ?, ?, 'original', 1, 1.00, 1.00)",
+                UUID.randomUUID(), UUID.randomUUID(), other)).hasStackTraceContaining("fk_order_items_order");
+        assertThatThrownBy(() -> jdbc.update("insert into order_items values (?, null, ?, 'original', 1, 1.00, 1.00)",
+                UUID.randomUUID(), other)).hasStackTraceContaining("order_id");
+        assertThatThrownBy(() -> jdbc.update("insert into order_items values (?, ?, null, 'original', 1, 1.00, 1.00)",
+                UUID.randomUUID(), order.getId())).hasStackTraceContaining("product_id");
         assertThat(jdbc.queryForObject("select count(*) from order_items where order_id=?", Long.class, order.getId())).isEqualTo(1);
     }
 
@@ -159,4 +169,112 @@ class OrderPersistenceIT {
         assertThat(jdbc.queryForObject("select count(*) from order_items where order_id = ?", Long.class, order.getId())).isZero();
         assertThat(jdbc.queryForObject("select count(*) from products where id = ?", Long.class, valid)).isEqualTo(1);
     }
+
+    // Finding 2: BR-010/AC-009/AC-015; all snapshot values are captured inside a transaction.
+    @Test
+    void repeatedlyMaterializesOriginalSnapshotsAfterManagedCatalogMutations() {
+        UUID customerId = customer();
+        var first = new Product("Original", Money.of("25.00"));
+        var second = new Product("Second", Money.of("50.05"));
+        HistoricalOrder initial = inTransaction(factory, em -> {
+            em.persist(first);
+            em.persist(second);
+            var root = new Order(customerId, List.of(
+                    new OrderLineInput(first.getId(), first.getName(), first.getPrice(), 2),
+                    new OrderLineInput(second.getId(), second.getName(), second.getPrice(), 1)));
+            em.persist(root); // Root cascade alone persists items.
+            em.flush();
+            em.clear();
+            return historicalOrder(em, root.getId());
+        });
+        HistoricalOrder expected = new HistoricalOrder(initial.id(), customerId,
+                Money.of("100.05"), Money.of("10.01"), Money.of("90.04"), Map.of(
+                first.getId(), new HistoricalItem("Original", Money.of("25.00"), 2, Money.of("50.00")),
+                second.getId(), new HistoricalItem("Second", Money.of("50.05"), 1, Money.of("50.05"))));
+        assertThat(initial).isEqualTo(expected);
+
+        inTransaction(factory, em -> {
+            em.find(Product.class, first.getId()).update("Renamed", Money.of("25.00"));
+            em.flush();
+            em.clear();
+            assertThat(em.find(Product.class, first.getId()).getName()).isEqualTo("Renamed");
+            assertThat(historicalOrder(em, initial.id())).isEqualTo(expected);
+            return null;
+        });
+        inTransaction(factory, em -> {
+            em.find(Product.class, first.getId()).update("Renamed", Money.of("40.00"));
+            em.find(Product.class, second.getId()).update("Second changed", Money.zero());
+            em.flush();
+            em.clear();
+            assertThat(em.find(Product.class, first.getId()).getPrice()).isEqualTo(Money.of("40.00"));
+            assertThat(em.find(Product.class, second.getId()).getName()).isEqualTo("Second changed");
+            assertThat(em.find(Product.class, second.getId()).getPrice()).isEqualTo(Money.zero());
+            assertThat(historicalOrder(em, initial.id())).isEqualTo(expected);
+            return null;
+        });
+        inTransaction(factory, em -> {
+            em.find(Product.class, first.getId()).deactivate();
+            em.find(Product.class, second.getId()).deactivate();
+            em.flush();
+            em.clear();
+            assertThat(em.find(Product.class, first.getId()).isActive()).isFalse();
+            assertThat(em.find(Product.class, second.getId()).isActive()).isFalse();
+            assertThat(historicalOrder(em, initial.id())).isEqualTo(expected);
+            return null;
+        });
+        var stats = factory.unwrap(SessionFactory.class).getStatistics();
+        stats.clear();
+        HistoricalOrder firstRead = inTransaction(factory, em -> historicalOrder(em, initial.id()));
+        HistoricalOrder repeatedRead = inTransaction(factory, em -> historicalOrder(em, initial.id()));
+        assertThat(firstRead).isEqualTo(expected);
+        assertThat(repeatedRead).isEqualTo(expected);
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(2);
+        // Both contexts are closed. These are immutable values, never entity responses.
+        assertThat(firstRead.items().get(first.getId()).name()).isEqualTo("Original");
+        assertThat(firstRead.items().get(first.getId()).unitPrice()).isEqualTo(Money.of("25.00"));
+        assertThat(firstRead.items().get(first.getId()).quantity()).isEqualTo(2);
+        assertThat(firstRead.items().get(first.getId()).lineTotal()).isEqualTo(Money.of("50.00"));
+        assertThat(firstRead.subtotal()).isEqualTo(Money.of("100.05"));
+        assertThat(firstRead.discount()).isEqualTo(Money.of("10.01"));
+        assertThat(firstRead.total()).isEqualTo(Money.of("90.04"));
+        assertThat(stats.getPrepareStatementCount()).isEqualTo(2);
+    }
+
+    // Finding 3: persistence stores trusted historical facts; it does not re-read/reconcile the catalog.
+    @Test
+    void preservesTrustedCarrierFactsRatherThanReplacingThemWithCurrentCatalogValues() {
+        UUID customerId = customer(), productId = product();
+        var order = new Order(customerId, List.of(
+                new OrderLineInput(productId, "Captured earlier", Money.of("25.00"), 2)));
+        repository.save(order);
+        var snapshot = inTransaction(factory, em -> historicalOrder(em, order.getId()));
+        assertThat(snapshot.items()).containsExactlyEntriesOf(Map.of(productId,
+                new HistoricalItem("Captured earlier", Money.of("25.00"), 2, Money.of("50.00"))));
+        assertThat(snapshot.subtotal()).isEqualTo(Money.of("50.00"));
+        assertThat(snapshot.discount()).isEqualTo(Money.zero());
+        assertThat(snapshot.total()).isEqualTo(Money.of("50.00"));
+        assertThat(jdbc.queryForObject("select name from products where id=?", String.class, productId)).isEqualTo("original");
+        assertThat(jdbc.queryForObject("select price from products where id=?", java.math.BigDecimal.class, productId))
+                .isEqualByComparingTo("999999.99");
+        // Existence/active-state/current-facts validation belongs to later Order Placement, not this carrier.
+    }
+
+    private HistoricalOrder historicalOrder(EntityManager em, UUID id) {
+        Order root = em.createQuery(
+                        "select distinct o from PurchaseOrder o left join fetch o.items where o.id = :id", Order.class)
+                .setParameter("id", id).getSingleResult();
+        assertThat(root.getId()).isEqualTo(id);
+        assertThat(root.getItems()).allSatisfy(item -> {
+            assertThat(item.getId()).isNotNull();
+            assertThat(item.getOrder().getId()).isEqualTo(id);
+        });
+        return new HistoricalOrder(root.getId(), root.getCustomerId(), root.getSubtotal(), root.getDiscount(), root.getTotal(),
+                root.getItems().stream().collect(Collectors.toUnmodifiableMap(
+                        item -> item.getProductId(), item -> new HistoricalItem(
+                                item.getProductName(), item.getUnitPrice(), item.getQuantity(), item.getLineTotal()))));
+    }
+
+    private record HistoricalOrder(UUID id, UUID customerId, Money subtotal, Money discount, Money total,
+                                   Map<UUID, HistoricalItem> items) { }
+    private record HistoricalItem(String name, Money unitPrice, int quantity, Money lineTotal) { }
 }
