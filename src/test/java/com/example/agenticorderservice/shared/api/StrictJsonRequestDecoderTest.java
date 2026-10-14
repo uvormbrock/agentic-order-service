@@ -1,6 +1,7 @@
 package com.example.agenticorderservice.shared.api;
 import com.example.agenticorderservice.product.api.*;
 import com.example.agenticorderservice.customer.api.*;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -34,8 +35,24 @@ class StrictJsonRequestDecoderTest {
             Arguments.of("{\"name\":null,\"price\":1}",REQUIRED_FIELD_MISSING),
             Arguments.of("{\"name\":\"A\",\"price\":1.000}",INVALID_PRODUCT_PRICE),
             Arguments.of("{\"name\":\"A\",\"price\":1e0}",INVALID_PRODUCT_PRICE),
+            Arguments.of("{\"name\":\"A\",\"price\":1e3}",INVALID_PRODUCT_PRICE),
+            Arguments.of("{\"name\":\"A\",\"price\":1.4999e2}",INVALID_PRODUCT_PRICE),
+            Arguments.of("{\"name\":\"A\",\"price\":١٢}",MALFORMED_JSON),
+            Arguments.of("{\"name\":\"A\",\"price\":１２}",MALFORMED_JSON),
+            Arguments.of("{\"name\":\"A\",\"price\":1.٢}",MALFORMED_JSON),
+            Arguments.of("{\"name\":\"A\",\"price\":1.２}",MALFORMED_JSON),
             Arguments.of("{\"name\":false,\"extra\":true",MALFORMED_JSON)
         );
+    }
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "0.0", "0.00", "149", "149.9", "149.99", "999999.99"})
+    void acceptsAsciiPriceTokensAndPreservesSourceScale(String spelling) {
+        byte[] body = ("{\"name\":\"A\",\"price\":" + spelling + "}").getBytes(StandardCharsets.UTF_8);
+        var result = (ProductDetailsRequest) decoder.decode(body, ProductDetailsRequest.class);
+        var expected = new BigDecimal(spelling);
+
+        assertThat(result.price()).isEqualByComparingTo(expected);
+        assertThat(result.price().scale()).isEqualTo(expected.scale());
     }
     @ParameterizedTest @MethodSource("invalid") void deterministicCategories(String input,ApiError.Code expected) {
         byte[] bytes = input.getBytes(StandardCharsets.UTF_8);

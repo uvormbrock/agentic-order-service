@@ -82,8 +82,8 @@ public final class StrictJsonRequestDecoder {
     }
 
     private BigDecimal decodePrice(String spelling) {
-        // Explicit ASCII digits document the accepted JSON price grammar; no Unicode regex mode.
-        if (!spelling.matches("-?(0|[1-9][0-9]*)(\\.[0-9]{1,2})?")) { throw new ApiInputException(INVALID_PRODUCT_PRICE); }
+        // Java's default regex mode keeps \d ASCII-only; do not enable UNICODE_CHARACTER_CLASS.
+        if (!spelling.matches("-?(0|[1-9]\\d*)(\\.\\d{1,2})?")) { throw new ApiInputException(INVALID_PRODUCT_PRICE); }
         BigDecimal price = new BigDecimal(spelling);
         com.example.agenticorderservice.product.application.ProductApplicationService.validatePrice(price);
         return price;
