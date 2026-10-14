@@ -93,10 +93,9 @@ class OptimisticLockingIT extends PostgreSqlApiTestSupport {
             assertResource(feature, id, json(success), expected, true);
             assertCommitted(feature, id, expected, true, 1L, rejected);
             gate.assertIndependentContexts();
-            assertThat(gate.outcomes.get(a.statusCode() == 200 ? "first" : "second"))
-                    .isEqualTo(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED);
-            assertThat(gate.outcomes.get(a.statusCode() == 409 ? "first" : "second"))
-                    .isEqualTo(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK);
+            assertThat(gate.outcomes)
+                    .containsEntry(a.statusCode() == 200 ? "first" : "second", org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED)
+                    .containsEntry(a.statusCode() == 409 ? "first" : "second", org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK);
         } finally { gate.disarm(); }
     }
 
@@ -123,15 +122,15 @@ class OptimisticLockingIT extends PostgreSqlApiTestSupport {
                 gate.releaseWinner();
                 var success = winner.get(20, TimeUnit.SECONDS);
                 assertThat(success.statusCode()).isEqualTo(200);
-                assertThat(gate.outcomes.get("winner"))
-                        .isEqualTo(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED);
+                assertThat(gate.outcomes)
+                        .containsEntry("winner", org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED);
                 assertResource(feature, id, json(success), expected, active);
                 assertCommitted(feature, id, expected, active, 1L, losingValues);
                 gate.releaseLoserAfterWinnerCompletion();
                 var failure = loser.get(20, TimeUnit.SECONDS);
                 assertError(failure, ApiError.Code.CONCURRENT_MODIFICATION);
-                assertThat(gate.outcomes.get("loser"))
-                        .isEqualTo(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK);
+                assertThat(gate.outcomes)
+                        .containsEntry("loser", org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK);
                 assertCommitted(feature, id, expected, active, 1L, losingValues);
                 assertResource(feature, id, json(request("GET", "/" + feature + "s/" + id, null)), expected, active);
             } finally { gate.releaseAll(); }
@@ -266,7 +265,7 @@ class OptimisticLockingIT extends PostgreSqlApiTestSupport {
         void releaseWinner() { winnerRelease.countDown(); }
         void releaseLoserAfterWinnerCompletion() {
             await(winnerCompletion);
-            assertThat(outcomes.get("winner")).isEqualTo(org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED);
+            assertThat(outcomes).containsEntry("winner", org.springframework.transaction.support.TransactionSynchronization.STATUS_COMMITTED);
             loserRelease.countDown();
         }
         void releaseAll() { winnerRelease.countDown(); loserRelease.countDown(); }
