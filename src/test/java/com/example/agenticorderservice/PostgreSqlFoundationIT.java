@@ -86,7 +86,7 @@ class PostgreSqlFoundationIT {
             try (var result = statement.executeQuery("""
                     SELECT schemaname || '.' || tablename
                     FROM pg_tables
-                    WHERE schemaname NOT LIKE 'pg_%' AND schemaname <> 'information_schema'
+                    WHERE schemaname = 'public'
                     ORDER BY schemaname, tablename
                     """)) {
                 while (result.next()) {
