@@ -18,12 +18,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
         with:
           fetch-depth: 0
 
       - name: Set up JDK 21
-        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.8.0
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9
         with:
           java-version: '21'
           distribution: 'zulu'
@@ -36,12 +36,11 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      - name: Build and analyze
+      - name: Build, test, coverage and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          ./mvnw -B -ntp package -DskipTests \
-            org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
-            -Dsonar.projectKey=uvormbrock_agentic-order-service \
-            -Dsonar.qualitygate.wait=false \
-            -Dsonar.coverage.exclusions=**/*
+          ./mvnw -B -ntp clean verify \
+          org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
+          -Dsonar.projectKey=uvormbrock_agentic-order-service \
+          -Dsonar.qualitygate.wait=false

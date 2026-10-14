@@ -21,6 +21,7 @@
     <properties>
         <java.version>21</java.version>
         <sonar.organization>uvormbrock</sonar.organization>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
 
     <dependencies>
