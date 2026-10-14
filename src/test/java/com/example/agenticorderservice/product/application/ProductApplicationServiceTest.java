@@ -35,7 +35,14 @@ class ProductApplicationServiceTest {
     @Test void updatesInactiveResourceAndPreservesActivity() {
         var entity = new Product("Original", Money.of("12.34")); entity.deactivate();
         when(repository.findById(id)).thenReturn(Optional.of(entity));
-        var result = service.update(id, "Changed", new BigDecimal("12.34"));
+        var originalId = entity.getId();
+        var result = service.update(id, "Changed", new BigDecimal("45.67"));
+        assertThat(result.price()).isEqualByComparingTo("45.67");
+        assertThat(entity.getPrice()).isEqualTo(Money.of("45.67"));
+        assertThat(result.id()).isEqualTo(originalId);
+        assertThat(entity.getId()).isEqualTo(originalId);
+        assertThat(entity.getName()).isEqualTo("Changed");
+        assertThat(entity.isActive()).isFalse();
         assertThat(result.name()).isEqualTo("Changed"); assertThat(result.active()).isFalse();
         verify(repository, never()).save(any());
     }

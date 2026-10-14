@@ -31,5 +31,6 @@ public abstract class PostgreSqlApiTestSupport {
     protected JsonNode json(HttpResponse<String> response) { return mapper.readTree(response.body()); }
     protected void assertError(HttpResponse<String> response,ApiError.Code code) {
         assertThat(response.statusCode()).isEqualTo(code.status());assertThat(response.body()).isEqualTo(mapper.writeValueAsString(new ApiError(code)));
+        ExpectedApiErrors.assertResponse(response.statusCode(), response.body(), code.name());
     }
 }

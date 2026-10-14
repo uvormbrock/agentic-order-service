@@ -66,4 +66,45 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         error(delete("/customers/not-a-uuid"),OPERATION_NOT_AVAILABLE);
         mvc.perform(get("/products/aaaaAAAA-bBbB-cCcC-dDdD-eeEEeeEEeeEE")).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
     }
+
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> customerValueFailures() {
+        return java.util.stream.Stream.of("POST", "PUT").flatMap(method ->
+                java.util.stream.Stream.of(false, true).flatMap(reverse -> java.util.stream.Stream.of(
+                        org.junit.jupiter.params.provider.Arguments.of(method, reverse, "", "valid@example.com", INVALID_NAME),
+                        org.junit.jupiter.params.provider.Arguments.of(method, reverse, "Valid", "invalid", INVALID_EMAIL),
+                        org.junit.jupiter.params.provider.Arguments.of(method, reverse, "", "invalid", INVALID_NAME))));
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.MethodSource("customerValueFailures")
+    void customerNamePrecedesEmailForBothWriteMethodsAndPropertyOrders(
+            String method, boolean reverse, String name, String email, ApiError.Code expected) throws Exception {
+        String nameField = "\"name\":\"" + name + "\"";
+        String emailField = "\"email\":\"" + email + "\"";
+        String body = "{" + (reverse ? emailField + "," + nameField : nameField + "," + emailField) + "}";
+        var request = method.equals("POST") ? post("/customers") : put("/customers/" + id);
+        error(request.contentType("application/json").content(body), expected);
+        verifyNoInteractions(products, customers);
+    }
+
+    @Test
+    void malformedContentTypeAndUnsupportedMethodPrecedeInvalidPathAndBody() throws Exception {
+        error(put("/products/short").contentType("application").content("not json"), UNSUPPORTED_MEDIA_TYPE);
+        error(delete("/products/short").contentType("application").accept("application").content("not json"), METHOD_NOT_ALLOWED);
+        verifyNoInteractions(products, customers);
+    }
+
+    @Test
+    void characterizesMalformedAcceptRejectionBeforePathAndBody() throws Exception {
+        // Current malformed-header mapping, not a new selection of an unspecified Accept policy (AUD-05).
+        error(put("/products/short").contentType("application/json").accept("application").content("not json"), NOT_ACCEPTABLE);
+        verifyNoInteractions(products, customers);
+    }
+
+    @Test
+    void nonemptyUntypedMvcBodyIsUnsupportedWhileAbsentBodyIsRequired() throws Exception {
+        error(post("/products").content("{\"name\":\"A\",\"price\":1}"), UNSUPPORTED_MEDIA_TYPE);
+        error(post("/products"), REQUIRED_FIELD_MISSING);
+        verifyNoInteractions(products, customers);
+    }
 }

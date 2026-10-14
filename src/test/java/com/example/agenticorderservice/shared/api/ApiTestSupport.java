@@ -40,5 +40,6 @@ public abstract class ApiTestSupport {
         org.assertj.core.api.Assertions.assertThat(response.getContentType()).startsWith("application/json");
         org.assertj.core.api.Assertions.assertThat(response.getContentAsString()).isEqualTo(
                 context.getBean(tools.jackson.databind.json.JsonMapper.class).writeValueAsString(new ApiError(code)));
+        ExpectedApiErrors.assertResponse(response.getStatus(), response.getContentAsString(), code.name());
     }
 }

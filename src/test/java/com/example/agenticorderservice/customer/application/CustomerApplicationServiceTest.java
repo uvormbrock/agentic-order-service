@@ -30,7 +30,14 @@ class CustomerApplicationServiceTest {
     @Test void updatesInactiveResourceAndPreservesActivity() {
         var entity = new Customer("Original", new EmailAddress("user@example.com")); entity.deactivate();
         when(repository.findById(id)).thenReturn(Optional.of(entity));
-        var result = service.update(id, "Changed", "user@example.com");
+        var originalId = entity.getId();
+        var result = service.update(id, "Changed", " CHANGED+Tag@Example.COM ");
+        assertThat(result.email()).isEqualTo("changed+tag@example.com");
+        assertThat(entity.getEmail().value()).isEqualTo("changed+tag@example.com");
+        assertThat(result.id()).isEqualTo(originalId);
+        assertThat(entity.getId()).isEqualTo(originalId);
+        assertThat(entity.getName()).isEqualTo("Changed");
+        assertThat(entity.isActive()).isFalse();
         assertThat(result.name()).isEqualTo("Changed"); assertThat(result.active()).isFalse();
         verify(repository, never()).save(any());
     }
