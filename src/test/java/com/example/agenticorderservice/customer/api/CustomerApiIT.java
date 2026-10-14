@@ -1,7 +1,6 @@
 package com.example.agenticorderservice.customer.api;
 import com.example.agenticorderservice.shared.api.*;
 import java.util.*;
-import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.*;
 import static com.example.agenticorderservice.shared.api.ApiError.Code.*;

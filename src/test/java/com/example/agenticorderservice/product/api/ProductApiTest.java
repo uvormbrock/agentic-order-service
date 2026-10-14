@@ -42,7 +42,10 @@ class ProductApiTest extends ApiTestSupport {
         verify(products, never()).update(any(),any(),any());
     }
     @ParameterizedTest @ValueSource(strings={"application/merge-patch+json", "application/vendor+json", "application/json;charset=UTF-16", "text/plain"})
-    void rejectsUnsupportedMedia(String media) throws Exception { error(post("/products").contentType(media).content("{}"),UNSUPPORTED_MEDIA_TYPE); }
+    void rejectsUnsupportedMedia(String media) throws Exception {
+        error(post("/products").contentType(media).content("{}"),UNSUPPORTED_MEDIA_TYPE);
+        verifyNoInteractions(products, customers);
+    }
     @Test void acceptsUpperCaseUuidAndRejectsShortenedUuid() throws Exception {
         mvc.perform(get("/products/"+id.toString().toUpperCase(java.util.Locale.ROOT))).andExpect(status().isOk()).andExpect(jsonPath("$.id").value(id.toString()));
         error(get("/products/1-1-1-1-1"),INVALID_RESOURCE_ID);

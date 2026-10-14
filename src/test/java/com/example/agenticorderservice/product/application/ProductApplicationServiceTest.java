@@ -19,14 +19,17 @@ class ProductApplicationServiceTest {
         verify(repository).save(any());
     }
     @Test void invalidInputNeverReadsOrWritesRepository() {
-        assertThatThrownBy(() -> service.create("", new BigDecimal("12.34"))).isInstanceOf(InputValidationException.class);
-        assertThatThrownBy(() -> service.update(id, "Valid", new BigDecimal("12.345"))).isInstanceOf(InputValidationException.class);
+        var validPrice = new BigDecimal("12.34");
+        var invalidPrice = new BigDecimal("12.345");
+        assertThatThrownBy(() -> service.create("", validPrice)).isInstanceOf(InputValidationException.class);
+        assertThatThrownBy(() -> service.update(id, "Valid", invalidPrice)).isInstanceOf(InputValidationException.class);
         verifyNoInteractions(repository);
     }
     @Test void missingResourceRaisesFeatureFailure() {
         when(repository.findById(id)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.get(id)).isInstanceOf(ProductNotFoundException.class);
-        assertThatThrownBy(() -> service.update(id, "Valid", new BigDecimal("12.34"))).isInstanceOf(ProductNotFoundException.class);
+        var validPrice = new BigDecimal("12.34");
+        assertThatThrownBy(() -> service.update(id, "Valid", validPrice)).isInstanceOf(ProductNotFoundException.class);
         assertThatThrownBy(() -> service.deactivate(id)).isInstanceOf(ProductNotFoundException.class);
     }
     @Test void updatesInactiveResourceAndPreservesActivity() {
@@ -48,7 +51,7 @@ class ProductApplicationServiceTest {
         when(repository.findAll()).thenReturn(List.of(active, inactive));
         var results = service.list(); assertThat(results).hasSize(2);
         assertThat(results).extracting(ProductResult::active).containsExactly(true, false);
-        assertThatThrownBy(() -> results.clear()).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(results::clear).isInstanceOf(UnsupportedOperationException.class);
         when(repository.findAll()).thenReturn(List.of()); assertThat(service.list()).isEmpty();
     }
     @Test void resultIsSnapshotIndependentOfLaterMutation() {

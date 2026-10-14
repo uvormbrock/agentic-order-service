@@ -24,46 +24,74 @@ public final class StrictJsonRequestDecoder {
         return type == ProductDetailsRequest.class || type == CustomerDetailsRequest.class
                 || type == DeactivateProductRequest.class || type == DeactivateCustomerRequest.class;
     }
+    private static final String NAME = "name";
+    private static final String PRICE = "price";
+    private static final String EMAIL = "email";
+    private static final String ACTIVE = "active";
+
     public Object decode(byte[] bytes, Class<?> type) {
         if (!supports(type)) { throw new IllegalArgumentException("Unsupported request DTO"); }
         if (bytes.length == 0) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
         Map<String, Object> fields = parse(bytes);
         boolean product = type == ProductDetailsRequest.class || type == DeactivateProductRequest.class;
         boolean patch = type == DeactivateProductRequest.class || type == DeactivateCustomerRequest.class;
-        List<String> required = patch ? List.of("active") : product ? List.of("name", "price") : List.of("name", "email");
-        Set<String> known = product ? Set.of("id", "version", "active", "name", "price") : Set.of("id", "version", "active", "name", "email");
+        List<String> required = requiredFields(product, patch);
+        validateProperties(fields, required, product, patch);
+        validateTypes(fields, required);
+        validatePresence(fields, required);
+        return decodeValidatedFields(fields, product, patch);
+    }
+
+    private List<String> requiredFields(boolean product, boolean patch) {
+        if (patch) { return List.of(ACTIVE); }
+        if (product) { return List.of(NAME, PRICE); }
+        return List.of(NAME, EMAIL);
+    }
+
+    private void validateProperties(Map<String, Object> fields, List<String> required, boolean product, boolean patch) {
+        Set<String> known = product ? Set.of("id", "version", ACTIVE, NAME, PRICE) : Set.of("id", "version", ACTIVE, NAME, EMAIL);
         for (String key : new TreeSet<>(fields.keySet())) {
             if (!known.contains(key)) { throw new ApiInputException(UNKNOWN_FIELD); }
             if (!required.contains(key)) { throw new ApiInputException(UNSUPPORTED_FIELD); }
-            if (patch && fields.get(key) instanceof Scalar value
-                    && value.token() == JsonToken.VALUE_TRUE) { throw new ApiInputException(UNSUPPORTED_FIELD); }
+            if (patch && fields.get(key) instanceof Scalar value && value.token() == JsonToken.VALUE_TRUE) {
+                throw new ApiInputException(UNSUPPORTED_FIELD);
+            }
         }
+    }
+
+    private void validateTypes(Map<String, Object> fields, List<String> required) {
         for (String key : required) {
             Object value = fields.get(key);
             if (value == null) { continue; }
-            if (!(value instanceof Scalar scalar) || !validType(key, scalar.token())) {
-                throw new ApiInputException(INVALID_FIELD_TYPE);
-            }
+            if (!(value instanceof Scalar scalar) || !validType(key, scalar.token())) { throw new ApiInputException(INVALID_FIELD_TYPE); }
         }
+    }
+
+    private void validatePresence(Map<String, Object> fields, List<String> required) {
         for (String key : required) {
             if (fields.get(key) == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
         }
+    }
+
+    private Object decodeValidatedFields(Map<String, Object> fields, boolean product, boolean patch) {
         if (patch) { return product ? new DeactivateProductRequest(false) : new DeactivateCustomerRequest(false); }
-        String name = InputValidationException.name(((Scalar) fields.get("name")).text());
-        if (product) {
-            String spelling = ((Scalar) fields.get("price")).text();
-            if (!spelling.matches("-?(0|[1-9][0-9]*)(\\.[0-9]{1,2})?")) { throw new ApiInputException(INVALID_PRODUCT_PRICE); }
-            BigDecimal price = new BigDecimal(spelling);
-            com.example.agenticorderservice.product.application.ProductApplicationService.validatePrice(price);
-            return new ProductDetailsRequest(name, price);
-        }
-        String email = com.example.agenticorderservice.customer.application.CustomerApplicationService.validateEmail(((Scalar) fields.get("email")).text()).value();
+        String name = InputValidationException.name(((Scalar) fields.get(NAME)).text());
+        if (product) { return new ProductDetailsRequest(name, decodePrice(((Scalar) fields.get(PRICE)).text())); }
+        String email = com.example.agenticorderservice.customer.application.CustomerApplicationService.validateEmail(((Scalar) fields.get(EMAIL)).text()).value();
         return new CustomerDetailsRequest(name, email);
+    }
+
+    private BigDecimal decodePrice(String spelling) {
+        // Explicit ASCII digits document the accepted JSON price grammar; no Unicode regex mode.
+        if (!spelling.matches("-?(0|[1-9][0-9]*)(\\.[0-9]{1,2})?")) { throw new ApiInputException(INVALID_PRODUCT_PRICE); }
+        BigDecimal price = new BigDecimal(spelling);
+        com.example.agenticorderservice.product.application.ProductApplicationService.validatePrice(price);
+        return price;
     }
     private boolean validType(String key, JsonToken token) {
         return switch (key) {
-            case "price" -> token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT;
-            case "active" -> token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE;
+            case PRICE -> token == JsonToken.VALUE_NUMBER_INT || token == JsonToken.VALUE_NUMBER_FLOAT;
+            case ACTIVE -> token == JsonToken.VALUE_TRUE || token == JsonToken.VALUE_FALSE;
             default -> token == JsonToken.VALUE_STRING;
         };
     }

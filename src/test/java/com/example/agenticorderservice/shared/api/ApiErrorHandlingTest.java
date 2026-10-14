@@ -12,6 +12,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         error(get("/products").accept("text/html"),NOT_ACCEPTABLE);
         error(get("/products").accept("application/json;q=0, */*;q=1"),NOT_ACCEPTABLE);
         error(get("/does-not-exist").accept("text/html"),ENDPOINT_NOT_FOUND);
+        verifyNoInteractions(products, customers);
     }
     @Test void absentBodyWhitespaceNullAndDuplicateUseExactEnvelope() throws Exception {
         error(post("/products").contentType("application/json"),REQUIRED_FIELD_MISSING);
@@ -19,6 +20,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         error(post("/products").contentType("application/json").content(" "),MALFORMED_JSON);
         error(post("/products").contentType("application/json").content("null"),MALFORMED_JSON);
         error(post("/products").contentType("application/json").content("{\"name\":1,\"name\":2}"),MALFORMED_JSON);
+        verifyNoInteractions(products, customers);
     }
     @Test void confirmedCompletionFailuresTranslateOutsideServiceAndNeverReplay() throws Exception {
         when(products.deactivate(id)).thenThrow(new TransactionSystemException("secret sql",new OptimisticLockException("private details")));

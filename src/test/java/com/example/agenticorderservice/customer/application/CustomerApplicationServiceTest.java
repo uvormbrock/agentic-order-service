@@ -1,9 +1,7 @@
 package com.example.agenticorderservice.customer.application;
 import com.example.agenticorderservice.customer.domain.*;
 import com.example.agenticorderservice.customer.persistence.CustomerRepository;
-import com.example.agenticorderservice.shared.domain.Money;
 import com.example.agenticorderservice.shared.application.InputValidationException;
-import java.math.BigDecimal;
 import java.util.*;
 import org.junit.jupiter.api.*;
 import static org.assertj.core.api.Assertions.*;
@@ -48,7 +46,7 @@ class CustomerApplicationServiceTest {
         when(repository.findAll()).thenReturn(List.of(active, inactive));
         var results = service.list(); assertThat(results).hasSize(2);
         assertThat(results).extracting(CustomerResult::active).containsExactly(true, false);
-        assertThatThrownBy(() -> results.clear()).isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(results::clear).isInstanceOf(UnsupportedOperationException.class);
         when(repository.findAll()).thenReturn(List.of()); assertThat(service.list()).isEmpty();
     }
     @Test void resultIsSnapshotIndependentOfLaterMutation() {

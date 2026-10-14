@@ -40,49 +40,74 @@ public class ApiExceptionHandler {
     }
     public static ApiError.Code classify(Throwable failure) {
         Set<Throwable> seen = Collections.newSetFromMap(new IdentityHashMap<>());
-        List<Throwable> pending = new ArrayList<>(); pending.add(failure);
+        List<Throwable> pending = new ArrayList<>();
+        pending.add(failure);
         boolean establishment = false;
         boolean connectionFailure = false;
         for (int index = 0; index < pending.size(); index++) {
             Throwable cause = pending.get(index);
             if (cause == null || !seen.add(cause)) { continue; }
-            if (cause instanceof ApiInputException input) { return input.code(); }
-            if (cause instanceof InputValidationException input) {
-                return switch (input.failure()) {
-                    case REQUIRED -> REQUIRED_FIELD_MISSING;
-                    case NAME -> INVALID_NAME;
-                    case PRICE -> INVALID_PRODUCT_PRICE;
-                    case EMAIL -> INVALID_EMAIL;
-                };
-            }
-            if (cause instanceof ProductNotFoundException) { return PRODUCT_NOT_FOUND; }
-            if (cause instanceof CustomerNotFoundException) { return CUSTOMER_NOT_FOUND; }
-            if (cause instanceof OptimisticLockException || cause instanceof OptimisticLockingFailureException) { return CONCURRENT_MODIFICATION; }
-            if (cause instanceof HttpRequestMethodNotSupportedException) { return METHOD_NOT_ALLOWED; }
-            if (cause instanceof HttpMediaTypeNotAcceptableException) { return NOT_ACCEPTABLE; }
-            if (cause instanceof HttpMediaTypeNotSupportedException) { return UNSUPPORTED_MEDIA_TYPE; }
-            if (cause instanceof NoResourceFoundException || cause instanceof NoHandlerFoundException) { return ENDPOINT_NOT_FOUND; }
-            if (cause instanceof HttpMessageNotReadableException) {
-                // Inspect nested typed decoder failures before using the generic syntax fallback.
-                if (cause.getCause() == null) { return MALFORMED_JSON; }
-            }
-            if (cause instanceof CannotCreateTransactionException) { establishment = true; }
-            if (cause instanceof org.hibernate.exception.JDBCConnectionException) { connectionFailure = true; }
-            if (cause instanceof SQLException sql) {
-                if (sql instanceof java.sql.SQLTransientConnectionException || sql instanceof java.sql.SQLNonTransientConnectionException || (sql.getSQLState() != null && sql.getSQLState().startsWith("08"))) { connectionFailure = true; }
-                if ("23505".equals(sql.getSQLState()) && "uq_customers_email".equals(constraint(sql))) { return DUPLICATE_EMAIL; }
-                if (sql.getNextException() != null) { pending.add(sql.getNextException()); }
-            }
-            if (cause instanceof TransactionSystemException transaction && transaction.getOriginalException() != cause) { pending.add(transaction.getOriginalException()); }
-            if (cause.getCause() != null) { pending.add(cause.getCause()); }
+            ApiError.Code known = knownFailure(cause);
+            if (known != null) { return known; }
+            establishment |= cause instanceof CannotCreateTransactionException;
+            connectionFailure |= isConnectionFailure(cause);
+            addRelatedCauses(pending, cause);
         }
-        return establishment && connectionFailure ? SERVICE_UNAVAILABLE : failure instanceof HttpMessageNotReadableException ? MALFORMED_JSON : INTERNAL_SERVER_ERROR;
+        return fallback(failure, establishment, connectionFailure);
     }
-    private static String constraint(SQLException failure) {
-        if (!failure.getClass().getName().equals("org.postgresql.util.PSQLException")) { return null; }
-        try {
-            Object detail = failure.getClass().getMethod("getServerErrorMessage").invoke(failure);
-            return detail == null ? null : (String) detail.getClass().getMethod("getConstraint").invoke(detail);
-        } catch (ReflectiveOperationException unavailable) { return null; }
+
+    private static ApiError.Code knownFailure(Throwable cause) {
+        if (cause instanceof ApiInputException input) { return input.code(); }
+        if (cause instanceof InputValidationException input) {
+            return switch (input.failure()) {
+                case REQUIRED -> REQUIRED_FIELD_MISSING;
+                case NAME -> INVALID_NAME;
+                case PRICE -> INVALID_PRODUCT_PRICE;
+                case EMAIL -> INVALID_EMAIL;
+            };
+        }
+        if (cause instanceof ProductNotFoundException) { return PRODUCT_NOT_FOUND; }
+        if (cause instanceof CustomerNotFoundException) { return CUSTOMER_NOT_FOUND; }
+        if (cause instanceof OptimisticLockException || cause instanceof OptimisticLockingFailureException) {
+            return CONCURRENT_MODIFICATION;
+        }
+        if (cause instanceof org.hibernate.exception.ConstraintViolationException violation
+                && "23505".equals(violation.getSQLState())
+                && "uq_customers_email".equals(violation.getConstraintName())) {
+            return DUPLICATE_EMAIL;
+        }
+        return transportFailure(cause);
+    }
+
+    private static ApiError.Code transportFailure(Throwable cause) {
+        if (cause instanceof HttpRequestMethodNotSupportedException) { return METHOD_NOT_ALLOWED; }
+        if (cause instanceof HttpMediaTypeNotAcceptableException) { return NOT_ACCEPTABLE; }
+        if (cause instanceof HttpMediaTypeNotSupportedException) { return UNSUPPORTED_MEDIA_TYPE; }
+        if (cause instanceof NoResourceFoundException || cause instanceof NoHandlerFoundException) { return ENDPOINT_NOT_FOUND; }
+        // Inspect a nested typed decoder failure before choosing the syntax fallback.
+        if (cause instanceof HttpMessageNotReadableException && cause.getCause() == null) { return MALFORMED_JSON; }
+        return null;
+    }
+
+    private static boolean isConnectionFailure(Throwable cause) {
+        if (cause instanceof org.hibernate.exception.JDBCConnectionException) { return true; }
+        if (!(cause instanceof SQLException sql)) { return false; }
+        return sql instanceof java.sql.SQLTransientConnectionException
+                || sql instanceof java.sql.SQLNonTransientConnectionException
+                || (sql.getSQLState() != null && sql.getSQLState().startsWith("08"));
+    }
+
+    private static void addRelatedCauses(List<Throwable> pending, Throwable cause) {
+        if (cause instanceof SQLException sql && sql.getNextException() != null) { pending.add(sql.getNextException()); }
+        if (cause instanceof TransactionSystemException transaction && transaction.getOriginalException() != cause) {
+            pending.add(transaction.getOriginalException());
+        }
+        if (cause.getCause() != null) { pending.add(cause.getCause()); }
+    }
+
+    private static ApiError.Code fallback(Throwable failure, boolean establishment, boolean connectionFailure) {
+        if (establishment && connectionFailure) { return SERVICE_UNAVAILABLE; }
+        if (failure instanceof HttpMessageNotReadableException) { return MALFORMED_JSON; }
+        return INTERNAL_SERVER_ERROR;
     }
 }

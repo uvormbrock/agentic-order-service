@@ -69,7 +69,7 @@ class PostgreSqlFoundationIT {
         assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(4);
         assertThat(environment.getProperty("spring.jpa.open-in-view", Boolean.class)).isFalse();
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
-        assertThat(entityManagerFactory.getProperties().get("hibernate.hbm2ddl.auto")).isEqualTo("validate");
+        assertThat(entityManagerFactory.getProperties()).containsEntry("hibernate.hbm2ddl.auto", "validate");
         assertThat(environment.getProperty("spring.sql.init.mode")).isEqualTo("never");
         assertThat(context.getBeansOfType(OpenEntityManagerInViewInterceptor.class)).isEmpty();
         assertThat(context.getBeansOfType(OpenEntityManagerInViewFilter.class)).isEmpty();

@@ -45,7 +45,7 @@ class VersionMigrationIT {
                 UUID active=table.equals("products")?activeProduct:activeCustomer;
                 assertThat(jdbc.queryForObject("select active from "+schema+"."+table+" where id=?",Boolean.class,active)).isTrue();
                 var column=jdbc.queryForMap("select data_type,is_nullable,column_default from information_schema.columns where table_schema=? and table_name=? and column_name='version'",schema,table);
-                assertThat(column.get("data_type")).isEqualTo("bigint");assertThat(column.get("is_nullable")).isEqualTo("NO");assertThat(column.get("column_default")).isNull();
+                assertThat(column).containsEntry("data_type", "bigint").containsEntry("is_nullable", "NO");assertThat(column.get("column_default")).isNull();
                 assertThat(jdbc.queryForObject("select name from "+schema+"."+table+" where id=?",String.class,original)).isEqualTo("Original");
                 assertThat(jdbc.queryForObject("select active from "+schema+"."+table+" where id=?",Boolean.class,original)).isFalse();
             }

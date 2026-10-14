@@ -1,6 +1,7 @@
 package com.example.agenticorderservice.order.persistence;
 
 import com.example.agenticorderservice.order.domain.Order;
+import com.example.agenticorderservice.order.domain.OrderItem;
 import com.example.agenticorderservice.order.domain.OrderLineInput;
 import com.example.agenticorderservice.shared.domain.Money;
 import com.example.agenticorderservice.product.domain.Product;
@@ -99,7 +100,8 @@ class OrderPersistenceIT {
             Order unloadedProxy = em.getReference(Order.class, roots.getFirst().getId());
             assertThat(factory.getPersistenceUnitUtil().isLoaded(unloadedProxy)).isFalse();
             unloadedProxy.hashCode();
-            assertThat(unloadedProxy.equals(unloadedProxy)).isTrue();
+            boolean equalsItself = unloadedProxy.equals(unloadedProxy);
+            assertThat(equalsItself).isTrue();
             assertThat(unloadedProxy.getId()).isEqualTo(roots.getFirst().getId());
             assertThat(factory.getPersistenceUnitUtil().isLoaded(unloadedProxy)).isFalse();
             assertThat(stats.getPrepareStatementCount()).isZero();
@@ -110,7 +112,8 @@ class OrderPersistenceIT {
             var proxy = em.getReference(Order.class, root.getId());
             long statements = stats.getPrepareStatementCount();
             proxy.hashCode();
-            assertThat(proxy.equals(loaded)).isTrue();
+            boolean equalsManagedReference = proxy.equals(loaded);
+            assertThat(equalsManagedReference).isTrue();
             assertThat(stats.getPrepareStatementCount()).isEqualTo(statements);
             return new Snapshot(loaded.getId(), loaded.getTotal(), loaded.getItems().stream()
                     .map(item -> new ItemSnapshot(item.getProductName(), item.getQuantity(), item.getLineTotal())).toList());
@@ -270,7 +273,7 @@ class OrderPersistenceIT {
         });
         return new HistoricalOrder(root.getId(), root.getCustomerId(), root.getSubtotal(), root.getDiscount(), root.getTotal(),
                 root.getItems().stream().collect(Collectors.toUnmodifiableMap(
-                        item -> item.getProductId(), item -> new HistoricalItem(
+                        OrderItem::getProductId, item -> new HistoricalItem(
                                 item.getProductName(), item.getUnitPrice(), item.getQuantity(), item.getLineTotal()))));
     }
 

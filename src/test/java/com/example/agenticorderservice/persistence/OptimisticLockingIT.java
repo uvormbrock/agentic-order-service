@@ -6,7 +6,6 @@ import com.example.agenticorderservice.shared.domain.Money;
 import jakarta.persistence.EntityManager;
 import java.util.*;
 import java.util.concurrent.*;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.aop.framework.Advised;
@@ -58,9 +57,10 @@ class OptimisticLockingIT extends PostgreSqlApiTestSupport {
             winner.get(20,TimeUnit.SECONDS);loser.get(20,TimeUnit.SECONDS);
         }
         var row=jdbc.queryForMap("select name,active,version from "+feature+"s where id=?",id);
-        assertThat(row.get("name")).isEqualTo(first.equals("update")?"Winner":"Original");
-        assertThat(row.get("active")).isEqualTo(!first.equals("patch"));assertThat(row.get("version")).isEqualTo(1L);
-        assertThat(VersionSqlInspector.statements).anyMatch(sql -> sql.startsWith("update "+feature+"s ") && sql.substring(sql.indexOf(" where ")).contains("version=?"));
+        assertThat(row).containsEntry("name", first.equals("update")?"Winner":"Original");
+        assertThat(row).containsEntry("active", !first.equals("patch")).containsEntry("version", 1L);
+        var observedSql = List.copyOf(VersionSqlInspector.statements);
+        assertThat(observedSql).anyMatch(sql -> sql.startsWith("update "+feature+"s ") && sql.substring(sql.indexOf(" where ")).contains("version=?"));
     }
     @ParameterizedTest @CsvSource({"product","customer"})
     void sequentialInactivePatchIsNoUpdateAndNoVersionIncrement(String feature) throws Exception {

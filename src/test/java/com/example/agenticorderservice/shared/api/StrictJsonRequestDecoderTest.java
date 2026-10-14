@@ -38,14 +38,16 @@ class StrictJsonRequestDecoderTest {
         );
     }
     @ParameterizedTest @MethodSource("invalid") void deterministicCategories(String input,ApiError.Code expected) {
-        try { decoder.decode(input.getBytes(StandardCharsets.UTF_8),ProductDetailsRequest.class); fail("Expected rejection"); }
-        catch(RuntimeException failure) { assertThat(ApiExceptionHandler.classify(failure)).isEqualTo(expected); }
+        byte[] bytes = input.getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> decoder.decode(bytes, ProductDetailsRequest.class))
+                .satisfies(failure -> assertThat(ApiExceptionHandler.classify(failure)).isEqualTo(expected));
     }
     @ParameterizedTest @CsvSource({"{},REQUIRED_FIELD_MISSING","{active:null},REQUIRED_FIELD_MISSING","{active:true},UNSUPPORTED_FIELD","{active:1},INVALID_FIELD_TYPE","{active:foo},INVALID_FIELD_TYPE","{name:x},UNSUPPORTED_FIELD","{extra:x},UNKNOWN_FIELD"})
     void patchPolicies(String shorthand,ApiError.Code expected) {
         String body=shorthand.replace("active","\"active\"").replace("null","null").replace("foo","\"foo\"")
                 .replace("name","\"name\"").replace("extra","\"extra\"").replace(":x",":\"x\"");
-        assertThatThrownBy(() -> decoder.decode(body.getBytes(StandardCharsets.UTF_8),DeactivateProductRequest.class))
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        assertThatThrownBy(() -> decoder.decode(bytes,DeactivateProductRequest.class))
                 .isInstanceOf(ApiInputException.class).satisfies(e -> assertThat(ApiExceptionHandler.classify(e)).isEqualTo(expected));
     }
     @Test void acceptsTrailingJsonWhitespaceAndInactivePatch() {

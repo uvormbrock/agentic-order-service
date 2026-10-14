@@ -9,7 +9,9 @@ import org.springframework.web.bind.annotation.*;
 public final class ApiErrorController implements ErrorController {
     private final ApiErrorResponseWriter writer;
     public ApiErrorController(ApiErrorResponseWriter writer) { this.writer = writer; }
-    @RequestMapping("${server.error.path:${error.path:/error}}")
+    // Boot property placeholders are not URI variables. ERROR dispatch retains the original method;
+    // this read-only renderer intentionally accepts every method, as Boot's error controller does.
+    @RequestMapping("${spring.web.error.path:${error.path:/error}}")
     public void error(HttpServletRequest request, HttpServletResponse response) throws IOException {
         Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
         ApiError.Code code = status instanceof Integer number ? switch (number) {
