@@ -1,7 +1,6 @@
 package com.example.agenticorderservice.persistence;
 
 import org.flywaydb.core.Flyway;
-import java.math.BigDecimal;
 import java.util.UUID;
 import com.example.agenticorderservice.PostgreSqlTestConfiguration;
 import jakarta.persistence.EntityManagerFactory;
@@ -11,7 +10,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.jdbc.core.JdbcTemplate;
-import static com.example.agenticorderservice.PostgreSqlTestConfiguration.inTransaction;
 import static org.assertj.core.api.Assertions.*;
 
 @SpringBootTest(properties = "spring.jpa.properties.hibernate.generate_statistics=true")
@@ -74,11 +72,5 @@ class DomainSchemaIT {
                         .hasStackTraceContaining("ck_orders_" + column);
             }
         }
-    }
-
-    // SONARQUBE PROBE — intentionally unused method with console output.
-    // Remove after verifying static analysis of integration test sources.
-    private void sonarIntegrationTestProbe() {
-        System.out.println("Intentional SonarQube integration test probe");
     }
 }
