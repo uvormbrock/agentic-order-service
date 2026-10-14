@@ -26,7 +26,10 @@ Interview talking points may describe intended methodology while Planned, but mu
 | 02       | [Technical bootstrap – Increment 1](02-technical-bootstrap.md)                 | **Reviewed – Accepted** |
 | 03 | [PostgreSQL foundation – Increment 2](03-postgresql-foundation.md) | **Reviewed – Accepted** |
 | 04 | [Domain Model & Persistence – Increment 3](04-domain-model.md) | **Reviewed – Accepted** |
+| 05 | [Product & Customer Application Services and REST API – Increment 4](05-product-customer-api.md) | **Executed – Pending Human Review** |
 
 ## Authority and Workflow
 
 Prompts do not change Accepted decisions, resolve Open questions, promote Proposed ADRs, or authorize code/migrations/commits. Requirements and uniquely numbered ADRs retain authority. Follow [AGENTS.md](../../../AGENTS.md), the [AI workflow](../ai-development-workflow.md), and the [system architecture](../../02-architecture/system-architecture.md). Storing a prompt and executing it are separate actions; observe the user's authorized scope.
+
+Increment 4 has one executable contract: [Current Implementation Prompt](05-product-customer-api.md#current-implementation-prompt--increment-4), explicitly authorized and executed; [human implementation review](05-product-customer-api.md#implementation-results--executed-pending-human-review) remains Pending. Historical prompts/sketches are non-executable; persistent local migration has its own target/recovery safety gate, separate from disposable Testcontainers verification.

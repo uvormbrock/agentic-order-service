@@ -1,0 +1,33 @@
+package com.example.agenticorderservice.customer.api;
+import com.example.agenticorderservice.shared.api.*;
+import com.example.agenticorderservice.customer.application.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static com.example.agenticorderservice.shared.api.ApiError.Code.*;
+class CustomerApiTest extends ApiTestSupport {
+    @Test void normalizesUnicodeNameAndAsciiEmailAndPreservesPlusDots() throws Exception {
+        mvc.perform(post("/customers").contentType("application/json;charset=UTF-8").content("""
+                {"name":"  Älice😀  ","email":" USER.Name+Tag@Example.COM "}
+                """))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.name").value("Älice😀"))
+                .andExpect(jsonPath("$.email").value("user.name+tag@example.com"));
+    }
+    @ParameterizedTest @ValueSource(strings={"", "bad", "ü@example.com", "a..b@example.com", "a@-example.com"})
+    void rejectsInvalidEmails(String email) throws Exception {
+        error(post("/customers").contentType("application/json").content("{\"name\":\"Valid\",\"email\":"+context.getBean(tools.jackson.databind.json.JsonMapper.class).writeValueAsString(email)+"}"),INVALID_EMAIL);
+        verify(customers,never()).create(any(),any());
+    }
+    @Test void notFoundAndInterimDeleteHaveDistinctContracts() throws Exception {
+        when(customers.get(id)).thenThrow(new CustomerNotFoundException());error(get("/customers/"+id),CUSTOMER_NOT_FOUND);
+        error(delete("/customers/"+id),OPERATION_NOT_AVAILABLE);
+        var allow=mvc.perform(delete("/customers/"+id)).andReturn().getResponse().getHeader("Allow");
+        assertThat(allow).contains("GET","HEAD","PUT","PATCH","OPTIONS").doesNotContain("DELETE","POST");
+        error(delete("/products/"+id),METHOD_NOT_ALLOWED);
+        verify(customers,never()).deactivate(any());
+    }
+}

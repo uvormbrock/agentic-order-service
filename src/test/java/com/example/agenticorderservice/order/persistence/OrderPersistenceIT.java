@@ -31,11 +31,11 @@ class OrderPersistenceIT {
 
     private UUID customer() {
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into customers values (?, 'fixture', ?, true)", id, id + "@example.com"); return id;
+        jdbc.update("insert into customers (id, name, email, active, version) values (?, 'fixture', ?, true, 0)", id, id + "@example.com"); return id;
     }
     private UUID product() {
         UUID id = UUID.randomUUID();
-        jdbc.update("insert into products values (?, 'original', 999999.99, true)", id); return id;
+        jdbc.update("insert into products (id, name, price, active, version) values (?, 'original', 999999.99, true, 0)", id); return id;
     }
     @Test void cascadesOnlyRootAndReloadsOriginalLargeSnapshotsWithExplicitFetch() {
         UUID customer = customer(), first = product(), second = product();

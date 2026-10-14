@@ -78,7 +78,7 @@ class PostgreSqlFoundationIT {
     @Test
     void initializesApprovedDomainMigrationAndFlywayMetadata() throws SQLException {
         assertThat(environment.getProperty("spring.flyway.enabled", Boolean.class)).isTrue();
-        assertThat(flyway.info().applied()).hasSize(1);
+        assertThat(flyway.info().applied()).hasSize(2);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         try (var connection = dataSource.getConnection();
              var statement = connection.createStatement()) {
@@ -96,7 +96,7 @@ class PostgreSqlFoundationIT {
             assertThat(tables).containsExactly("public.customers", "public.flyway_schema_history", "public.order_items", "public.orders", "public.products");
             try (var result = statement.executeQuery("SELECT count(*) FROM flyway_schema_history")) {
                 assertThat(result.next()).isTrue();
-                assertThat(result.getLong(1)).isEqualTo(1);
+                assertThat(result.getLong(1)).isEqualTo(2);
             }
         }
     }

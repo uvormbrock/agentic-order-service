@@ -6,6 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface ProductRepository extends Repository<Product, UUID> {
+    java.util.List<Product> findAll();
     Product save(Product entity);
     Optional<Product> findById(UUID id);
 }

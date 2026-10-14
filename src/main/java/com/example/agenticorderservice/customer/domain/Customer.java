@@ -8,6 +8,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Version;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -24,6 +25,10 @@ public class Customer {
     private EmailAddress email;
     @Column(nullable = false)
     private boolean active = true;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
 
     protected Customer() { }
     public Customer(String name, EmailAddress email) {

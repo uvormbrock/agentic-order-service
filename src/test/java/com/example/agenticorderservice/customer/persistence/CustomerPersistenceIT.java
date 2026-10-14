@@ -106,7 +106,7 @@ class CustomerPersistenceIT {
         });
         assertThat(jdbc.queryForObject("select char_length(name) from customers where id=?", Integer.class, id)).isEqualTo(200);
         assertThat(jdbc.queryForObject("select char_length(email) from customers where id=?", Integer.class, id)).isEqualTo(254);
-        assertThatThrownBy(() -> jdbc.update("insert into customers values (?, 'invalid', ?, true)", UUID.randomUUID(),
+        assertThatThrownBy(() -> jdbc.update("insert into customers (id, name, email, active, version) values (?, 'invalid', ?, true, 0)", UUID.randomUUID(),
                 "a".repeat(243) + "@example.com")).hasStackTraceContaining("ck_customers_email");
         assertThat(repository.findById(id).orElseThrow().getEmail().value()).isEqualTo(normalizedEmail);
     }

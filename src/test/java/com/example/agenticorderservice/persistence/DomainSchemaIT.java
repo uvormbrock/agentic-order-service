@@ -25,32 +25,32 @@ class DomainSchemaIT {
         assertThat(factory.getMetamodel().getEntities()).hasSize(4);
         assertThat(jdbc.queryForObject("select count(*) from information_schema.columns where table_schema='public' and data_type='numeric' and numeric_precision is null and numeric_scale is null", Long.class)).isEqualTo(6);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
-        assertThat(flyway.info().applied()).hasSize(1);
+        assertThat(flyway.info().applied()).hasSize(2);
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("select checksum from flyway_schema_history where version='1'", Integer.class)).isNotNull();
     }
     @Test void rejectsInvalidPricesAtDatabaseBoundaryWithoutCoercion() {
         for (String invalid : new String[]{"-0.01", "1000000", "1.001", "10.000", "NaN", "Infinity", "-Infinity"}) {
             UUID id = UUID.randomUUID();
-            assertThatThrownBy(() -> jdbc.update("insert into products values (?, 'invalid', cast(? as numeric), true)", id, invalid))
+            assertThatThrownBy(() -> jdbc.update("insert into products (id, name, price, active, version) values (?, 'invalid', cast(? as numeric), true, 0)", id, invalid))
                     .hasStackTraceContaining("ck_products_price");
             assertThat(jdbc.queryForObject("select count(*) from products where id=?", Long.class, id)).isZero();
         }
     }
     @Test void enforcesNameUnicodeWhitespaceLengthAndRequiredFields() {
         for (String invalid : new String[]{"", " ", " padded ", "\tTabbed", "😀".repeat(201)}) {
-            assertThatThrownBy(() -> jdbc.update("insert into products values (?, ?, 1.00, true)", UUID.randomUUID(), invalid))
+            assertThatThrownBy(() -> jdbc.update("insert into products (id, name, price, active, version) values (?, ?, 1.00, true, 0)", UUID.randomUUID(), invalid))
                     .hasStackTraceContaining("ck_products_name");
         }
-        assertThatThrownBy(() -> jdbc.update("insert into products values (?, null, 1.00, true)", UUID.randomUUID()))
+        assertThatThrownBy(() -> jdbc.update("insert into products (id, name, price, active, version) values (?, null, 1.00, true, 0)", UUID.randomUUID()))
                 .hasStackTraceContaining("name");
     }
     @Test void enforcesCaseIndexAndNormalizedEmailAgainstDirectWrites() {
         UUID id = UUID.randomUUID(); String email = id + "@example.com";
-        jdbc.update("insert into customers values (?, 'existing', ?, false)", id, email);
-        assertThatThrownBy(() -> jdbc.update("insert into customers values (?, 'duplicate', ?, true)", UUID.randomUUID(), email))
+        jdbc.update("insert into customers (id, name, email, active, version) values (?, 'existing', ?, false, 0)", id, email);
+        assertThatThrownBy(() -> jdbc.update("insert into customers (id, name, email, active, version) values (?, 'duplicate', ?, true, 0)", UUID.randomUUID(), email))
                 .hasStackTraceContaining("uq_customers_email");
-        assertThatThrownBy(() -> jdbc.update("insert into customers values (?, 'invalid', ?, true)", UUID.randomUUID(), email.toUpperCase(java.util.Locale.ROOT)))
+        assertThatThrownBy(() -> jdbc.update("insert into customers (id, name, email, active, version) values (?, 'invalid', ?, true, 0)", UUID.randomUUID(), email.toUpperCase(java.util.Locale.ROOT)))
                 .hasStackTraceContaining("ck_customers_email");
         assertThat(jdbc.queryForObject("select indexdef from pg_indexes where indexname='uq_customers_email'", String.class))
                 .contains("UNIQUE").contains("lower(email)").doesNotContain(" WHERE ");
@@ -60,7 +60,7 @@ class DomainSchemaIT {
         assertThatThrownBy(() -> jdbc.update("insert into orders values (?, ?, 1.00, 0.00, 1.00)", UUID.randomUUID(), UUID.randomUUID()))
                 .hasStackTraceContaining("fk_orders_customer");
         UUID customer = UUID.randomUUID();
-        jdbc.update("insert into customers values (?, 'valid', ?, false)", customer, customer + "@example.com");
+        jdbc.update("insert into customers (id, name, email, active, version) values (?, 'valid', ?, false, 0)", customer, customer + "@example.com");
         for (String column : new String[]{"subtotal", "discount", "total"}) {
             for (String invalid : new String[]{"-0.01", "1.001", "10.000", "NaN", "Infinity", "-Infinity"}) {
                 String values = switch (column) {

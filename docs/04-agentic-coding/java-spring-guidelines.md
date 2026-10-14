@@ -38,7 +38,7 @@ The scope is Java 21 and the imperative Spring Boot 4.1.1 application with Sprin
 - Use explicit request/response DTOs; Java records are appropriate when immutable data carriers suffice.
 - Validate incoming DTOs with Jakarta Validation and `@Valid`, while enforcing business rules separately in the domain/application layer.
 - Preserve the accepted [PRD](../01-requirements/product-requirements.md) HTTP contract and validation rules. [REST API design](../02-architecture/rest-api-design.md) distinguishes those requirements from Proposed binding/handler implementations. Verify unknown root/nested fields and numeric coercion through real JSON binding; annotations alone do not prove correct rejection.
-- The API owns exception-to-HTTP translation. `@RestControllerAdvice` is a Proposed mechanism, not a selected concrete handler. Preserve the already accepted statuses and `code`/`message` envelope; exact code taxonomy remains Open. Distinguish business errors from infrastructure failures and do not expose internal details.
+- The API owns exception-to-HTTP translation. `@RestControllerAdvice` is a Proposed mechanism, not a selected concrete handler. Preserve the already accepted statuses and `code`/`message` envelope; Increment 4 code/status taxonomy and category precedence are Human Accepted in the [central API catalog](../02-architecture/api-error-codes.md); precise framework processing/rendering remains subject to review/verification. Distinguish business errors from infrastructure failures and do not expose internal details.
 - Use typed, environment-specific configuration; never hardcode real database credentials or secrets.
 
 ## Logging and Operational Hygiene
@@ -66,3 +66,7 @@ The scope is Java 21 and the imperative Spring Boot 4.1.1 application with Sprin
 ## Provenance
 
 The user-supplied draft attributes general patterns to *Java Coding Standards* and *Spring Boot Development Patterns*. These sources are background material, not adopted repository instructions. This revision follows the supplied review feedback and authoritative project documents; it installs no skill and changes no ADR status.
+
+## Increment 4 Accepted Policy Additions
+
+Follow the [approved API/transaction direction](../02-architecture/rest-api-design.md#10-human-accepted-increment-4-api-and-transaction-decisions): strict scalar types, price token lexical checks before BigDecimal/Money, canonical UUIDs, deterministic one-error precedence and safe central JSON envelopes. Feature application writes use @Transactional, reads readOnly=true; immutable results are materialized inside, HTTP success/error translation occurs after proxy completion. Product/Customer @Version direction is approved but the complete [ADR-0006](../03-decisions/ADR-0006-product-customer-optimistic-locking.md), exact mapping/V2, test dependency and implementation remain pending. No automatic conflict retry, V1 edit, Order locking/retry protocol or ETag/If-Match is introduced by this guidance.

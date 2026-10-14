@@ -15,6 +15,11 @@ import static org.assertj.core.api.Assertions.assertThat;
         + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration")
 class AgenticOrderServiceApplicationTest {
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.agenticorderservice.product.application.ProductApplicationService products;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.agenticorderservice.customer.application.CustomerApplicationService customers;
+
     @Autowired
     private ApplicationContext context;
 
