@@ -75,4 +75,10 @@ class DomainSchemaIT {
             }
         }
     }
+
+    // SONARQUBE PROBE — intentionally unused method with console output.
+    // Remove after verifying static analysis of integration test sources.
+    private void sonarIntegrationTestProbe() {
+        System.out.println("Intentional SonarQube integration test probe");
+    }
 }
