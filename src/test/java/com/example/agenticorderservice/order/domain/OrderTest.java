@@ -38,7 +38,8 @@ class OrderTest {
         var item = order.getItems().getFirst();
         assertThat(item.getOrder()).isSameAs(order); assertThat(item.getId()).isNull();
         assertThat(item.getQuantity()).isEqualTo(5); assertThat(item.getLineTotal()).isEqualTo(Money.of("125"));
-        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> order.getItems().clear());
+        var items = order.getItems();
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(items::clear);
     }
     @Test void rejectsEmptyInvalidAndExcessConsolidatedQuantities() {
         UUID product = UUID.randomUUID();
@@ -158,7 +159,8 @@ class OrderTest {
     void prohibitsStructuralMutationThroughItemGetter(String operation, Consumer<List<OrderItem>> mutation) {
         var order = new Order(UUID.randomUUID(), List.of(line(UUID.randomUUID(), "25.00", 2)));
         var item = order.getItems().getFirst();
-        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> mutation.accept(order.getItems()));
+        var items = order.getItems();
+        assertThatExceptionOfType(UnsupportedOperationException.class).isThrownBy(() -> mutation.accept(items));
         assertThat(order.getItems()).containsExactly(item);
         assertThat(item.getQuantity()).isEqualTo(2);
         assertThat(item.getLineTotal()).isEqualTo(Money.of("50.00"));
