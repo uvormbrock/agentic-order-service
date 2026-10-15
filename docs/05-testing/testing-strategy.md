@@ -1,10 +1,10 @@
 # Testing Strategy
 
-**Status:** Approved quality requirements; foundation/domain/persistence tests executed; Increment 3 Reviewed – Accepted; Increment 4 application/optimistic verification executed, human review Pending; Order concurrency gates Pending
+**Status:** Approved quality requirements; foundation/domain/persistence tests executed; Increment 3 Reviewed – Accepted; Increment 4 Reviewed – Accepted; Order concurrency gates Pending
 
 ## Scope and Prerequisites
 
-The [PRD acceptance criteria](../01-requirements/product-requirements.md) define behavior; [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) defines concurrency outcomes. The [Proposed ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) defines technical verification scenarios. JUnit 6 is Accepted under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md), explicitly replacing JUnit 5. Use Jupiter and Platform versions managed by Spring Boot 4.1.1 without JUnit 5-retention overrides; foundation and Increment 3 domain/persistence verification passed; Increment 4 application/HTTP/optimistic verification is recorded below; human acceptance and full Order concurrency remain Pending.
+The [PRD acceptance criteria](../01-requirements/product-requirements.md) define behavior; [ADR-0001](../03-decisions/ADR-0001-order-placement-concurrency.md) defines concurrency outcomes. The [Proposed ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) defines technical verification scenarios. JUnit 6 is Accepted under [ADR-0005](../03-decisions/ADR-0005-technology-stack.md), explicitly replacing JUnit 5. Use Jupiter and Platform versions managed by Spring Boot 4.1.1 without JUnit 5-retention overrides; foundation and Increment 3 domain/persistence verification passed; Increment 4 application/HTTP/optimistic verification is recorded below; Increment 4 human acceptance is recorded; full Order concurrency remains Pending.
 
 ## Quality Gate Applicability
 
@@ -33,6 +33,14 @@ Before declaring the MVP complete, every required implementation gate must have 
 | Concurrency | Deterministic PostgreSQL tests of the scenarios below, using actual JPA/provider paths |
 
 Use unit tests for domain behavior and HTTP integration tests through real JSON binding. PostgreSQL/Testcontainers is required for persistence/concurrency evidence, not H2 or mocked repositories. Use reviewed migrations in disposable databases only after migration approval. A context smoke test does not establish locking correctness. No arbitrary coverage percentage replaces meaningful gates.
+
+## Planned Additional Gate — Mutation Testing
+
+**Status:** Mutation Testing – Planned, Pending Human Approval. No experiments or automated mutation runs have been performed, and no mutation score is claimed.
+
+Test execution checks whether the current code satisfies selected assertions. JaCoCo coverage measures code exercised; SonarQube static analysis reports findings under selected rules. Mutation testing instead investigates whether tests detect deliberately altered behavior. Green tests, high coverage and clean static analysis do not establish mutation-test effectiveness.
+
+The [mutation-testing strategy](mutation-testing.md) proposes scoped manual experiments, PIT compatibility investigation, evidence requirements and human review. PIT is only a candidate; tooling, versions, execution scope, runtime budget, CI integration and any score target require separate approval. This planned gate does not change existing mandatory gates or acceptance records. No execution, branch creation or build changes are authorized by this documentation.
 
 ## Architecture Boundary Verification
 
@@ -80,7 +88,7 @@ Historical foundation results are recorded in the [Increment 2 execution record]
 - OrderPersistenceIT: production root save/cascade, original snapshots after catalog changes, lazy/explicit fetch counts, immutable closed-context values, restrictive FKs and confirmed full rollback.
 - DomainSchemaIT: unconstrained NUMERIC, named negative constraints, actual V1/checksum/repeat migration and normalized unique email index.
 
-The initial execution passed 25 fast/14 PostgreSQL tests. Human-reviewed test hardening increased this to 120 fast tests (10 foundation, 110 domain) and 21 PostgreSQL integration tests, all passing without skips. Increment 3 is Reviewed – Accepted. Application/HTTP, transaction coordination, concurrent uniqueness response handling and ADR-0002 gates remain Pending; see the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review).
+The initial execution passed 25 fast/14 PostgreSQL tests. Human-reviewed test hardening increased this to 120 fast tests (10 foundation, 110 domain) and 21 PostgreSQL integration tests, all passing without skips. Increment 3 is Reviewed – Accepted. At Increment 3 acceptance, application/HTTP, transaction coordination, concurrent uniqueness response handling and ADR-0002 gates were Pending; later scoped Increment 4 evidence is recorded below; see the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review).
 
 ## Running Tests
 
@@ -154,7 +162,7 @@ Documentation-only changes use documentation gates. Passing the current tests do
 
 ## Increment 4 Accepted API and Versioning Verification
 
-**Mandatory after implementation approval; all runtime results Pending.** Read the [current playbook matrix](../04-agentic-coding/prompts/05-product-customer-api.md#updated-mandatory-test-matrix--runtime-results-pending), [accepted API catalog](../02-architecture/api-error-codes.md), [REST decisions](../02-architecture/rest-api-design.md#10-human-accepted-increment-4-api-and-transaction-decisions) and [Proposed ADR-0006](../03-decisions/ADR-0006-product-customer-optimistic-locking.md). The @Version direction and finalized Long/BIGINT/NOT NULL/backfill 0/no final default/no-op policies are Human Accepted; the complete ADR remains Proposed; the four-statement V2 SQL is reviewed, coding authorization and runtime verification remain Pending. Increment 3 acceptance and evidence remain unchanged.
+**Mandatory verification matrix; the pre-execution requirements below are retained. Current scoped results and human acceptance are recorded under Increment 4 Execution Evidence.** Read the [current playbook matrix](../04-agentic-coding/prompts/05-product-customer-api.md#updated-mandatory-test-matrix--runtime-results-pending), [accepted API catalog](../02-architecture/api-error-codes.md), [REST decisions](../02-architecture/rest-api-design.md#10-human-accepted-increment-4-api-and-transaction-decisions) and [Proposed ADR-0006](../03-decisions/ADR-0006-product-customer-optimistic-locking.md). The @Version direction and finalized Long/BIGINT/NOT NULL/backfill 0/no final default/no-op policies are Human Accepted; the complete ADR remains Proposed; the four-statement V2 SQL is reviewed, scoped coding authorization and runtime verification are recorded below. Increment 3 acceptance and evidence remain unchanged.
 
 | Level | Required Increment 4 evidence |
 | --- | --- |
@@ -180,7 +188,7 @@ Preserve all Increment 1–3 tests, Surefire/Failsafe separation, JUnit 6 alignm
 
 ### Final ADR-0006 Concurrency Cases
 
-The [authoritative seven-scenario matrix](../03-decisions/ADR-0006-product-customer-optimistic-locking.md#verification-criteria--pending) and [playbook matrix](../04-agentic-coding/prompts/05-product-customer-api.md#mandatory-optimistic-locking-matrix) require PUT vs PUT, PUT vs PATCH, PATCH vs PUT, PATCH vs PATCH, sequential repeated PATCH, stale entity after committed update and stale entity after committed deactivation, each for both aggregates. Verify actual Hibernate version checks using independent PostgreSQL/Testcontainers transactions/contexts and deterministic barriers/latches, no timing sleeps, committed winner state and confirmed loser rollback. Sequential repetition is required to succeed/no-op; overlapping requests are not promised the same result. Unit-only evidence is insufficient. All runtime results remain Pending; no test/migration execution is authorized here.
+The [authoritative seven-scenario matrix](../03-decisions/ADR-0006-product-customer-optimistic-locking.md#verification-criteria--pending) and [playbook matrix](../04-agentic-coding/prompts/05-product-customer-api.md#mandatory-optimistic-locking-matrix) require PUT vs PUT, PUT vs PATCH, PATCH vs PUT, PATCH vs PATCH, sequential repeated PATCH, stale entity after committed update and stale entity after committed deactivation, each for both aggregates. Verify actual Hibernate version checks using independent PostgreSQL/Testcontainers transactions/contexts and deterministic barriers/latches, no timing sleeps, committed winner state and confirmed loser rollback. Sequential repetition is required to succeed/no-op; overlapping requests are not promised the same result. Unit-only evidence is insufficient. These were pre-execution obligations; scoped results and acceptance are recorded below. This strategy does not authorize additional test/migration execution.
 
 ### Final Edge Policies and Existing-Fixture Compatibility
 
@@ -201,10 +209,15 @@ Use existing Spring Test MockMvcBuilders.webAppContextSetup/@MockitoBean with te
 
 Explicitly test id/active/version request rejection and absence of version in responses. Adapt direct SQL fixtures to column lists/explicit version 0: DomainSchemaIT, OrderPersistenceIT and CustomerPersistenceIT, without weakening the intended negative constraint assertions. Foundation/schema current migration-history expectations become V1+V2; separately retain V1 checksum and V1→V2 upgrade fixtures. Prepare V1-only data with Flyway/JDBC before bootstrapping the new versioned Hibernate mappings, then verify validation after V2. A null version failure must not mask the original constraint under test.
 
-All existing seven optimistic scenarios remain required, with actual SQL/no-op counts, committed-state/rollback checks, independent transactions and deterministic coordination. Report persistent local V2 target/recovery/migration evidence separately under the [current implementation prompt](../04-agentic-coding/prompts/05-product-customer-api.md#persistent-local-database-safety-gate). If a usable recovery mechanism cannot be established, mark only that gate Blocked — Human Action Required and continue disposable Testcontainers tests and other approved work. Testcontainers success does not prove local migration; preserve development data. No runtime tests, containers or migrations run in this documentation task; results remain Pending.
+All existing seven optimistic scenarios remain required, with actual SQL/no-op counts, committed-state/rollback checks, independent transactions and deterministic coordination. Report persistent local V2 target/recovery/migration evidence separately under the [current implementation prompt](../04-agentic-coding/prompts/05-product-customer-api.md#persistent-local-database-safety-gate). If a usable recovery mechanism cannot be established, mark only that gate Blocked — Human Action Required and continue disposable Testcontainers tests and other approved work. Testcontainers success does not prove local migration; preserve development data. This matrix was recorded before execution; scoped results and current acceptance are recorded below. This documentation update runs no tests, containers or migrations.
 
-## Increment 4 Execution Evidence — Pending Human Review
+## Increment 4 Execution Evidence — Reviewed – Accepted
 
-[Increment 4 execution evidence](../04-agentic-coding/prompts/05-product-customer-api.md#implementation-results--executed-pending-human-review) records the final Java 21 verify run: 240 fast and 44 real PostgreSQL integration tests passed with zero failures/errors/skips, preserving the existing suites. Fresh-run JaCoCo coverage is 95.14% lines, 85.15% branches and 94.64% instructions. New tests cover isolated application operations, actual MockMvc input/HTTP contracts, random-port PostgreSQL API/commit behavior, V1→V2 preservation, all seven optimistic scenarios for each aggregate, SQL version predicates and no-update repeated PATCH. The smoke test excludes database auto-configuration and mocks application services; it proves MVC/validation startup only.
+[Increment 4 execution evidence](../04-agentic-coding/prompts/05-product-customer-api.md#implementation-results--executed-pending-human-review) records the initial implementation Java 21 verify run: 240 fast and 44 real PostgreSQL integration tests passed with zero failures/errors/skips, preserving the existing suites. Fresh-run JaCoCo coverage is 95.14% lines, 85.15% branches and 94.64% instructions. New tests cover isolated application operations, actual MockMvc input/HTTP contracts, random-port PostgreSQL API/commit behavior, V1→V2 preservation, all seven optimistic scenarios for each aggregate, SQL version predicates and no-update repeated PATCH. The smoke test excludes database auto-configuration and mocks application services; it proves MVC/validation startup only.
 
 The controlled outage fixture stops only its own disposable container and evicts its pool handles to establish acquisition-phase failure/503; uncertain completion remains 500 in controlled tests. Persistent local migration is separately Blocked — Human Action Required because actual target/history/recovery evidence was not established. No local rollout, production safety, complete Order protocol, remote SonarQube success or human acceptance is inferred from these results. Existing gates and ADR statuses are unchanged.
+
+
+### Final Human Acceptance — 2026-10-15
+
+Increment 4 is **Reviewed – Accepted**, including reviewed follow-up fixes and test hardening. The [acceptance record](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15) identifies the committed `develop` revision and final existing verification log: 309 fast and 94 PostgreSQL integration tests passed, with no failures/errors/skips. Read-only SonarQube verification returned zero OPEN/CONFIRMED issues and quality gate OK. Earlier counts and coverage remain evidence of earlier runs. No build was rerun for this documentation update. SonarQube is not mutation-testing evidence; mutation testing remains unexecuted. Full Order concurrency, persistent local migration/recovery and production gates remain deferred/blocked as recorded there; ADR statuses are unchanged.

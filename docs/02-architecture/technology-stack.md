@@ -1,8 +1,8 @@
 # Technology Stack Reference
 
 **Status:** Authoritative inventory of Accepted, Proposed, and Open selections
-**Last reviewed:** 2026-10-14
-**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; Increment 3 domain/persistence Reviewed – Accepted; application/concurrency gates Pending
+**Last reviewed:** 2026-10-15
+**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; Increment 3 domain/persistence Reviewed – Accepted; Increment 4 application/optimistic verification Reviewed – Accepted; full Order concurrency Pending
 
 ## Purpose and Authority
 
@@ -106,7 +106,7 @@ Container execution needs a compatible container runtime; no host/container-runt
 
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
-| Spring MVC Test / MockMvc | Existing Boot-managed spring-test (7.0.9 source inspection) | Actual binding/controller/error tests via MockMvcBuilders.webAppContextSetup | **Accepted** minimal Increment 4 approach; no new test dependency; runtime verification Pending |
+| Spring MVC Test / MockMvc | Existing Boot-managed spring-test (7.0.9 source inspection) | Actual binding/controller/error tests via MockMvcBuilders.webAppContextSetup | **Accepted** minimal Increment 4 approach; no new test dependency; runtime verification passed; Increment 4 Reviewed – Accepted |
 | Real HTTP client against a running test application | Client/library choice and version Open | Verify full transport behavior where required, including connection-loss cases | **Open** concrete tool |
 
 Required API outcomes are already Accepted in the PRD. These client suggestions do not create additional dependencies or substitute mocked controller calls for binding tests.
@@ -168,7 +168,7 @@ flowchart TB
 3. Before build approval, verify Boot 4 artifact/starter coordinates, resolved transitive versions, Java compatibility, test API/engine alignment, and driver/Flyway/PostgreSQL support. The earlier Boot 3.5 skeleton is not an approved dependency list.
 4. Use the Accepted JUnit 6 baseline and Boot 4.1.1-managed Jupiter/Platform versions under ADR-0005. Verify the resolved graph; do not add JUnit 5-retention overrides.
 5. Pin the selected database image and match integration tests to deployment major version. Inspect actual Hibernate locking SQL and transaction behavior with deterministic PostgreSQL tests.
-6. Record dependency-tree/build evidence and relevant runtime tests; verify strict unknown-field/numeric parsing, context startup, mappings/migrations, and DTO serialization with OSIV disabled. Foundation dependency resolution/context startup/OSIV evidence is in Increment 2; scoped mappings/migrations passed in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review); HTTP binding and concurrency checks remain **Pending**.
+6. Record dependency-tree/build evidence and relevant runtime tests; verify strict unknown-field/numeric parsing, context startup, mappings/migrations, and DTO serialization with OSIV disabled. Foundation dependency resolution/context startup/OSIV evidence is in Increment 2; scoped mappings/migrations passed in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review); Increment 4 HTTP binding/application/optimistic checks passed and are human accepted; full Order concurrency remains **Pending**. See [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15).
 7. Keep decisions in ADRs, version roles in this inventory, and unresolved execution details in [open items](../00-overview/open-items.md). Avoid maintaining duplicate version lists with competing authority.
 
 For recorded upstream compatibility observations and links, consult [ADR-0005](../03-decisions/ADR-0005-technology-stack.md). This reference changes no business rules, ADR statuses, or tool approvals.
@@ -230,6 +230,6 @@ Spring Boot does not read `.env` automatically: export its trusted, shell-compat
 
 ### Increment 4 Approved Technical Direction
 
-Global strict JSON scalar types/no coercion, price numeric lexeme restrictions, canonical UUIDs and single-error precedence are Human Accepted in the [REST design](rest-api-design.md#10-human-accepted-increment-4-api-and-transaction-decisions); exact Boot 4.1.1/Jackson 3.1.7 implementation requires verification. Product/Customer application @Transactional/readOnly policy and JPA @Version direction are Human Accepted. [ADR-0006](../03-decisions/ADR-0006-product-customer-optimistic-locking.md) remains Proposed as a complete record, with exact mapping/schema choices Accepted, reviewed V2 SQL proposal recorded and implementation/runtime verification pending. No new library/version is selected; approved minimal MockMvc uses existing test dependencies. The earlier test-starter proposal is not required/selected. Final edge D1–D8 are Human Accepted in REST design; actual decoder/writer/MVC/proxy/provider correctness remains Pending. Existing version overrides/JUnit 6 and ADR statuses remain unchanged. Detailed Order pessimistic/retry protocol and production migration policy are not superseded.
+Global strict JSON scalar types/no coercion, price numeric lexeme restrictions, canonical UUIDs and single-error precedence are Human Accepted in the [REST design](rest-api-design.md#10-human-accepted-increment-4-api-and-transaction-decisions); the scoped Boot 4.1.1/Jackson implementation has passing verification and human acceptance. Product/Customer application @Transactional/readOnly policy and JPA @Version direction are Human Accepted. [ADR-0006](../03-decisions/ADR-0006-product-customer-optimistic-locking.md) remains Proposed as a complete record, with exact mapping/schema choices Accepted, reviewed V2 SQL proposal recorded and scoped implementation/runtime verification passed; Increment 4 Reviewed – Accepted. No new library/version is selected; approved minimal MockMvc uses existing test dependencies. The earlier test-starter proposal is not required/selected. Final edge D1–D8 are Human Accepted in REST design; scoped decoder/writer/MVC/proxy/provider evidence is recorded in [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15). Existing version overrides/JUnit 6 and ADR statuses remain unchanged. Detailed Order pessimistic/retry protocol and production migration policy are not superseded.
 
 Before local-profile startup can apply Increment 4 V2 to an existing persistent database, satisfy the [persistent local target/recovery safety gate](../04-agentic-coding/prompts/05-product-customer-api.md#persistent-local-database-safety-gate). Disposable Testcontainers verification is independent; missing persistent recovery evidence blocks only local migration and must not be presented as a passed gate.

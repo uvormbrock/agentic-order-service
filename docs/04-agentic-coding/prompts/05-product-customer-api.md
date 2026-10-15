@@ -3,8 +3,11 @@
 ## Status
 
 **Planning:** Finalized — Explicit Human Coding Authorization Recorded
-**Implementation:** Increment 4 — Executed, Pending Human Review
+**Implementation:** Reviewed – Accepted
+**Human acceptance:** 2026-10-15 (Europe/Berlin)
 **Recorded:** 2026-10-14
+
+**Current acceptance evidence:** [Final Human Acceptance — 2026-10-15](#final-human-acceptance--2026-10-15). Earlier planning and execution statuses below are historical and superseded only for current implementation acceptance.
 
 **Execution entry point:** [Current Implementation Prompt — Increment 4](#current-implementation-prompt--increment-4). Execute only after separate explicit human coding authorization; historical prompts are audit records.
 
@@ -1073,3 +1076,23 @@ Planning observations: unknown-property rejection alone does not establish numer
 - Explain why deferred customer deletion needs future Order coordination instead of check-then-delete.
 - Separate unit, actual MVC and real PostgreSQL evidence; recognize that source inspection is not runtime verification.
 - Use explicit approval gates and immutable prompts to keep implementation and decision history auditable.
+
+
+## Final Human Acceptance — 2026-10-15
+
+**Status: Reviewed – Accepted.** The human reviewer explicitly confirms successful review of the implementation and tests, passing automated tests, successful SonarQube analysis with zero reported findings, and the implementation committed to `develop`. This acceptance covers the Product & Customer API increment and its reviewed follow-up corrections and test hardening. It supersedes earlier pending-review statements without rewriting their historical evidence or prompts.
+
+### Acceptance Evidence
+
+- Git inspection on 2026-10-15: local `develop` and the locally recorded `origin/develop` both point to **`8e66d8c1cc454c5300a1622ca3adc4c3d6d75f6e`** (`test: use explicit map assertions for transaction outcomes`). The working tree was clean before this documentation update. No remote fetch was performed.
+- Initial API implementation: `4c4fa66cb58503df6b83bb8c92ab8e8bb0cac474`; subsequent schema-isolation and SonarQube corrections are included in the accepted branch history. Test hardening is committed as `54eb491324fe9cc1bf9ef9c706ca481e537dd986`; the final map-assertion correction is the branch-tip commit above.
+- Existing local verification log `/tmp/increment4-sonar-map-final-verify.log` records Java 21 Maven Wrapper `./mvnw -B -ntp verify`, **BUILD SUCCESS** on 2026-10-14 at 18:02:25 Europe/Berlin: **309 Surefire tests and 94 Failsafe integration tests**, zero failures, errors or skips. This is the final pre-commit run, not a newly executed build; the human confirms the committed implementation passes. Temporary logs are supplementary local evidence, not version-controlled artifacts.
+- Read-only SonarQube MCP verification on 2026-10-15 for `uvormbrock_agentic-order-service`, branch `develop`: **0 OPEN/CONFIRMED issues** and quality gate **OK**, consistent with the human's zero-findings confirmation. This records the queried analysis state; no issue status was changed. No analysis-to-commit association was independently established by these responses.
+
+No build was rerun for this documentation-only acceptance update. Earlier test counts and execution evidence remain historical rather than being replaced by the final run. A clean SonarQube result and passing tests do **not** constitute mutation-testing evidence, a mutation score, or a security guarantee.
+
+### Deferred Functionality and Verification
+
+Customer DELETE/delete-or-deactivate coordination, Order REST endpoints and placement, TransactionTemplate/ambient guard, deterministic pessimistic locking and retries remain deferred. ADR-0002 stays **Proposed and implementation-unverified**; full Order concurrency and uncertain-commit fault-injection obligations remain Pending. ADR-0006 remains **Proposed as a complete record**; accepted mapping/version subdecisions and verified Product/Customer optimistic behavior do not silently change that status.
+
+Persistent local V2 migration remains separately **Blocked — Human Action Required** pending target/history and usable recovery evidence; disposable Testcontainers verification does not close it. Production migration/deployment/permissions and concrete automated architecture-enforcement tooling remain Open. Mutation testing has not been executed or authorized by this acceptance. No later increment or new commit is authorized by this record.

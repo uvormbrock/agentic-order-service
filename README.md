@@ -18,6 +18,7 @@ The repository `docs/` directory is the single source of truth. Open it directly
 - [Java and Spring Boot guidelines — Accepted implementation guidance](docs/04-agentic-coding/java-spring-guidelines.md)
 - [Persistence and PostgreSQL guidelines — Accepted implementation guidance](docs/04-agentic-coding/persistence-guidelines.md)
 - [Testing strategy](docs/05-testing/testing-strategy.md)
+- [Mutation testing — planned, pending human approval](docs/05-testing/mutation-testing.md)
 - [AI development workflow](docs/04-agentic-coding/ai-development-workflow.md)
 - [Prompt playbook](docs/04-agentic-coding/prompts/00-index.md)
 - [Implementation plan](docs/07-implementation/implementation-plan.md)

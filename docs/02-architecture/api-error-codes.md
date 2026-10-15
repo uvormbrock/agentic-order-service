@@ -1,6 +1,6 @@
 # API Error Codes — Increment 4
 
-**Status:** Authoritative technical catalog; human-accepted names/statuses and classification precedence; implementation Pending Approval
+**Status:** Authoritative technical catalog; human-accepted names/statuses and classification precedence; implementation Reviewed – Accepted
 
 **Scope:** Product/Customer API; no Order Placement error taxonomy
 
@@ -18,7 +18,7 @@ Use fixed safe templates. Never expose SQL, stack traces, constraint names, pars
 
 ## Accepted Catalog
 
-P = Product; C = Customer. POST/PUT require their editable fields; PATCH permits only `{"active":false}`. Each example is a complete safe minimum response. Implementation and runtime verification are Pending for every row.
+P = Product; C = Customer. POST/PUT require their editable fields; PATCH permits only `{"active":false}`. Each example is a complete safe minimum response. Scoped implementation and runtime verification are recorded in [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15); this does not prove every possible failure permutation or fault-injection scenario.
 
 | Code | HTTP | Trigger / applicable endpoints | Safe example response | Requirement / decision trace |
 | --- | --- | --- | --- | --- |
@@ -41,7 +41,7 @@ P = Product; C = Customer. POST/PUT require their editable fields; PATCH permits
 | `CONCURRENT_MODIFICATION` | 409 | Confirmed JPA optimistic-lock conflict for P/C PUT/PATCH, including completion failures | `{"code":"CONCURRENT_MODIFICATION","message":"The resource was modified concurrently. Please reload and retry."}` | B8/B9/B11; BR-012 activity protection. No automatic retry; no ETag feature implied. |
 | `UNSUPPORTED_MEDIA_TYPE` | 415 | Unsupported request Content-Type on API writes | `{"code":"UNSUPPORTED_MEDIA_TYPE","message":"The request media type is not supported."}` | B6. D6/D7: headers precede paths/bodies; only application/json with UTF-8 accepted, optional charset=UTF-8; reject +json variants. |
 | `INTERNAL_SERVER_ERROR` | 500 | Unexpected technical/service/persistence failure, including uncertain completion when a response is possible | `{"code":"INTERNAL_SERVER_ERROR","message":"An unexpected server error occurred."}` | B6/B10. Does not assert rollback or authorize retries; failed transport can prevent a response. |
-| `SERVICE_UNAVAILABLE` | 503 | Clearly classified temporary dependency outage; applicable API operations | `{"code":"SERVICE_UNAVAILABLE","message":"A required service is temporarily unavailable."}` | B10. D8: confirmed establishment/pre-write unavailability only; typed cause/phase verification Pending; not all SQL/timeout/connection failures. |
+| `SERVICE_UNAVAILABLE` | 503 | Clearly classified temporary dependency outage; applicable API operations | `{"code":"SERVICE_UNAVAILABLE","message":"A required service is temporarily unavailable."}` | B10. D8: confirmed establishment/pre-write unavailability only; scoped typed cause/phase verification passed; not all SQL/timeout/connection failures. |
 
 ## Accepted Error Precedence
 
@@ -56,7 +56,7 @@ For request validation, select exactly one error by category:
 
 Selection within a category must be deterministic. A default fail-fast mapper or unordered Bean Validation set does not prove this ordering: a type error early in the document must not hide an unknown field later, and later syntax corruption still wins. PATCH true is a forbidden activation value; a string/number active is a type error.
 
-**Selected minimal processing approach (runtime verification Pending):** fully parse/check the root before validation, preserve numeric token spelling, inspect all request properties, then run type/presence/value checks in explicit stages. Human Accepted stable DTO field order: Product name → price, Customer name → email, PATCH active; unknown/forbidden property paths sorted lexicographically so JSON input order does not determine the error. D1–D8 in the [REST design](rest-api-design.md#11-final-human-decisions-d1d8) resolve the former edge questions. Outer order is routing/method/headers → path syntax → the body categories above → application lookup/business behavior. Tie-breakers and duplicate/trailing policies are Accepted; exact decoder/interceptor wiring needs runtime proof.
+**Selected minimal processing approach (scoped runtime verification passed; implementation human accepted):** fully parse/check the root before validation, preserve numeric token spelling, inspect all request properties, then run type/presence/value checks in explicit stages. Human Accepted stable DTO field order: Product name → price, Customer name → email, PATCH active; unknown/forbidden property paths sorted lexicographically so JSON input order does not determine the error. D1–D8 in the [REST design](rest-api-design.md#11-final-human-decisions-d1d8) resolve the former edge questions. Outer order is routing/method/headers → path syntax → the body categories above → application lookup/business behavior. Tie-breakers and duplicate/trailing policies are Accepted; scoped decoder/interceptor runtime evidence is recorded in [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15).
 
 ## Transaction and Failure Classification
 
@@ -64,10 +64,10 @@ Accepted B11: proxied application write methods use @Transactional, reads @Trans
 
 Only a confirmed known normalized-email uniqueness violation maps to DUPLICATE_EMAIL. Only a confirmed Product/Customer optimistic-lock failure maps to CONCURRENT_MODIFICATION. Preserve cause chains and allow rollback; never continue a rollback-only context, parse localized exception messages or classify all database errors as 409/503. Known completed rollback permits asserting no write persisted; uncertain completion does not. No automatic write replay. Detailed Order retries/timeouts/reconciliation remain with Proposed [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md).
 
-## Remaining Technical Review and Verification — Pending
+## Verification Obligations
 
 - Exact Boot 4.1.1/Jackson 3 pipeline/customization: precedence before typed DTO binding, nested rejection, lexeme preservation without float/double, canonical UUID enforcement before lenient UUID parsing.
 - Confirm safe central JSON error rendering for incompatible Accept, unsupported Content-Type, unknown routes, framework error dispatch and failures raised outside controller advice. The Accepted 406/415/404 envelopes are not optional; do not silently fall back to HTML/ProblemDetail or recursive negotiation errors.
 - Prove Human Accepted D1–D8 body/duplicate/trailing/tie-breaker/UUID-case/header-path-body/media/outage policies; they are no longer Open choices. No extra lexical/business restrictions.
 - Verify precise optimistic-lock/commit cause translation and the selected narrow establishment/pre-write outage classifier. Do not expose diagnostics or infer rollback from 500/503.
-- Test every applicable catalog code through actual MVC and real PostgreSQL where persistence matters; controlled faults must distinguish confirmed rollback from lost completion confirmation. All implementation/runtime evidence remains Pending.
+- Test every applicable catalog code through actual MVC and real PostgreSQL where persistence matters; controlled faults must distinguish confirmed rollback from lost completion confirmation. Scoped implementation/runtime evidence and human acceptance are recorded in [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15). Real lost-commit-confirmation fault injection and full Order protocol verification remain deferred.
