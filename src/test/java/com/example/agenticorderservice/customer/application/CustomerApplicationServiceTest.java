@@ -19,6 +19,14 @@ class CustomerApplicationServiceTest {
     @Test void invalidInputNeverReadsOrWritesRepository() {
         assertThatThrownBy(() -> service.create("", "user@example.com")).isInstanceOf(InputValidationException.class);
         assertThatThrownBy(() -> service.update(id, "Valid", "invalid")).isInstanceOf(InputValidationException.class);
+        assertThatExceptionOfType(InputValidationException.class).isThrownBy(() -> service.create(null, "user@example.com"))
+                .satisfies(exception -> assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
+        assertThatExceptionOfType(InputValidationException.class).isThrownBy(() -> service.update(id, null, "user@example.com"))
+                .satisfies(exception -> assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
+        assertThatExceptionOfType(InputValidationException.class).isThrownBy(() -> service.create("Valid", null))
+                .satisfies(exception -> assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
+        assertThatExceptionOfType(InputValidationException.class).isThrownBy(() -> service.update(id, "Valid", null))
+                .satisfies(exception -> assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
         verifyNoInteractions(repository);
     }
     @Test void missingResourceRaisesFeatureFailure() {

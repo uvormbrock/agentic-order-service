@@ -2,10 +2,12 @@ package com.example.agenticorderservice.shared.api;
 import java.sql.*;
 import jakarta.persistence.OptimisticLockException;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.transaction.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static com.example.agenticorderservice.shared.api.ApiError.Code.*;
 class ApiErrorHandlingTest extends ApiTestSupport {
     @Test void incompatibleAcceptAndUnknownRouteStillRenderSafeJson() throws Exception {
@@ -13,6 +15,13 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         error(get("/products").accept("application/json;q=0, */*;q=1"),NOT_ACCEPTABLE);
         error(get("/does-not-exist").accept("text/html"),ENDPOINT_NOT_FOUND);
         verifyNoInteractions(products, customers);
+        mvc.perform(get("/products").accept("application/json"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith("application/json"))
+                .andExpect(content().json("[]"));
+        verify(products,times(1)).list();
+        verifyNoMoreInteractions(products);
+        verifyNoInteractions(customers);
     }
     @Test void absentBodyWhitespaceNullAndDuplicateUseExactEnvelope() throws Exception {
         error(post("/products").contentType("application/json"),REQUIRED_FIELD_MISSING);
@@ -22,10 +31,18 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         error(post("/products").contentType("application/json").content("{\"name\":1,\"name\":2}"),MALFORMED_JSON);
         verifyNoInteractions(products, customers);
     }
-    @Test void confirmedCompletionFailuresTranslateOutsideServiceAndNeverReplay() throws Exception {
-        when(products.deactivate(id)).thenThrow(new TransactionSystemException("secret sql",new OptimisticLockException("private details")));
+    @org.junit.jupiter.params.ParameterizedTest(name = "Spring exception={0}, wrapped={1}")
+    @org.junit.jupiter.params.provider.CsvSource({"false, true", "false, false", "true, true", "true, false"})
+    void confirmedCompletionFailuresTranslateOutsideServiceAndNeverReplay(boolean springException, boolean wrapped) throws Exception {
+        RuntimeException conflict = springException
+                ? new OptimisticLockingFailureException("private details")
+                : new OptimisticLockException("private details");
+        RuntimeException failure = wrapped ? new TransactionSystemException("secret sql",conflict) : conflict;
+        when(products.deactivate(id)).thenThrow(failure);
         error(patch("/products/"+id).contentType("application/json").content("{\"active\":false}"),CONCURRENT_MODIFICATION);
         verify(products,times(1)).deactivate(id);
+        verifyNoMoreInteractions(products);
+        verifyNoInteractions(customers);
     }
     @Test void establishmentOutageAndAmbiguousCommitAreDifferent() throws Exception {
         when(products.list()).thenThrow(new CannotCreateTransactionException("offline",new SQLTransientConnectionException("pool unavailable")));

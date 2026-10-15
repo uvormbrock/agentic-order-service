@@ -85,6 +85,7 @@ class CustomerTest {
                 Arguments.of("201 code points", "😀".repeat(201), inactive),
                 Arguments.of("null", null, inactive),
                 Arguments.of("unpaired high surrogate", "a\uD800b", inactive),
-                Arguments.of("unpaired low surrogate", "a\uDC00b", inactive)));
+                Arguments.of("unpaired low surrogate", "a\uDC00b", inactive),
+                Arguments.of("upper low surrogate boundary", "a\uDFFFb", inactive)));
     }
 }

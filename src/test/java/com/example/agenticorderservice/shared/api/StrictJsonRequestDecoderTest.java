@@ -37,6 +37,7 @@ class StrictJsonRequestDecoderTest {
             Arguments.of("{\"name\":\"\",\"price\":-1}",INVALID_NAME),
             Arguments.of("{\"price\":-1,\"name\":\"\"}",INVALID_NAME),
             Arguments.of("{\"name\":null,\"price\":1}",REQUIRED_FIELD_MISSING),
+            Arguments.of("{\"name\":\"\\uDFFF\",\"price\":1}",INVALID_NAME),
             Arguments.of("{\"name\":\"A\",\"price\":1.000}",INVALID_PRODUCT_PRICE),
             Arguments.of("{\"name\":\"A\",\"price\":1e0}",INVALID_PRODUCT_PRICE),
             Arguments.of("{\"name\":\"A\",\"price\":1e3}",INVALID_PRODUCT_PRICE),

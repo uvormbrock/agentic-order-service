@@ -23,6 +23,10 @@ class ProductApplicationServiceTest {
         var invalidPrice = new BigDecimal("12.345");
         assertThatThrownBy(() -> service.create("", validPrice)).isInstanceOf(InputValidationException.class);
         assertThatThrownBy(() -> service.update(id, "Valid", invalidPrice)).isInstanceOf(InputValidationException.class);
+        assertThatExceptionOfType(InputValidationException.class).isThrownBy(() -> service.create("Valid", null))
+                .satisfies(exception -> assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
+        assertThatExceptionOfType(InputValidationException.class).isThrownBy(() -> service.update(id, "Valid", null))
+                .satisfies(exception -> assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
         verifyNoInteractions(repository);
     }
     @Test void missingResourceRaisesFeatureFailure() {

@@ -1,8 +1,11 @@
 package com.example.agenticorderservice.shared.api;
 
 import java.sql.SQLException;
+import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
+import java.util.List;
 import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.exception.JDBCConnectionException;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.CannotCreateTransactionException;
@@ -55,11 +58,22 @@ class ApiExceptionClassificationTest {
 
     @Test
     void connectionTypeWithoutEstablishmentEvidenceDoesNotBecomeServiceUnavailable() {
-        var connection = new SQLTransientConnectionException("connection lost");
-
-        assertThat(ApiExceptionHandler.classify(connection)).isEqualTo(INTERNAL_SERVER_ERROR);
-        assertThat(ApiExceptionHandler.classify(new CannotCreateTransactionException("acquisition", connection)))
-                .isEqualTo(SERVICE_UNAVAILABLE);
+        for (var connection : List.of(
+                new SQLTransientConnectionException("connection lost"),
+                new SQLNonTransientConnectionException("connection lost"),
+                new JDBCConnectionException("connection lost", new SQLException("underlying failure", "HY000")))) {
+            assertThat(ApiExceptionHandler.classify(connection)).isEqualTo(INTERNAL_SERVER_ERROR);
+            assertThat(ApiExceptionHandler.classify(new CannotCreateTransactionException("acquisition", connection)))
+                    .isEqualTo(SERVICE_UNAVAILABLE);
+            assertThat(ApiExceptionHandler.classify(new TransactionSystemException("uncertain completion", connection)))
+                    .isEqualTo(INTERNAL_SERVER_ERROR);
+        }
+        var nonconnection = new SQLException("connection lost", "HY000");
+        assertThat(ApiExceptionHandler.classify(nonconnection)).isEqualTo(INTERNAL_SERVER_ERROR);
+        assertThat(ApiExceptionHandler.classify(new CannotCreateTransactionException("acquisition", nonconnection)))
+                .isEqualTo(INTERNAL_SERVER_ERROR);
+        assertThat(ApiExceptionHandler.classify(new TransactionSystemException("uncertain completion", nonconnection)))
+                .isEqualTo(INTERNAL_SERVER_ERROR);
     }
 
     @Test
