@@ -40,7 +40,7 @@ Use unit tests for domain behavior and HTTP integration tests through real JSON 
 
 Test execution checks whether the current code satisfies selected assertions. JaCoCo coverage measures code exercised; SonarQube static analysis reports findings under selected rules. Mutation testing instead investigates whether tests detect deliberately altered behavior. Green tests, high coverage and clean static analysis do not establish mutation-test effectiveness.
 
-The [mutation-testing strategy](mutation-testing.md) proposes scoped manual experiments, PIT compatibility investigation, evidence requirements and human review. PIT is only a candidate; tooling, versions, execution scope, runtime budget, CI integration and any score target require separate approval. This planned gate does not change existing mandatory gates or acceptance records. No execution, branch creation or build changes are authorized by this documentation.
+The [mutation-testing strategy](mutation-testing.md) proposes scoped manual experiments, PIT compatibility investigation, evidence requirements and human review. PIT is only a candidate; tooling, versions, execution scope, runtime budget, CI integration and any score target require separate approval. The runbook revision separates the main develop vault/reports, a dedicated experiment worktree for mutations/tests, and persistent raw evidence outside both worktrees; setup/migration/execution and report commits require separate authorization. This planned gate does not change existing mandatory gates or acceptance records. No execution, branch creation or build changes are authorized by this documentation.
 
 ## Architecture Boundary Verification
 

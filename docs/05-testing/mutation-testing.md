@@ -6,6 +6,8 @@
 
 For future authorized manual execution, use the [practical mutation-testing runbook](mutation-testing-runbook.md) for repository-specific commands, safe restoration and the evidence template. Its operational instructions do not authorize experiments or change this strategy.
 
+Navigate actual readable reports through the [mutation-results index](mutation-results/00-index.md) in the main `develop` worktree's registered `docs/` Obsidian vault. The [runbook's evidence layout](mutation-testing-runbook.md#persistent-reports-and-technical-evidence) separates these reports from raw files in the external sibling `agentic-order-service-mutation-evidence/MUT-NNN/`, outside both worktrees. Temporary code mutations/test runs belong only in a dedicated experiment worktree; main remains on `develop` after the separately authorized one-time migration. No `.mutation-artifacts/` directory or `.gitignore` change is needed. Backup ownership/destination/retention and verification remain human-approval requirements; a persistent directory is not a verified backup. No completed experiment report exists yet, and no mutation result is claimed.
+
 ## Purpose and Authority
 
 Mutation testing investigates whether tests detect deliberately introduced behavioral faults. Green tests establish that the current code passes the selected assertions; code coverage shows which code was exercised. Neither establishes that a meaningful defect would fail a test. SonarQube static analysis examines code without establishing the fault-detection effectiveness of the test suite.
@@ -47,7 +49,7 @@ Order domain calculations already exist; Order REST/placement, Customer DELETE c
 
 ## Proposed Manual Experiment Procedure — Pending Human Approval
 
-1. Obtain explicit approval for the target, exact mutation, expected failing test(s) and verification scope. Begin only on an isolated Git feature branch after separate branch/execution authorization; never mutate accepted production code on `develop`.
+1. Obtain explicit approval for the target, exact mutation, expected failing test(s) and verification scope. Begin only in an isolated Git experiment worktree on its approved feature branch after separate setup/execution authorization; keep the main worktree on `develop` and never mutate its accepted production code.
 2. Establish and record a passing baseline against the original implementation: commit, working-tree state, selected unchanged tests and their results. Preserve unrelated changes, baseline tests and source history.
 3. Introduce one controlled behavioral change at a time. Record the original expression, mutated expression and requirement that should be violated. Use independent expected values rather than reproducing the implementation's calculation.
 4. **Baseline test effectiveness first:** execute each approved mutation against the existing, unchanged test suite before proposing any test improvement. Preserve the original result, including commands, environment, failing test names/assertions or surviving behavior.
@@ -55,7 +57,7 @@ Order domain calculations already exist; Order REST/placement, Customer DELETE c
 6. Only after identifying and obtaining human review of a genuine detection gap, propose additional or strengthened regression tests. Do not weaken existing assertions or alter the recorded original-suite outcome.
 7. If test improvements are separately authorized, demonstrate that the approved regression test fails against the mutant and passes against the restored original implementation. Record this outcome separately: detection after test hardening must never be retroactively reported as detection by the original suite.
 8. Restore only experiment-owned production-code changes and inspect the diff to prove no experimental mutation remains. Do not discard unrelated work. Rerun applicable verification against the restored implementation, retaining traceable experiment evidence and separately approved test improvements.
-9. Present the actual diff and original-suite/post-hardening evidence for independent human review. Investigation results, test-improvement acceptance, production-code correction acceptance and commit/merge authorization are separate decisions.
+9. Present the actual diff and original-suite/post-hardening evidence for independent human review. Create actual result reports in the main develop vault and separately authorize their commits; experiment-branch files do not automatically appear on develop. Investigation results, test-improvement acceptance, production-code correction acceptance and commit/merge authorization are separate decisions.
 
 Experimental production-code mutations are temporary investigation artifacts: never commit them as production fixes or permanent implementation changes, and never merge them into `develop`. Remove all experimental mutations before any proposed merge. If an experiment reveals a genuine existing production defect rather than a test weakness, stop and request separate human authorization before modifying the accepted implementation. Such a correction requires an independently authorized workflow; approval of regression-test improvements does not authorize a production-code fix.
 
@@ -95,7 +97,7 @@ Store agreed future prompts/results in the existing [playbook](../04-agentic-cod
 
 | Decision / prerequisite | Status |
 | --- | --- |
-| Manual experiment scope, branch creation and execution | Proposed; Pending Human Approval |
+| Manual experiment scope, worktree/branch setup or reuse, and execution | Proposed; Pending Human Approval |
 | Exact automated tooling, plugin/adapter versions and dependency changes | PIT candidate; Pending Human Approval and compatibility verification |
 | Target classes, operators, test selection and PostgreSQL/HTTP inclusion | Proposed scope above; Pending Human Approval |
 | Runtime budget, timeout policy and resource limits | Pending Human Approval |
