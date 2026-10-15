@@ -119,6 +119,7 @@ class OrderTest {
                 first, new UnitSnapshot("original", Money.of("25.00"), 5, Money.of("125.00")),
                 second, new UnitSnapshot("original", Money.of("25.00"), 4, Money.of("100.00")));
         for (Order order : List.of(forward, backward)) {
+            assertThat(order.getCustomerId()).isEqualTo(customer);
             assertThat(order.getItems()).hasSize(2);
             assertThat(itemFacts(order)).isEqualTo(expected);
             assertThat(order.getSubtotal()).isEqualTo(Money.of("225.00"));
@@ -212,7 +213,14 @@ class OrderTest {
     }
 
     static Stream<String> invalidTrustedNames() {
-        return Stream.of("", " ", "\u2003\t", "😀".repeat(201), "\uD800", "\uDC00", "a\uD800b");
+        return Stream.of("", " ", "\u2003\t", "😀".repeat(201), "\uD800", "\uDC00", "\uDFFF", "a\uD800b");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"A", "😀"})
+    void acceptsExactlyOneValidUnicodeCodePointName(String name) {
+        var input = new OrderLineInput(UUID.randomUUID(), name, Money.zero(), 1);
+        assertThat(input.productName()).isEqualTo(name);
     }
 
     @Test

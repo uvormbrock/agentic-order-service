@@ -113,4 +113,49 @@
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>mutation-order</id>
+            <properties>
+                <targetClasses>com.example.agenticorderservice.*</targetClasses>
+                <targetTests>com.example.agenticorderservice.*</targetTests>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.30.1</version>
+                        <configuration>
+                            <targetClasses>
+                                <param>${targetClasses}</param>
+                            </targetClasses>
+                            <targetTests>
+                                <param>${targetTests}</param>
+                            </targetTests>
+                            <mutators>
+                                <mutator>DEFAULTS</mutator>
+                            </mutators>
+                            <threads>1</threads>
+                            <outputFormats>
+                                <param>HTML</param>
+                                <param>XML</param>
+                            </outputFormats>
+                            <parseSurefireConfig>false</parseSurefireConfig>
+                            <parseSurefireArgLine>false</parseSurefireArgLine>
+                            <failWhenNoMutations>true</failWhenNoMutations>
+                            <skipFailingTests>false</skipFailingTests>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.3</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
