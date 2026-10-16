@@ -1,12 +1,12 @@
 # Mutation Testing Strategy
 
-**Status:** Mutation Testing – Planned, Pending Human Approval
+**Status:** Current automated workflow documented – Pending Human Review; no mandatory score gate selected
 
-**Execution:** Not performed. This document proposes future investigation; it approves no tooling, dependency, build change, branch creation or experiment.
+**Execution:** Two separately authorized experiments completed on 2026-10-16; see the [verified experiment report](mutation-results/mutation-testing-experiments.md). Historical proposals below remain methodology and approval boundaries, not new execution authorization.
 
-For future authorized manual execution, use the [practical mutation-testing runbook](mutation-testing-runbook.md) for repository-specific commands, safe restoration and the evidence template. Its operational instructions do not authorize experiments or change this strategy.
+The default workflow is automated PIT through the root Makefile. See the [current automated runbook](mutation-testing-runbook.md#current-automated-workflow) for exact scopes, selectors, commands, configuration and evidence behavior. Manual source-mutation procedures are retained only as [historical context](mutation-testing-runbook.md#historical-manual-workflow--not-the-default) or for separately authorized demonstrations.
 
-Navigate actual readable reports through the [mutation-results index](mutation-results/00-index.md) in the main `develop` worktree's registered `docs/` Obsidian vault. The [runbook's evidence layout](mutation-testing-runbook.md#persistent-reports-and-technical-evidence) separates these reports from raw files in the external sibling `agentic-order-service-mutation-evidence/MUT-NNN/`, outside both worktrees. Temporary code mutations/test runs belong only in a dedicated experiment worktree; main remains on `develop` after the separately authorized one-time migration. No `.mutation-artifacts/` directory or `.gitignore` change is needed. Backup ownership/destination/retention and verification remain human-approval requirements; a persistent directory is not a verified backup. No completed experiment report exists yet, and no mutation result is claimed.
+The [verified experiment report](mutation-results/mutation-testing-experiments.md) records actual outcomes in the main `develop` worktree's `docs/` Obsidian vault. Raw artifacts remain in unique external sibling evidence directories, not a duplicate vault or `.mutation-artifacts/`. Backup ownership, destination, retention and verification remain separate; local persistence is not a verified backup. Executed results do not imply final human acceptance.
 
 ## Purpose and Authority
 
@@ -31,7 +31,7 @@ A mutation score commonly compares killed mutants with the counted mutant popula
 
 A high score can still miss ungenerated faults, missing requirements, integration failures or weakly selected code. A survivor is not automatically a production defect; a kill caused by broken infrastructure is not evidence of a useful assertion. Automatic equivalence classification and exhaustive fault coverage are not assumed.
 
-## Proposed Project Scope — Pending Human Approval
+## Historical Candidate Scope — Not Current Selection
 
 Start with a small, reviewed selection of implemented behavior; do not introduce deferred features to create mutation targets. The following are candidate experiments and expected oracles, not executed results or guaranteed test kills.
 
@@ -47,7 +47,7 @@ Start with a small, reviewed selection of implemented behavior; do not introduce
 
 Order domain calculations already exist; Order REST/placement, Customer DELETE coordination, pessimistic locking/retries and the full ADR-0002 protocol remain deferred. Mutation experiments must not implement or claim verification of them.
 
-## Proposed Manual Experiment Procedure — Pending Human Approval
+## Historical Manual Experiment Procedure — Not the Default
 
 1. Obtain explicit approval for the target, exact mutation, expected failing test(s) and verification scope. Begin only in an isolated Git experiment worktree on its approved feature branch after separate setup/execution authorization; keep the main worktree on `develop` and never mutate its accepted production code.
 2. Establish and record a passing baseline against the original implementation: commit, working-tree state, selected unchanged tests and their results. Preserve unrelated changes, baseline tests and source history.
@@ -63,18 +63,13 @@ Experimental production-code mutations are temporary investigation artifacts: ne
 
 No manual experiment has been executed by this documentation task. Do not treat earlier source inspection, suspected test gaps or hypothetical kills as experimental evidence.
 
-## Proposed Automation Investigation — Pending Human Approval
+## Current Automated Implementation and Remaining Limits
 
-PIT is a **candidate**, not an approved plugin or dependency. No PIT version, JUnit adapter, configuration or command is selected here. Before proposing installation, investigate official compatibility information and demonstrate the exact candidate combination in an authorized isolated experiment:
+PIT is implemented through the explicitly activated `mutation-order` Maven profile: PIT Maven 1.30.1, `pitest-junit5-plugin` 1.2.3, `DEFAULTS`, one thread, HTML/XML and no score threshold or lifecycle binding. The Makefile selects Order domain, Product, Customer, Shared or all production packages; all scopes use project-wide fast `*Test` discovery for both baseline and PIT. Cross-feature tests can detect another feature's mutants, so package-restricted test selection can lose meaningful coverage.
 
-- Existing Java 21, Maven Wrapper 3.9.9, Spring Boot 4.1.1 and its managed JUnit 6 Jupiter/Platform versions; do not downgrade JUnit or override accepted dependencies to obtain compatibility.
-- JUnit 6 discovery/execution support, any required adapter and its version, parameterized tests, Spring contexts, Mockito instrumentation and the existing JaCoCo agent/configuration.
-- Maven lifecycle interaction: Surefire runs `*Test`, Failsafe runs PostgreSQL `*IT` during `verify`. A mutation runner's discovery must be verified separately; it does not automatically inherit or reproduce both test responsibilities.
-- Begin with proposed Docker-free domain/value-object targets and selected application/API tests. Full-context, real HTTP and PostgreSQL tests need separate feasibility, isolation, timeout and runtime review; unit-only mutations cannot establish database constraints, migrations, commit semantics or concurrency correctness.
-- Measure baseline duration, mutation count and execution cost before expanding. Propose selective class/test/operator runs and bounded resources; exclusions and incremental results must be visible rather than presented as whole-project coverage.
-- Preserve ordinary test/verify, JaCoCo and SonarQube behavior. Keep initial execution outside CI unless CI integration is separately approved. Tool-generated status labels require interpretation; a timeout is not automatically accepted as an assertion kill.
+The [runbook](mutation-testing-runbook.md#current-automated-workflow) is the operational reference. PostgreSQL `*IT` tests remain excluded. A dedicated persistence mutation strategy, broader compatibility/resource review and CI mutation integration remain future work. Ordinary test/verify, JaCoCo and SonarQube responsibilities are unchanged. Recorded Order runs establish scoped Java 21/JUnit 6.0.3 compatibility, not universal support for every test type.
 
-If compatibility is unsupported or unclear, report the blocker and alternatives for approval. Do not silently install tooling, add libraries, skip tests or treat a proposed tool as Accepted.
+PIT can report a timeout as detected. Always distinguish its detected/generated percentage from strict KILLED/generated and show all outcomes. A successful run with survivors is possible because no score threshold is configured; successful execution is not human acceptance of the findings. Review actual XML identities and assertions before proposing improvements, and preserve all earlier evidence.
 
 ## Evidence and Proposed Acceptance Criteria
 
@@ -98,11 +93,11 @@ Store agreed future prompts/results in the existing [playbook](../04-agentic-cod
 | Decision / prerequisite | Status |
 | --- | --- |
 | Manual experiment scope, worktree/branch setup or reuse, and execution | Proposed; Pending Human Approval |
-| Exact automated tooling, plugin/adapter versions and dependency changes | PIT candidate; Pending Human Approval and compatibility verification |
-| Target classes, operators, test selection and PostgreSQL/HTTP inclusion | Proposed scope above; Pending Human Approval |
+| Automated implementation | Existing PIT 1.30.1 / adapter 1.2.3 / Makefile; documented above; future changes need scope approval |
+| Current selection / persistence extension | Makefile scopes with project-wide fast tests; PostgreSQL *IT mutation strategy remains future work |
 | Runtime budget, timeout policy and resource limits | Pending Human Approval |
 | CI integration and reporting/artifact retention | Pending Human Approval |
 | Mutation-score formula, exclusions and target, if any | Pending Human Approval; no arbitrary minimum selected |
-| Actual experiments, results and test-improvement acceptance | Pending; no execution or mutation score claimed |
+| Actual results / acceptance | Verified experiments linked above; execution and human acceptance remain separate |
 
 Existing Accepted decisions and quality gates remain unchanged. ADR-0002 remains Proposed and implementation-unverified; ADR-0006 remains Proposed as a complete record. This strategy neither reopens accepted behavior nor authorizes the next implementation increment.

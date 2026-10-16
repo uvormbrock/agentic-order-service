@@ -34,13 +34,15 @@ Before declaring the MVP complete, every required implementation gate must have 
 
 Use unit tests for domain behavior and HTTP integration tests through real JSON binding. PostgreSQL/Testcontainers is required for persistence/concurrency evidence, not H2 or mocked repositories. Use reviewed migrations in disposable databases only after migration approval. A context smoke test does not establish locking correctness. No arbitrary coverage percentage replaces meaningful gates.
 
-## Planned Additional Gate — Mutation Testing
+## Mutation Testing — Automated Diagnostic Workflow
 
-**Status:** Mutation Testing – Planned, Pending Human Approval. No experiments or automated mutation runs have been performed, and no mutation score is claimed.
+**Status:** Automated PIT workflow implemented; documentation update Pending Human Review. Mutation analysis is diagnostic; no mandatory mutation-score release gate has been selected.
 
 Test execution checks whether the current code satisfies selected assertions. JaCoCo coverage measures code exercised; SonarQube static analysis reports findings under selected rules. Mutation testing instead investigates whether tests detect deliberately altered behavior. Green tests, high coverage and clean static analysis do not establish mutation-test effectiveness.
 
-The [mutation-testing strategy](mutation-testing.md) proposes scoped manual experiments, PIT compatibility investigation, evidence requirements and human review. PIT is only a candidate; tooling, versions, execution scope, runtime budget, CI integration and any score target require separate approval. The runbook revision separates the main develop vault/reports, a dedicated experiment worktree for mutations/tests, and persistent raw evidence outside both worktrees; setup/migration/execution and report commits require separate authorization. This planned gate does not change existing mandatory gates or acceptance records. No execution, branch creation or build changes are authorized by this documentation.
+The [mutation-testing strategy](mutation-testing.md) and [automated runbook](mutation-testing-runbook.md#current-automated-workflow) describe the existing Makefile/PIT implementation. All scopes use project-wide fast `*Test` selection; only production mutation targets vary. PostgreSQL/Testcontainers `*IT` tests are excluded and need a future dedicated persistence mutation strategy. Interpret KILLED, SURVIVED, NO_COVERAGE and TIMED_OUT separately, compare exact identities and obtain approval before test improvements. Preserve evidence from each run; successful Maven execution is not acceptance of surviving mutants.
+
+The [verified experiments](mutation-results/mutation-testing-experiments.md) show a JUnit-detected production defect and a KILLED → SURVIVED → KILLED transition after temporary test weakening/restoration. Existing mandatory gates, CI and increment acceptance records are unchanged. This documentation authorizes no execution, tooling changes or commits.
 
 ## Architecture Boundary Verification
 
@@ -220,4 +222,4 @@ The controlled outage fixture stops only its own disposable container and evicts
 
 ### Final Human Acceptance — 2026-10-15
 
-Increment 4 is **Reviewed – Accepted**, including reviewed follow-up fixes and test hardening. The [acceptance record](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15) identifies the committed `develop` revision and final existing verification log: 309 fast and 94 PostgreSQL integration tests passed, with no failures/errors/skips. Read-only SonarQube verification returned zero OPEN/CONFIRMED issues and quality gate OK. Earlier counts and coverage remain evidence of earlier runs. No build was rerun for this documentation update. SonarQube is not mutation-testing evidence; mutation testing remains unexecuted. Full Order concurrency, persistent local migration/recovery and production gates remain deferred/blocked as recorded there; ADR statuses are unchanged.
+Increment 4 is **Reviewed – Accepted**, including reviewed follow-up fixes and test hardening. The [acceptance record](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15) identifies the committed `develop` revision and final existing verification log: 309 fast and 94 PostgreSQL integration tests passed, with no failures/errors/skips. Read-only SonarQube verification returned zero OPEN/CONFIRMED issues and quality gate OK. Earlier counts and coverage remain evidence of earlier runs. No build was rerun for this documentation update. SonarQube is not mutation-testing evidence; later mutation evidence is recorded separately in the [verified experiment report](mutation-results/mutation-testing-experiments.md). Full Order concurrency, persistent local migration/recovery and production gates remain deferred/blocked as recorded there; ADR statuses are unchanged.

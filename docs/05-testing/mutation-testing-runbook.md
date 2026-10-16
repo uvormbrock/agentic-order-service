@@ -1,22 +1,137 @@
-# Manual Mutation Testing Runbook
+# Mutation Testing Runbook
 
-**Status:** Mutation Testing Worktree & Evidence Storage – Pending Human Review
+**Current default:** automated PIT mutation testing through the root `Makefile`.
+**Documentation status:** Updated – Pending Human Review
 
-The previously reviewed testing methodology remains unchanged; this worktree/storage revision requires human review and does not authorize its execution.
+This reference describes the existing Makefile and POM as inspected on 2026-10-16. It changes no tooling, thresholds, CI or execution authorization. The [strategy](mutation-testing.md) defines interpretation and review; the [verified experiment report](mutation-results/mutation-testing-experiments.md) records the two controlled demonstrations. Ordinary test responsibilities remain in the [testing strategy](testing-strategy.md#running-tests).
 
-**Execution:** MUT-001 setup has begun manually; no mutation has been performed and no test result is confirmed. Commands below are instructions for future separately authorized work, not execution evidence or permission to continue.
+## Current Automated Workflow
 
-Use the [mutation-testing strategy](mutation-testing.md) for methodology and outcome definitions, the [testing strategy](testing-strategy.md#running-tests) for ordinary Maven execution, and the [AI workflow](../04-agentic-coding/ai-development-workflow.md) for approval gates. This runbook selects no automated tool, plugin, score threshold or CI change. Find completed reports through the [mutation-results index](mutation-results/00-index.md).
+### Commands and Production Selectors
 
-## Quick Navigation
+Set `JAVA_HOME` to an existing Java 21 installation. From the repository root, use:
 
-- [Existing MUT-001: documentation handoff](#one-time-documentation-handoff-before-worktree-migration), then [worktree migration](#one-time-migration-for-existing-mut-001) and [evidence copy](#existing-mut-001--copy-migration-pending-human-confirmation).
-- [Start a new experiment](#standard-future-setup).
-- [Establish the green baseline](#c-establish-the-green-baseline).
-- [Apply one mutation](#d-perform-one-manual-mutation) and [assess its result](#e-execute-and-interpret-tests).
-- [Restore original code](#f-restore-the-original-implementation-safely).
-- [Record results in Obsidian](#h-obsidian-reports-and-evidence-template).
-- [Finish an experiment](#i-complete-an-experiment-without-switching-main).
+```sh
+make mutation-test SCOPE=order
+make mutation-test SCOPE=product
+make mutation-test SCOPE=customer
+make mutation-test SCOPE=shared
+make mutation-test SCOPE=all
+```
+
+`make mutation-test` defaults to `SCOPE=all`; bare `make` or `make help` displays help. Example with command-local Java selection:
+
+```sh
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home \
+  make mutation-test SCOPE=shared
+```
+
+| SCOPE | PIT production selector (`targetClasses`) |
+| --- | --- |
+| order | `com.example.agenticorderservice.order.domain.*` |
+| product | `com.example.agenticorderservice.product.*` |
+| customer | `com.example.agenticorderservice.customer.*` |
+| shared | `com.example.agenticorderservice.shared.*` |
+| all | `com.example.agenticorderservice.*` |
+
+Scopes are class filters in one Maven module, not separate Maven modules. Order currently targets only its domain package. No speculative controller, service, repository, DTO or configuration exclusions are applied within the selected filters.
+
+### Test Discovery and Persistence Limitation
+
+Every scope uses the same complete project-wide fast-test selection:
+
+- Surefire baseline: `com/example/agenticorderservice/**/*Test.java`.
+- PIT eligible tests: `com.example.agenticorderservice.*Test`.
+
+The first is Surefire's path-style selector; the second is PIT's fully qualified class-name filter. They include nested feature packages. Fast tests include Spring/MockMvc tests as well as plain domain/application unit tests; “fast” does not mean every test is a pure unit test.
+
+Cross-feature assertions can live outside the feature being mutated. For example, Product API tests also exercise Customer behavior. Restricting Customer tests to Customer packages previously lost detecting tests. Broad test eligibility avoids hardcoded cross-feature lists while production scope remains focused. PIT uses coverage information to select tests for mutants and may stop when a test detects one; eligibility does not mean every selected class or test runs for every mutant. Inspect verbose `pit.log`, XML `killingTest` and execution counts.
+
+PostgreSQL/Testcontainers `*IT` integration tests are excluded from both selectors. The Makefile runs `test` and PIT's explicit goal, not Failsafe `verify`. It does not require a running Compose database for these selected tests. A dedicated persistence mutation strategy remains future work: uncovered JPA converters or servlet error-dispatch paths must not be treated automatically as missing unit assertions. Ordinary PostgreSQL verification remains a separate `./mvnw verify` responsibility.
+
+### Execution Sequence and Failure Behavior
+
+1. Resolve the repository root from the Makefile location and validate SCOPE. An unknown scope prints an error and exits the recipe with code 2.
+2. Require `JAVA_HOME`, invoke its `bin/java`, and verify `java.specification.version = 21`. The inherited `JAVA_HOME` is used by the existing Maven Wrapper; no system-wide configuration changes occur. Make, Python 3 (standard library), Git, `shasum`, `mktemp` and ordinary shell tools must be available.
+3. Create/resolve the external evidence root and reject a root within the current project directory. Allocate a unique `PIT-<scope>-<UTC timestamp>-XXXXXX` directory with `mktemp`; never reuse a historical run directory. A final trap prints scope, result and evidence location once this setup succeeds.
+4. Snapshot Makefile bytes/checksum, POM checksum, Git revision/branch/status/diffs, Java settings and selectors before execution.
+5. Run Surefire with the project-wide baseline selector, `-Djacoco.skip=true`, `-DfailIfNoTests=true` and a unique `-Dsurefire.reportNameSuffix=<run ID>`. Save the command, combined output, Maven exit code and duration. Copy only this run's suffixed XML/text reports, preserving existing results.
+6. Parse the copied `TEST-*.xml` using Python. Require at least one testsuite, valid nonnegative counters, skipped not exceeding tests, at least one executed test (`tests - skipped > 0`) and zero failures/errors. Record actual suite names/counts and validation exit code. Skipped tests are reported; the validator does not require zero skips. Missing/malformed XML or invalid counters prevent PIT. A parse error is retained in the validation log and may prevent summary JSON creation.
+7. Stop before PIT if Maven baseline or XML validation fails. Otherwise run the explicit PIT goal with the selected production filter, common fast-test filter, `-Dverbose=true`, `-Djacoco.skip=true`, and this run's external `reportsDirectory`.
+8. Save PIT command, combined output, Maven exit code and duration. A nonzero PIT exit fails the recipe. On success, require nonempty `pit-reports/mutations.xml` and `pit-reports/index.html`, print available statistics/discovery guidance and report `EXECUTED - PENDING HUMAN REVIEW`.
+
+The recipe preserves underlying Maven/validator exit codes in evidence and exits nonzero on failure; GNU Make's own exit code need not equal Maven's code. The final report-file checks do not parse mutation XML or establish a complete/nonempty mutation population; review the XML separately, alongside PIT's configured empty-run guard. Survivors and timeouts do not automatically fail the run because no mutation-score threshold is configured.
+
+The Makefile records Git state but does not enforce branch `develop`, a clean tree, unchanged HEAD or source restoration. Perform approved pre/post-execution safety checks yourself. Automated PIT does not require manual source edits or worktree creation; use an explicitly approved isolated worktree when the experiment requires temporary source/test changes. There is no worktree creation/removal or Git cleanup in this target.
+
+The current Makefile prints a conservative message that Spring/Mockito compatibility beyond Order is unverified. This is a literal implementation warning, not a claim that no broader historical runs exist. Consult the specific run's discovery/execution evidence; neither this message nor successful execution proves universal compatibility.
+
+### Evidence Layout
+
+Default root: the sibling `../agentic-order-service-mutation-evidence`, resolved relative to the Makefile's project root. Override it without a personal hardcoded path:
+
+```sh
+make mutation-test SCOPE=order MUTATION_EVIDENCE_ROOT=/absolute/external/evidence
+```
+
+Keep the chosen root outside every relevant checkout. The implemented guard checks the current project directory, not all other registered worktrees.
+
+| Evidence | Files in each new run directory |
+| --- | --- |
+| Recipe and build identity | Exact `Makefile` copy (also when untracked), `Makefile.sha256`, `pom.sha256` |
+| Git state | `revision.txt`, `branch.txt`, `git-status.txt`, `working-tree.diff`, `staged.diff` |
+| Environment and selection | `environment.txt`, `selection.txt` |
+| Baseline execution | `baseline-command.txt`, `baseline.log`, `baseline-exit-code.txt`, `baseline-duration-seconds.txt` |
+| Baseline validation | `surefire-reports/`, `baseline-validation.log`, `baseline-validation-exit-code.txt`, and `baseline-summary.json` when parsing completes |
+| PIT execution | `pit-command.txt`, `pit.log`, `pit-exit-code.txt`, `pit-duration-seconds.txt` |
+| Mutation reports | `pit-reports/mutations.xml`, `pit-reports/index.html` and generated HTML assets |
+
+Failures can leave partial evidence; an early setup failure can precede directory/trap creation. The target does not copy every untracked source file, the entire POM, dependencies or a repository snapshot. Git diffs exclude untracked file contents; the explicit Makefile copy closes that particular gap only. Review source/test differences and preserve any additional approved reproducibility evidence separately. Logs and Git diffs may contain local information: review them before sharing. External persistence is not backup; independent backup ownership/retention/verification remains separate.
+
+### Actual PIT Maven Configuration
+
+| Setting | Current POM value |
+| --- | --- |
+| Explicit profile | `mutation-order` (name retained for all scopes) |
+| Maven plugin | `org.pitest:pitest-maven:1.30.1` |
+| Plugin dependency | `org.pitest:pitest-junit5-plugin:1.2.3` |
+| Mutators | `DEFAULTS` |
+| Threads | 1 |
+| Reports | HTML and XML |
+| Profile production/test defaults | Both `com.example.agenticorderservice.*` |
+| Selection overrides | `-DtargetClasses=...`, `-DtargetTests=...` via POM properties; Makefile supplies the filters above |
+| Surefire import | `parseSurefireConfig=false`, `parseSurefireArgLine=false`; PIT selection is explicit |
+| Empty mutation guard | `failWhenNoMutations=true` |
+| Failing test handling | `skipFailingTests=false` |
+| Score threshold / lifecycle binding | None configured |
+
+Despite its artifact name, the JUnit adapter's current combination with Java 21 and the project's JUnit 6.0.3 has executed successfully in the recorded Order experiments. This is scoped execution evidence, not universal Spring/integration-test support. No JUnit downgrade is configured. Ordinary Surefire, Failsafe, JaCoCo and CI behavior is unchanged; these Makefile commands explicitly skip JaCoCo for mutation runs. No custom PIT timeout policy is selected here.
+
+### Interpretation and Review
+
+- **KILLED:** a test detects the mutant; inspect the detecting test and behavior.
+- **SURVIVED:** covered mutant not detected by the selected tests; assess requirements, assertions and equivalence before proposing changes.
+- **NO_COVERAGE:** no selected test executes the mutation location; investigate missing execution or scope limitations separately.
+- **TIMED_OUT:** mutant execution exceeded PIT's limit. PIT may mark it detected, but this is not an assertion-based kill. Investigate possible nontermination, instrumentation or environmental effects without silently changing timeouts.
+
+Report the exact denominator and all statuses. PIT detection percentage uses mutants marked `detected=true` divided by generated mutants; strict assertion-based percentage is `KILLED / generated`. For the historical Shared report with 205 generated, 149 KILLED and one detected TIMED_OUT, these are `150/205 = 73.17%` and `149/205 = 72.68%`. That arithmetic example is historical, not a new execution or release threshold.
+
+Use this review sequence within explicitly authorized scope:
+
+1. Run the automated baseline/PIT workflow and preserve its initial evidence.
+2. Inspect XML and HTML, logs and actual test discovery.
+3. Identify meaningful survivors and execution gaps; separate equivalent candidates, framework/persistence limitations and timeouts.
+4. Compare stable identities: class, method, JVM descriptor, line, mutator, instruction index and description. Check added/removed identities and scope changes; line/index identity can change with source/compiler changes.
+5. Propose minimal improvements grounded in existing requirements, preferably extending existing parameterizations. Do not invent behavior or artificial persistence-ID assertions to increase a score.
+6. Obtain human review and explicit approval before changing code/tests.
+7. Rerun the approved scope, compare exact outcomes and detecting tests, and report regressions or remaining limitations.
+8. Preserve earlier evidence, document new results and wait for human acceptance; commits require separate authorization.
+
+Mutation coverage is diagnostic evidence, not a number to maximize through artificial assertions. The [controlled experiments](mutation-results/mutation-testing-experiments.md) show why green JUnit results alone can conceal a lost boundary safeguard and why a surviving mutant can coexist with Maven success.
+
+## Historical Manual Workflow — Not the Default
+
+Sections A–I below retain the earlier MUT-001 setup/migration instructions, manual experiment procedure and evidence templates for historical context and separately authorized manual investigations. Their old paths, branch observations, proposed statuses and command sequences are not prerequisites for `make mutation-test`. Do not execute them merely to start automated PIT. In particular, old main-worktree migration instructions describe the observed 2026-10-15 state, not the current repository.
 
 ## A. Prerequisites and Execution Context
 
@@ -32,7 +147,7 @@ Development/Projekte/
 │       ├── mutation-testing.md
 │       ├── mutation-testing-runbook.md
 │       └── mutation-results/
-│           ├── 00-index.md
+│           ├── mutation-testing-experiments.md
 │           └── MUT-NNN.md                 # Only after actual outcomes exist
 ├── agentic-order-service-mutation/        # Experiment worktree
 │   └── src/
@@ -74,14 +189,14 @@ Inspect hooks and external automation before any authorized commit. A local comm
 
 #### Inspect and Agree the Exact Scope
 
-**Context: original main directory, read-only inspection; retain variables from A.** Inspect the whole tree/index first, then the proposed four-file scope. A Git diff omits untracked content, so read the new index in full. If actual state differs, agree the scope again before staging anything.
+**Context: original main directory, read-only inspection; retain variables from A.** Inspect the whole tree/index first, then the proposed four-file scope. A Git diff omits untracked content, so read the replacement experiment report in full. If actual state differs, agree the scope again before staging anything.
 
 ```sh
 mutation_doc_files=(
     docs/05-testing/mutation-testing-runbook.md
     docs/05-testing/mutation-testing.md
     docs/05-testing/testing-strategy.md
-    docs/05-testing/mutation-results/00-index.md
+    docs/05-testing/mutation-results/mutation-testing-experiments.md
 )
 git -C "$mutation_main" status --short --untracked-files=all
 git -C "$mutation_main" branch --show-current
@@ -91,10 +206,10 @@ git -C "$mutation_main" worktree list --porcelain
 git -C "$mutation_main" diff
 git -C "$mutation_main" diff --cached
 git -C "$mutation_main" ls-files --others --exclude-standard
-cat "$mutation_main/docs/05-testing/mutation-results/00-index.md"
+cat "$mutation_main/docs/05-testing/mutation-results/mutation-testing-experiments.md"
 ```
 
-Verify all changed/new file contents; production/tests/POM/configuration/CI/ADRs and any other unrelated files must not enter the handoff. The index is currently new, but inspect the actual untracked list rather than relying on that historical observation. Unexpected changes or existing unrelated staging are a **stop/review point**: preserve them with their owner through a separately approved workflow, never automatically stash/discard them.
+Verify all changed/new file contents; production/tests/POM/configuration/CI/ADRs and any other unrelated files must not enter the handoff. The earlier index was new at the historical handoff; it has since been replaced by the verified experiment report. Inspect the actual untracked list rather than relying on that historical observation. Unexpected changes or existing unrelated staging are a **stop/review point**: preserve them with their owner through a separately approved workflow, never automatically stash/discard them.
 
 | Actual state after inspection | Safe choice |
 | --- | --- |
@@ -436,7 +551,7 @@ Freeze baseline/test/restoration values in the experiment record. In a new shell
 | Readable reports | Main worktree `docs/05-testing/mutation-results/MUT-NNN.md` | Main `develop` Obsidian vault; create only after actual outcomes, review and separately authorize report commits. |
 | Raw artifacts | Sibling `agentic-order-service-mutation-evidence/MUT-NNN/` | Ordinary persistent filesystem directory outside both worktrees; not a Git repository/worktree and not covered by Git backup. |
 
-The [results index](mutation-results/00-index.md) links only existing reports. Raw evidence uses absolute verified paths and a backup locator in those reports, not broken GitHub links or assumptions that Obsidian opens files outside its vault. No `.mutation-artifacts/` folder or `.gitignore` rule is part of this design.
+The [verified experiment report](mutation-results/mutation-testing-experiments.md) replaces the obsolete results index and preserves its navigation and evidence-retention guidance. Raw evidence uses absolute verified paths and a backup locator in those reports, not broken GitHub links or assumptions that Obsidian opens files outside its vault. No `.mutation-artifacts/` folder or `.gitignore` rule is part of this design.
 
 Assign a unique approved experiment ID. The fresh-setup example below retains the unused ID assigned in future setup B (illustrative MUT-002); **existing MUT-001 uses the copy-migration subsection instead**. Keep shell variables from A/B; `mutation_baseline` is the frozen accepted baseline, `mutation_test_revision` identifies the unchanged tests, and `mutation_restoration_revision` identifies the approved pre-mutation checkpoint. `experiment-revision.txt` and `main-revision.txt` record the actual observed tips at setup, independently of those frozen values. Later accepted commits do not replace an existing experiment's receipts.
 
@@ -858,14 +973,14 @@ A genuine production defect follows its own authorized correction workflow. Test
 
 Reports belong at `$mutation_main/docs/05-testing/mutation-results/MUT-NNN.md`, on **main `develop`**, not in the experiment worktree's mirrored docs. Worktrees share history, not checked-out files: a report committed only on the experiment branch does not automatically appear on `develop` or in the main vault.
 
-After actual outcomes exist, create the readable report with an editor at `mutation_report`, using the template below. Refuse an existing report path for a new experiment; append only reviewed corrections to an existing report rather than overwriting history. Use exact original-suite outcomes, relevant assertions and separately labeled improved-suite evidence; do not fabricate a MUT-001 report from setup files. Add a relative link in the **main** results index only after the report exists.
+After actual outcomes exist, create the readable report with an editor at `mutation_report`, using the template below. Refuse an existing report path for a new experiment; append only reviewed corrections to an existing report rather than overwriting history. Use exact original-suite outcomes, relevant assertions and separately labeled improved-suite evidence; do not fabricate a MUT-001 report from setup files. Add a relative navigation link from the **main** verified experiment report only after a new report exists.
 
-**Context: main `develop`, read-only review of report changes.** Verify location/branch and inspect the report plus index; the report path was derived from `mutation_main` in C:
+**Context: main `develop`, read-only review of report changes.** Verify location/branch and inspect the report plus existing results navigation; the report path was derived from `mutation_main` in C:
 
 ```sh
 git -C "$mutation_main" branch --show-current
 git -C "$mutation_main" status --short --untracked-files=all
-git -C "$mutation_main" diff -- "$mutation_report_relative" docs/05-testing/mutation-results/00-index.md
+git -C "$mutation_main" diff -- "$mutation_report_relative" docs/05-testing/mutation-results/mutation-testing-experiments.md
 cat "$mutation_report"
 ```
 
@@ -914,7 +1029,7 @@ Record the raw artifacts' verified absolute external location plus a portable si
 - Remaining decisions: <explicit deferrals>
 ```
 
-No extra prompt entry is created here. Follow the [playbook](../04-agentic-coding/prompts/00-index.md) if a future prompt record is agreed; readable experiment reports remain under the results index.
+No extra prompt entry is created here. Follow the [playbook](../04-agentic-coding/prompts/00-index.md) if a future prompt record is agreed; readable experiment reports remain in `mutation-results/`, with navigation from the verified experiment report.
 
 ## I. Complete an Experiment Without Switching Main
 
