@@ -6,7 +6,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static com.example.agenticorderservice.shared.api.ApiError.Code.*;
 class CustomerApiTest extends ApiTestSupport {

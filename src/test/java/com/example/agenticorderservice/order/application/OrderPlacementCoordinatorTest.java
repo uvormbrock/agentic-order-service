@@ -42,7 +42,8 @@ class OrderPlacementCoordinatorTest {
         assertThat(result.subtotal()).isEqualByComparingTo("100.00");
         assertThat(result.discount()).isEqualByComparingTo("10.00"); assertThat(result.total()).isEqualByComparingTo("90.00");
         assertThat(result.items()).extracting(OrderResult.Item::quantity).containsExactly(3, 1);
-        assertThatThrownBy(() -> result.items().clear()).isInstanceOf(UnsupportedOperationException.class);
+        var immutableItems = result.items();
+        assertThatThrownBy(immutableItems::clear).isInstanceOf(UnsupportedOperationException.class);
         assertThat(manager.commits).isEqualTo(1); assertThat(manager.rollbacks).isZero();
     }
     @Test void retriesOnlyAfterRollbackAndReleasedTransactionWithApprovedBackoff() {
@@ -56,26 +57,30 @@ class OrderPlacementCoordinatorTest {
     }
     @Test void exhaustionReturnsUnavailableAndNeverSaves() {
         when(products.lock(first)).thenThrow(new RuntimeException(OrderRetryPolicyTest.serverFailure("55P03", "ProcessInterrupts")));
-        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(command()))
+        var input = command();
+        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(input))
                 .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.UNAVAILABLE));
         assertThat(manager.rollbacks).isEqualTo(3); verifyNoInteractions(orders);
     }
     @ParameterizedTest @ValueSource(longs={9975000000L,10000000000L})
     void schedulingBudgetPreventsAnotherAttempt(long elapsed) {
         when(products.lock(first)).thenAnswer(c -> { clock.set(100000000000L+elapsed); throw new RuntimeException(new SQLException("deadlock", "40P01")); });
-        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(command()))
+        var input = command();
+        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(input))
                 .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.UNAVAILABLE));
         assertThat(manager.begins).isEqualTo(1); assertThat(delays).isEmpty();
     }
     @Test void committedButUnconfirmedOutcomeNeverReplays() {
         manager.failCommit = true;
-        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(command()))
+        var input = command();
+        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(input))
                 .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.TECHNICAL));
         verify(orders).save(any()); assertThat(manager.begins).isEqualTo(1); assertThat(delays).isEmpty();
     }
     @Test void inactiveCustomerHasPriorityAndNeverLocksProducts() {
         when(customers.lock(customer)).thenReturn(new CustomerResult(customer,"C","a@example.com",false));
-        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(command()))
+        var input = command();
+        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(input))
                 .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.CUSTOMER_INACTIVE));
         verifyNoInteractions(products, orders);
     }
@@ -88,34 +93,39 @@ class OrderPlacementCoordinatorTest {
     }
     @Test void guardRejectsActiveSynchronizationAndBoundResourcesBeforeAnyProcessing() {
         Object key = new Object(); TransactionSynchronizationManager.bindResource(key,new Object());
-        try { assertThatIllegalStateException().isThrownBy(() -> coordinator.place(command())); }
+        var input = command();
+        try { assertThatIllegalStateException().isThrownBy(() -> coordinator.place(input)); }
         finally { TransactionSynchronizationManager.unbindResource(key); }
         TransactionSynchronizationManager.initSynchronization();
-        try { assertThatIllegalStateException().isThrownBy(() -> coordinator.place(command())); }
+        try { assertThatIllegalStateException().isThrownBy(() -> coordinator.place(input)); }
         finally { TransactionSynchronizationManager.clearSynchronization(); }
         assertThat(manager.begins).isZero(); verifyNoInteractions(customers,products,orders,jdbc);
     }
     @Test void missingCustomerIsNotRetriedAndNeverTouchesProducts() {
         when(customers.lock(customer)).thenThrow(new CustomerNotFoundException());
-        assertThatExceptionOfType(CustomerNotFoundException.class).isThrownBy(() -> coordinator.place(command()));
+        var input = command();
+        assertThatExceptionOfType(CustomerNotFoundException.class).isThrownBy(() -> coordinator.place(input));
         assertThat(manager.begins).isEqualTo(1);assertThat(manager.rollbacks).isEqualTo(1);
         verifyNoInteractions(products,orders);assertThat(delays).isEmpty();
     }
     @Test void missingProductIsNotRetriedOrSaved() {
         when(products.lock(first)).thenThrow(new ProductNotFoundException());
-        assertThatExceptionOfType(ProductNotFoundException.class).isThrownBy(() -> coordinator.place(command()));
+        var input = command();
+        assertThatExceptionOfType(ProductNotFoundException.class).isThrownBy(() -> coordinator.place(input));
         assertThat(manager.begins).isEqualTo(1);verifyNoInteractions(orders);assertThat(delays).isEmpty();
     }
     @Test void inactiveProductRejectsBeforeDomainPersistence() {
         when(products.lock(first)).thenReturn(new ProductResult(first,"Inactive",BigDecimal.ZERO,false));
-        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(command()))
+        var input = command();
+        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(input))
                 .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.PRODUCT_INACTIVE));
         verifyNoInteractions(orders);assertThat(manager.rollbacks).isEqualTo(1);assertThat(delays).isEmpty();
     }
     @ParameterizedTest @ValueSource(strings={"57014","23505","08006","HY000"})
     void rejectedSqlFailuresRollBackExactlyOnceWithoutReplay(String state) {
         var failure=new RuntimeException(new SQLException("private",state));when(products.lock(first)).thenThrow(failure);
-        assertThatThrownBy(() -> coordinator.place(command())).isSameAs(failure);
+        var input = command();
+        assertThatThrownBy(() -> coordinator.place(input)).isSameAs(failure);
         assertThat(manager.begins).isEqualTo(1);assertThat(manager.rollbacks).isEqualTo(1);
         verifyNoInteractions(orders);assertThat(delays).isEmpty();
     }
@@ -123,7 +133,8 @@ class OrderPlacementCoordinatorTest {
         when(products.lock(first)).thenThrow(new RuntimeException(new SQLException("deadlock","40P01")));
         var slowPause=new OrderPlacementCoordinator(new TransactionTemplate(manager),jdbc,new AmbientTransactionGuard(),customers,products,orders,
                 clock::get,delay -> clock.set(110000000000L));
-        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> slowPause.place(command()))
+        var input = command();
+        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> slowPause.place(input))
                 .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.UNAVAILABLE));
         assertThat(manager.begins).isEqualTo(1);verifyNoInteractions(orders);
     }
@@ -132,7 +143,8 @@ class OrderPlacementCoordinatorTest {
         var realPause=new OrderPlacementCoordinator(new TransactionTemplate(manager),jdbc,new AmbientTransactionGuard(),customers,products,orders);
         Thread.currentThread().interrupt();
         try {
-            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> realPause.place(command()))
+            var input = command();
+            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> realPause.place(input))
                     .satisfies(f -> {assertThat(f.reason()).isEqualTo(OrderFailure.Reason.TECHNICAL);assertThat(f.getCause()).isInstanceOf(InterruptedException.class);});
             assertThat(Thread.currentThread().isInterrupted()).isTrue();assertThat(manager.begins).isEqualTo(1);verifyNoInteractions(orders);
         } finally {Thread.interrupted();}
@@ -141,14 +153,16 @@ class OrderPlacementCoordinatorTest {
         manager.leakResource=true;
         when(products.lock(first)).thenThrow(new RuntimeException(new SQLException("deadlock","40P01")));
         try {
-            assertThatIllegalStateException().isThrownBy(() -> coordinator.place(command()));
+            var input = command();
+            assertThatIllegalStateException().isThrownBy(() -> coordinator.place(input));
             assertThat(manager.begins).isEqualTo(1);assertThat(delays).isEmpty();verifyNoInteractions(orders);
         } finally {TransactionSynchronizationManager.unbindResourceIfPossible(manager);}
     }
     @Test void unrelatedNested55P03FromProviderDoesNotReplay() {
         var failure=new RuntimeException(new SQLException("not attributed", "55P03"));
         when(products.lock(first)).thenThrow(failure);
-        assertThatThrownBy(() -> coordinator.place(command())).isSameAs(failure);
+        var input = command();
+        assertThatThrownBy(() -> coordinator.place(input)).isSameAs(failure);
         assertThat(manager.begins).isEqualTo(1);assertThat(manager.rollbacks).isEqualTo(1);
         assertThat(delays).isEmpty();verifyNoInteractions(orders);
     }

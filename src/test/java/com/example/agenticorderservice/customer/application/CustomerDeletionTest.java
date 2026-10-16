@@ -20,7 +20,9 @@ class CustomerDeletionTest {
     }
     @Test void absentCustomerDoesNotQueryReferences() {
         var repository=mock(CustomerRepository.class);var orders=mock(OrderReferenceQuery.class);
-        assertThatExceptionOfType(CustomerNotFoundException.class).isThrownBy(() -> new CustomerApplicationService(repository,orders).delete(UUID.randomUUID()));
+        var service = new CustomerApplicationService(repository, orders);
+        UUID missingId = UUID.randomUUID();
+        assertThatExceptionOfType(CustomerNotFoundException.class).isThrownBy(() -> service.delete(missingId));
         verifyNoInteractions(orders);
     }
 }

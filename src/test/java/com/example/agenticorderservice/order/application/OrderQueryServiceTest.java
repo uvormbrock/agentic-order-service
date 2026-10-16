@@ -19,6 +19,7 @@ class OrderQueryServiceTest {
         var detail=service.get(product);assertThat(detail.customer()).isEqualTo(results.getFirst().customer());
         assertThat(detail.items()).isEqualTo(results.getFirst().items());assertThat(detail.total()).isEqualByComparingTo("90");
         when(orders.findAllWithItems()).thenReturn(List.of());assertThat(service.list()).isEmpty();
-        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> service.get(UUID.randomUUID())).satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.NOT_FOUND));
+        UUID missingId = UUID.randomUUID();
+        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> service.get(missingId)).satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.NOT_FOUND));
     }
 }

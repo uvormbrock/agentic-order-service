@@ -64,7 +64,7 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
             try {
                 if(placementFirst) {
                     var order=pool.submit(() -> placement.place(command(c,p)));await(held);
-                    var writer=pool.submit(() -> mutate.get());blocked(feature+"s");release.countDown();
+                    var writer=pool.submit(mutate::get);blocked(feature+"s");release.countDown();
                     var result=order.get(15,TimeUnit.SECONDS);writer.get(15,TimeUnit.SECONDS);
                     assertThat(result.items().getFirst().unitPrice()).isEqualByComparingTo("25");assertThat(result.items().getFirst().productName()).isEqualTo("Original");
                     assertThat(result.total()).isEqualByComparingTo("90");
@@ -134,7 +134,8 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
         try(var pool=Executors.newSingleThreadExecutor()) {
             try {
                 var holder=pool.submit(() -> tx(() -> {jdbc.queryForObject("select id from "+table+" where id=? for update",UUID.class,table.equals("customers")?c:p);held.countDown();await(release);return null;}));await(held);
-                assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> placement.place(command(c,p))).satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.UNAVAILABLE));
+                var input = command(c, p);
+                assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> placement.place(input)).satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.UNAVAILABLE));
                 assertThat(contexts).hasSize(3);var identities=Collections.newSetFromMap(new IdentityHashMap<Object,Boolean>());identities.addAll(contexts);assertThat(identities).hasSize(3);
                 noOrder(c);release.countDown();holder.get(15,TimeUnit.SECONDS);
             } finally {release.countDown();}
@@ -148,7 +149,8 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
             public void commit(TransactionStatus status){manager.commit(status);commits.incrementAndGet();throw new TransactionSystemException("Injected lost commit confirmation");}
         };
         var coordinator=new OrderPlacementCoordinator(new TransactionTemplate(lost),jdbc,new AmbientTransactionGuard(),customers,products,orders);
-        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(command(c,p))).satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.TECHNICAL));
+        var input = command(c, p);
+        assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(input)).satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.TECHNICAL));
         assertThat(commits.get()).isEqualTo(1);assertThat(jdbc.queryForObject("select count(*) from orders where customer_id=?",Integer.class,c)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from order_items i join orders o on o.id=i.order_id where o.customer_id=?",Integer.class,c)).isEqualTo(1);
     }

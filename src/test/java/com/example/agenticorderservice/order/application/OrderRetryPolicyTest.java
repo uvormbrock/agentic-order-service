@@ -101,6 +101,8 @@ class OrderRetryPolicyTest {
     @ParameterizedTest @MethodSource("unsafeWrappers")
     void approvedNestedStateNeverOverridesUnsafeFailure(Throwable failure) {
         assertThat(OrderRetryPolicy.transientFailure(failure, true)).isFalse();
+        var approvedFirst = new SQLException("transient state before unsafe failure", "40P01", failure);
+        assertThat(OrderRetryPolicy.transientFailure(approvedFirst, true)).isFalse();
     }
 
     @Test void hiddenOriginalTransactionFailureAndSuppressedCleanupNeverAuthorizeRetry() {

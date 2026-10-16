@@ -24,6 +24,11 @@ public final class StrictJsonRequestDecoder {
         return type == com.example.agenticorderservice.order.api.CreateOrderRequest.class || type == ProductDetailsRequest.class || type == CustomerDetailsRequest.class
                 || type == DeactivateProductRequest.class || type == DeactivateCustomerRequest.class;
     }
+    private static final String CUSTOMER_ID = "customerId";
+    private static final String PRODUCT_ID = "productId";
+    private static final String QUANTITY = "quantity";
+    private static final String VERSION = "version";
+    private static final String ITEMS = "items";
     private static final String NAME = "name";
     private static final String PRICE = "price";
     private static final String EMAIL = "email";
@@ -44,43 +49,61 @@ public final class StrictJsonRequestDecoder {
     }
 
     private Object order(Map<String, Object> fields) {
+        validateOrderProperties(fields);
+        List<?> items = typedOrderItems(fields);
+        validateOrderPresence(fields, items);
+        UUID customerId = orderId(fields.get(CUSTOMER_ID));
+        return new com.example.agenticorderservice.order.api.CreateOrderRequest(customerId, orderLines(items));
+    }
+
+    private void validateOrderProperties(Map<String, Object> fields) {
         var propertyErrors = new TreeMap<String, ApiError.Code>();
-        orderProperties(fields, Set.of("customerId", "items"),
-                Set.of("id", "version", "customer", "currency", "subtotal", "discount", "total", "unitPrice"), "", propertyErrors);
-        Object rawItems = fields.get("items");
+        orderProperties(fields, Set.of(CUSTOMER_ID, ITEMS),
+                Set.of("id", VERSION, "customer", "currency", "subtotal", "discount", "total", "unitPrice"), "", propertyErrors);
+        Object rawItems = fields.get(ITEMS);
         if (rawItems instanceof List<?> items) {
             for (int index = 0; index < items.size(); index++) {
                 if (items.get(index) instanceof Map<?, ?> item) {
-                    orderProperties(item, Set.of("productId", "quantity"),
-                            Set.of("id", "version", "productName", "unitPrice", "lineTotal", "subtotal", "discount", "total", "currency"),
+                    orderProperties(item, Set.of(PRODUCT_ID, QUANTITY),
+                            Set.of("id", VERSION, "productName", "unitPrice", "lineTotal", "subtotal", "discount", "total", "currency"),
                             "items[" + index + "].", propertyErrors);
                 }
             }
         }
         if (!propertyErrors.isEmpty()) { throw new ApiInputException(propertyErrors.firstEntry().getValue()); }
-        scalarType(fields.get("customerId"), JsonToken.VALUE_STRING);
+    }
+
+    private List<?> typedOrderItems(Map<String, Object> fields) {
+        Object rawItems = fields.get(ITEMS);
+        scalarType(fields.get(CUSTOMER_ID), JsonToken.VALUE_STRING);
         if (rawItems != null && !(rawItems instanceof List<?>)) { throw new ApiInputException(INVALID_FIELD_TYPE); }
         List<?> items = rawItems instanceof List<?> list ? list : List.of();
         for (Object raw : items) {
             if (raw == null) { continue; }
             if (!(raw instanceof Map<?, ?> item)) { throw new ApiInputException(INVALID_FIELD_TYPE); }
-            scalarType(item.get("productId"), JsonToken.VALUE_STRING);
-            scalarType(item.get("quantity"), JsonToken.VALUE_NUMBER_INT);
+            scalarType(item.get(PRODUCT_ID), JsonToken.VALUE_STRING);
+            scalarType(item.get(QUANTITY), JsonToken.VALUE_NUMBER_INT);
         }
-        if (fields.get("customerId") == null || rawItems == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
+        return items;
+    }
+
+    private void validateOrderPresence(Map<String, Object> fields, List<?> items) {
+        if (fields.get(CUSTOMER_ID) == null || fields.get(ITEMS) == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
         for (Object raw : items) {
             if (raw == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
             Map<?, ?> item = (Map<?, ?>) raw;
-            if (item.get("productId") == null || item.get("quantity") == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
+            if (item.get(PRODUCT_ID) == null || item.get(QUANTITY) == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
         }
-        UUID customerId = orderId(fields.get("customerId"));
+    }
+
+    private List<com.example.agenticorderservice.order.api.OrderItemRequest> orderLines(List<?> items) {
         if (items.isEmpty()) { throw new ApiInputException(INVALID_ORDER_ITEMS); }
         List<com.example.agenticorderservice.order.api.OrderItemRequest> result = new ArrayList<>();
         Map<UUID, Integer> sums = new HashMap<>();
         for (Object raw : items) {
             Map<?, ?> item = (Map<?, ?>) raw;
-            UUID productId = orderId(item.get("productId"));
-            var number = new java.math.BigInteger(((Scalar) item.get("quantity")).text());
+            UUID productId = orderId(item.get(PRODUCT_ID));
+            var number = new java.math.BigInteger(((Scalar) item.get(QUANTITY)).text());
             if (number.signum() <= 0 || number.compareTo(java.math.BigInteger.valueOf(10000)) > 0) {
                 throw new ApiInputException(INVALID_ORDER_QUANTITY);
             }
@@ -90,8 +113,9 @@ public final class StrictJsonRequestDecoder {
             sums.put(productId, total);
             result.add(new com.example.agenticorderservice.order.api.OrderItemRequest(productId, quantity));
         }
-        return new com.example.agenticorderservice.order.api.CreateOrderRequest(customerId, result);
+        return result;
     }
+
     private void orderProperties(Map<?, ?> fields, Set<String> allowed, Set<String> forbidden,
                                  String prefix, Map<String, ApiError.Code> errors) {
         for (Object key : fields.keySet()) {
@@ -118,7 +142,7 @@ public final class StrictJsonRequestDecoder {
     }
 
     private void validateProperties(Map<String, Object> fields, List<String> required, boolean product, boolean patch) {
-        Set<String> known = product ? Set.of("id", "version", ACTIVE, NAME, PRICE) : Set.of("id", "version", ACTIVE, NAME, EMAIL);
+        Set<String> known = product ? Set.of("id", VERSION, ACTIVE, NAME, PRICE) : Set.of("id", VERSION, ACTIVE, NAME, EMAIL);
         for (String key : new TreeSet<>(fields.keySet())) {
             if (!known.contains(key)) { throw new ApiInputException(UNKNOWN_FIELD); }
             if (!required.contains(key)) { throw new ApiInputException(UNSUPPORTED_FIELD); }
