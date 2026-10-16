@@ -1,6 +1,11 @@
 package com.example.agenticorderservice;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import jakarta.persistence.EntityManagerFactory;
+import java.sql.SQLException;
+import java.util.ArrayList;
+import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,12 +20,6 @@ import org.springframework.test.context.ActiveProfiles;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import javax.sql.DataSource;
-import java.sql.SQLException;
-import java.util.ArrayList;
-
-import static org.assertj.core.api.Assertions.assertThat;
-
 @SpringBootTest
 @ActiveProfiles("integration-test")
 @Import(PostgreSqlTestConfiguration.class)
@@ -29,16 +28,22 @@ class PostgreSqlFoundationIT {
 
     @Autowired
     private PostgreSQLContainer postgres;
+
     @Autowired
     private DockerImageName postgresImage;
+
     @Autowired
     private DataSource dataSource;
+
     @Autowired
     private EntityManagerFactory entityManagerFactory;
+
     @Autowired
     private Flyway flyway;
+
     @Autowired
     private ApplicationContext context;
+
     @Autowired
     private Environment environment;
 
@@ -47,7 +52,7 @@ class PostgreSqlFoundationIT {
         assertThat(postgres.isRunning()).isTrue();
         assertThat(postgres.getDockerImageName()).isEqualTo(postgresImage.asCanonicalNameString());
         try (var connection = dataSource.getConnection();
-             var statement = connection.createStatement()) {
+                var statement = connection.createStatement()) {
             assertThat(connection.getMetaData().getURL()).isEqualTo(postgres.getJdbcUrl());
             assertThat(connection.getCatalog()).isEqualTo("agentic_order_service_it");
             try (var result = statement.executeQuery("SELECT 1")) {
@@ -67,21 +72,24 @@ class PostgreSqlFoundationIT {
     void initializesJpaWithSchemaValidationAndWithoutOpenEntityManagerInView() {
         assertThat(entityManagerFactory.isOpen()).isTrue();
         assertThat(entityManagerFactory.getMetamodel().getEntities()).hasSize(4);
-        assertThat(environment.getProperty("spring.jpa.open-in-view", Boolean.class)).isFalse();
+        assertThat(environment.getProperty("spring.jpa.open-in-view", Boolean.class))
+                .isFalse();
         assertThat(environment.getProperty("spring.jpa.hibernate.ddl-auto")).isEqualTo("validate");
         assertThat(entityManagerFactory.getProperties()).containsEntry("hibernate.hbm2ddl.auto", "validate");
         assertThat(environment.getProperty("spring.sql.init.mode")).isEqualTo("never");
-        assertThat(context.getBeansOfType(OpenEntityManagerInViewInterceptor.class)).isEmpty();
+        assertThat(context.getBeansOfType(OpenEntityManagerInViewInterceptor.class))
+                .isEmpty();
         assertThat(context.getBeansOfType(OpenEntityManagerInViewFilter.class)).isEmpty();
     }
 
     @Test
     void initializesApprovedDomainMigrationAndFlywayMetadata() throws SQLException {
-        assertThat(environment.getProperty("spring.flyway.enabled", Boolean.class)).isTrue();
+        assertThat(environment.getProperty("spring.flyway.enabled", Boolean.class))
+                .isTrue();
         assertThat(flyway.info().applied()).hasSize(2);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
         try (var connection = dataSource.getConnection();
-             var statement = connection.createStatement()) {
+                var statement = connection.createStatement()) {
             var tables = new ArrayList<String>();
             try (var result = statement.executeQuery("""
                     SELECT schemaname || '.' || tablename
@@ -93,7 +101,13 @@ class PostgreSqlFoundationIT {
                     tables.add(result.getString(1));
                 }
             }
-            assertThat(tables).containsExactly("public.customers", "public.flyway_schema_history", "public.order_items", "public.orders", "public.products");
+            assertThat(tables)
+                    .containsExactly(
+                            "public.customers",
+                            "public.flyway_schema_history",
+                            "public.order_items",
+                            "public.orders",
+                            "public.products");
             try (var result = statement.executeQuery("SELECT count(*) FROM flyway_schema_history")) {
                 assertThat(result.next()).isTrue();
                 assertThat(result.getLong(1)).isEqualTo(2);

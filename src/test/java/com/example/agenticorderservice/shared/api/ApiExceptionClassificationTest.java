@@ -1,5 +1,8 @@
 package com.example.agenticorderservice.shared.api;
 
+import static com.example.agenticorderservice.shared.api.ApiError.Code.*;
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.sql.SQLException;
 import java.sql.SQLNonTransientConnectionException;
 import java.sql.SQLTransientConnectionException;
@@ -11,15 +14,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.CannotCreateTransactionException;
 import org.springframework.transaction.TransactionSystemException;
 
-import static com.example.agenticorderservice.shared.api.ApiError.Code.*;
-import static org.assertj.core.api.Assertions.assertThat;
-
 class ApiExceptionClassificationTest {
     @Test
     void confirmsDuplicateEmailThroughStructuredHibernateMetadataAfterCompletion() {
         var violation = violation("23505", "uq_customers_email");
-        var failure = new TransactionSystemException("completion failed",
-                new DataIntegrityViolationException("flush failed", violation));
+        var failure = new TransactionSystemException(
+                "completion failed", new DataIntegrityViolationException("flush failed", violation));
 
         assertThat(ApiExceptionHandler.classify(failure)).isEqualTo(DUPLICATE_EMAIL);
     }
@@ -30,8 +30,7 @@ class ApiExceptionClassificationTest {
                 .isEqualTo(INTERNAL_SERVER_ERROR);
         assertThat(ApiExceptionHandler.classify(violation("23514", "uq_customers_email")))
                 .isEqualTo(INTERNAL_SERVER_ERROR);
-        assertThat(ApiExceptionHandler.classify(violation("23505", null)))
-                .isEqualTo(INTERNAL_SERVER_ERROR);
+        assertThat(ApiExceptionHandler.classify(violation("23505", null))).isEqualTo(INTERNAL_SERVER_ERROR);
         assertThat(ApiExceptionHandler.classify(new SQLException("uq_customers_email", "23505")))
                 .isEqualTo(INTERNAL_SERVER_ERROR);
     }
@@ -49,8 +48,8 @@ class ApiExceptionClassificationTest {
 
     @Test
     void followsOriginalApplicationExceptionWithoutDependingOnWrapperMessages() {
-        var failure = new TransactionSystemException("completion failed",
-                new SQLException("unrelated failure", "HY000"));
+        var failure =
+                new TransactionSystemException("completion failed", new SQLException("unrelated failure", "HY000"));
         failure.initApplicationException(violation("23505", "uq_customers_email"));
 
         assertThat(ApiExceptionHandler.classify(failure)).isEqualTo(DUPLICATE_EMAIL);
@@ -86,7 +85,7 @@ class ApiExceptionClassificationTest {
     }
 
     private static ConstraintViolationException violation(String sqlState, String constraint) {
-        return new ConstraintViolationException("private database details",
-                new SQLException("private SQL", sqlState), constraint);
+        return new ConstraintViolationException(
+                "private database details", new SQLException("private SQL", sqlState), constraint);
     }
 }

@@ -11,6 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.MANDATORY)
 public class OrderReferenceQuery {
     private final OrderRepository repository;
-    public OrderReferenceQuery(OrderRepository repository) { this.repository = repository; }
-    public boolean references(UUID customerId) { return repository.existsByCustomerId(customerId); }
+
+    public OrderReferenceQuery(OrderRepository repository) {
+        this.repository = repository;
+    }
+
+    public boolean references(UUID customerId) {
+        return repository.existsByCustomerId(customerId);
+    }
 }

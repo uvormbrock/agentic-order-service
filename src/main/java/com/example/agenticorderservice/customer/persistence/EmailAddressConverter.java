@@ -10,6 +10,7 @@ public class EmailAddressConverter implements AttributeConverter<EmailAddress, S
     public String convertToDatabaseColumn(EmailAddress attribute) {
         return attribute == null ? null : attribute.value();
     }
+
     @Override
     public EmailAddress convertToEntityAttribute(String value) {
         return value == null ? null : new EmailAddress(value);

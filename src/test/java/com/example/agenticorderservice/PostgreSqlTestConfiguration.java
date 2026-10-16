@@ -1,16 +1,15 @@
 package com.example.agenticorderservice;
 
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.context.annotation.Bean;
-import org.testcontainers.postgresql.PostgreSQLContainer;
-import org.testcontainers.utility.DockerImageName;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
+import org.testcontainers.postgresql.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @TestConfiguration(proxyBeanMethods = false)
 public class PostgreSqlTestConfiguration {
@@ -45,8 +44,9 @@ public class PostgreSqlTestConfiguration {
                 .withReuse(false);
     }
     /** Test-harness transaction only; no production use-case coordination. */
-    public static <T> T inTransaction(jakarta.persistence.EntityManagerFactory factory,
-                                      java.util.function.Function<jakarta.persistence.EntityManager, T> action) {
+    public static <T> T inTransaction(
+            jakarta.persistence.EntityManagerFactory factory,
+            java.util.function.Function<jakarta.persistence.EntityManager, T> action) {
         try (var manager = factory.createEntityManager()) {
             var transaction = manager.getTransaction();
             transaction.begin();
@@ -55,7 +55,9 @@ public class PostgreSqlTestConfiguration {
                 transaction.commit();
                 return value;
             } catch (RuntimeException | Error failure) {
-                if (transaction.isActive()) { transaction.rollback(); }
+                if (transaction.isActive()) {
+                    transaction.rollback();
+                }
                 throw failure;
             }
         }

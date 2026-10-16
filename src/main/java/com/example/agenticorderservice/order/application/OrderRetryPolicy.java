@@ -6,16 +6,20 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 
 final class OrderRetryPolicy {
-    private OrderRetryPolicy() { }
+    private OrderRetryPolicy() {}
 
-    private record Visit(Throwable failure, boolean completed) { }
+    private record Visit(Throwable failure, boolean completed) {}
 
     static boolean transientFailure(Throwable failure, boolean originalLockCallFailed) {
-        if (failure == null) { return false; }
+        if (failure == null) {
+            return false;
+        }
         var graph = new FailureGraph(originalLockCallFailed);
         graph.pending.push(new Visit(failure, false));
         while (!graph.pending.isEmpty()) {
-            if (!graph.visit(graph.pending.pop())) { return false; }
+            if (!graph.visit(graph.pending.pop())) {
+                return false;
+            }
         }
         return graph.approvedState != null;
     }
@@ -27,17 +31,30 @@ final class OrderRetryPolicy {
         private final boolean originalLockCallFailed;
         private String approvedState;
 
-        private FailureGraph(boolean originalLockCallFailed) { this.originalLockCallFailed = originalLockCallFailed; }
+        private FailureGraph(boolean originalLockCallFailed) {
+            this.originalLockCallFailed = originalLockCallFailed;
+        }
 
         private boolean visit(Visit visit) {
             Throwable cause = visit.failure();
-            if (visit.completed()) { visited.put(cause, true); return true; }
+            if (visit.completed()) {
+                visited.put(cause, true);
+                return true;
+            }
             Boolean completed = visited.get(cause);
-            if (Boolean.FALSE.equals(completed)) { return false; }
-            if (Boolean.TRUE.equals(completed)) { return true; }
+            if (Boolean.FALSE.equals(completed)) {
+                return false;
+            }
+            if (Boolean.TRUE.equals(completed)) {
+                return true;
+            }
             visited.put(cause, false);
-            if (unsafeFailure(cause) || cause.getSuppressed().length != 0) { return false; }
-            if (cause instanceof SQLException sql && !consistentSqlState(sql)) { return false; }
+            if (unsafeFailure(cause) || cause.getSuppressed().length != 0) {
+                return false;
+            }
+            if (cause instanceof SQLException sql && !consistentSqlState(sql)) {
+                return false;
+            }
             pending.push(new Visit(cause, true));
             enqueueRelatedCauses(cause);
             return true;
@@ -45,10 +62,13 @@ final class OrderRetryPolicy {
 
         private boolean consistentSqlState(SQLException sql) {
             String state = sql.getSQLState();
-            boolean approved = "40P01".equals(state) || "40001".equals(state)
+            boolean approved = "40P01".equals(state)
+                    || "40001".equals(state)
                     || (originalLockCallFailed && "55P03".equals(state) && postgresLockTimeout(sql));
             // Every SQL exception must agree. Unknown or mixed states are not retry evidence.
-            if (!approved || (approvedState != null && !approvedState.equals(state))) { return false; }
+            if (!approved || (approvedState != null && !approvedState.equals(state))) {
+                return false;
+            }
             approvedState = state;
             return true;
         }
@@ -57,7 +77,9 @@ final class OrderRetryPolicy {
             if (cause instanceof SQLException sql && sql.getNextException() != null) {
                 pending.push(new Visit(sql.getNextException(), false));
             }
-            if (cause.getCause() != null) { pending.push(new Visit(cause.getCause(), false)); }
+            if (cause.getCause() != null) {
+                pending.push(new Visit(cause.getCause(), false));
+            }
         }
 
         private static boolean unsafeFailure(Throwable cause) {
@@ -81,12 +103,19 @@ final class OrderRetryPolicy {
 
         private static boolean postgresLockTimeout(SQLException sql) {
             try {
-                if (sql.getClass() != Class.forName("org.postgresql.util.PSQLException")) { return false; }
+                if (sql.getClass() != Class.forName("org.postgresql.util.PSQLException")) {
+                    return false;
+                }
                 // The driver is runtime-scoped. Read its public structured diagnostics without
                 // changing Maven scope or parsing localized exception messages. PostgreSQL 17
                 // emits 55P03 from ProcessInterrupts for lock_timeout, unlike NOWAIT/RAISE.
-                Object server = sql.getClass().getMethod("getServerErrorMessage").invoke(sql);
-                return server != null && "ProcessInterrupts".equals(server.getClass().getMethod("getRoutine").invoke(server));
+                Object server =
+                        sql.getClass().getMethod("getServerErrorMessage").invoke(sql);
+                return server != null
+                        && "ProcessInterrupts"
+                                .equals(server.getClass()
+                                        .getMethod("getRoutine")
+                                        .invoke(server));
             } catch (ReflectiveOperationException | SecurityException unavailable) {
                 // Missing/changed diagnostic APIs cannot positively establish timeout origin.
                 return false;

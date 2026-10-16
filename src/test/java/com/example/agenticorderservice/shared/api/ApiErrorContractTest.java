@@ -1,15 +1,16 @@
 package com.example.agenticorderservice.shared.api;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
-import java.nio.charset.StandardCharsets;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.mock.web.MockHttpServletResponse;
 import tools.jackson.databind.json.JsonMapper;
-import static org.assertj.core.api.Assertions.assertThat;
 
 class ApiErrorContractTest {
     @Test
@@ -19,7 +20,9 @@ class ApiErrorContractTest {
                 .containsExactlyInAnyOrderElementsOf(ExpectedApiErrors.CATALOG.keySet());
     }
 
-    static Stream<String> approvedCodes() { return ExpectedApiErrors.CATALOG.keySet().stream(); }
+    static Stream<String> approvedCodes() {
+        return ExpectedApiErrors.CATALOG.keySet().stream();
+    }
 
     @ParameterizedTest
     @MethodSource("approvedCodes")
@@ -31,7 +34,7 @@ class ApiErrorContractTest {
         assertThat(code.message()).isEqualTo(expected.message());
 
         var writer = new ApiErrorResponseWriter(JsonMapper.builder().build());
-        for (boolean buffered : new boolean[]{false, true}) {
+        for (boolean buffered : new boolean[] {false, true}) {
             var response = new MockHttpServletResponse();
             if (buffered) {
                 response.getOutputStream().write("prior private content".getBytes(StandardCharsets.UTF_8));

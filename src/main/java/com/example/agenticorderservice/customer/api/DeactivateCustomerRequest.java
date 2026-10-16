@@ -1,2 +1,3 @@
 package com.example.agenticorderservice.customer.api;
-public record DeactivateCustomerRequest(Boolean active) { }
+
+public record DeactivateCustomerRequest(Boolean active) {}

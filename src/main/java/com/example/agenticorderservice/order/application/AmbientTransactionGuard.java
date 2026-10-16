@@ -9,7 +9,8 @@ public class AmbientTransactionGuard {
         if (TransactionSynchronizationManager.isActualTransactionActive()
                 || TransactionSynchronizationManager.isSynchronizationActive()
                 || !TransactionSynchronizationManager.getResourceMap().isEmpty()) {
-            throw new IllegalStateException("Order placement requires entry without an ambient transaction or bound resources");
+            throw new IllegalStateException(
+                    "Order placement requires entry without an ambient transaction or bound resources");
         }
     }
 }

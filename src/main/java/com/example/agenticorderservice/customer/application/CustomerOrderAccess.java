@@ -12,13 +12,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.MANDATORY)
 public class CustomerOrderAccess {
     private final CustomerRepository repository;
-    public CustomerOrderAccess(CustomerRepository repository) { this.repository = repository; }
+
+    public CustomerOrderAccess(CustomerRepository repository) {
+        this.repository = repository;
+    }
+
     public CustomerResult lock(UUID id) {
         return CustomerResult.from(repository.findLockedById(id).orElseThrow(CustomerNotFoundException::new));
     }
+
     public Map<UUID, CustomerResult> current(Collection<UUID> ids) {
-        if (ids.isEmpty()) { return Map.of(); }
-        return repository.findByIdIn(ids).stream().map(CustomerResult::from)
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return repository.findByIdIn(ids).stream()
+                .map(CustomerResult::from)
                 .collect(Collectors.toUnmodifiableMap(CustomerResult::id, value -> value));
     }
 }

@@ -11,7 +11,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.MANDATORY)
 public class ProductOrderAccess {
     private final ProductRepository repository;
-    public ProductOrderAccess(ProductRepository repository) { this.repository = repository; }
+
+    public ProductOrderAccess(ProductRepository repository) {
+        this.repository = repository;
+    }
+
     public ProductResult lock(UUID id) {
         return ProductResult.from(repository.findLockedById(id).orElseThrow(ProductNotFoundException::new));
     }
