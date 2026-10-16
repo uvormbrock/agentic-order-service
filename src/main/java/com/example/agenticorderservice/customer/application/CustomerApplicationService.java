@@ -59,13 +59,37 @@ public class CustomerApplicationService {
     public void delete(UUID id) {
         var entity = findLocked(id);
         // A distinct statement after the lock sees a placement that committed while we waited.
+        String event;
+        org.slf4j.event.Level level = org.slf4j.event.Level.INFO;
         if (orders.references(id)) {
             if (entity.isActive()) {
                 entity.deactivate();
+                event = "CUSTOMER_DEACTIVATED_BY_DELETE";
+            } else {
+                event = "CUSTOMER_DELETE_NOOP";
+                level = org.slf4j.event.Level.DEBUG;
             }
         } else {
             repository.delete(entity);
+            event = "CUSTOMER_DELETED";
         }
+        observeDeleteCommit(event, level);
+    }
+
+    private static void observeDeleteCommit(String event, org.slf4j.event.Level level) {
+        if (!org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive())
+            return;
+        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        com.example.agenticorderservice.shared.logging.SafeEvent.emit(
+                                org.slf4j.LoggerFactory.getLogger(CustomerApplicationService.class),
+                                level,
+                                "event={}",
+                                event);
+                    }
+                });
     }
     /** Shared by transport validation and direct application callers; no persistence access. */
     public static com.example.agenticorderservice.customer.domain.EmailAddress validateEmail(String value) {

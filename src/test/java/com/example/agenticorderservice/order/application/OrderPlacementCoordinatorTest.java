@@ -9,6 +9,7 @@ import com.example.agenticorderservice.product.application.*;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -289,9 +290,157 @@ class OrderPlacementCoordinatorTest {
         verifyNoInteractions(orders);
     }
 
+    @Test
+    void loggingObservesConfirmedCompletionAndRetrySchedulingWithoutPrivateData() {
+        try (var capture =
+                new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
+            doAnswer(call -> {
+                        assertThat(capture.messages()).noneMatch(message -> message.contains("ORDER_COMMITTED"));
+                        return null;
+                    })
+                    .when(orders)
+                    .flush();
+            when(products.lock(first))
+                    .thenThrow(new RuntimeException(new SQLException("secret-canary", "40P01")))
+                    .thenReturn(new ProductResult(first, "private-name", new BigDecimal("25"), true));
+            coordinator.place(command());
+            assertThat(capture.messages()).hasSize(3);
+            assertThat(capture.messages().get(0)).contains("ORDER_ATTEMPT_ROLLED_BACK");
+            assertThat(capture.messages().get(1))
+                    .contains("ORDER_RETRY_SCHEDULED", "attempt=1", "nextAttempt=2", "delayMs=25");
+            assertThat(capture.messages().get(2)).contains("ORDER_COMMITTED", "attempt=2");
+            assertThat(capture.messages())
+                    .allSatisfy(message -> assertThat(message)
+                            .doesNotContain("secret-canary", "private-name", customer.toString(), first.toString()));
+        }
+    }
+
+    @Test
+    void unknownCompletionLogsOnlyUnknownAndMarksDiagnosticOwnership() {
+        manager.failCommit = true;
+        try (var capture =
+                new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
+            assertThatExceptionOfType(OrderFailure.class)
+                    .isThrownBy(() -> coordinator.place(command()))
+                    .satisfies(failure -> assertThat(failure.diagnosticOwned()).isTrue());
+            assertThat(capture.messages()).singleElement().asString().contains("ORDER_OUTCOME_UNKNOWN");
+        }
+    }
+
+    @Test
+    void failingAppenderCannotConvertCommittedOrderIntoReplay() {
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(OrderPlacementCoordinator.class);
+        var appender = new ch.qos.logback.core.AppenderBase<ch.qos.logback.classic.spi.ILoggingEvent>() {
+            @Override
+            public void doAppend(ch.qos.logback.classic.spi.ILoggingEvent event) {
+                throw new IllegalStateException("appender unavailable");
+            }
+
+            @Override
+            protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {}
+        };
+        appender.start();
+        logger.addAppender(appender);
+        try {
+            assertThat(coordinator.place(command()).total()).isEqualByComparingTo("90");
+            assertThat(manager.commits).isEqualTo(1);
+            assertThat(manager.begins).isEqualTo(1);
+            assertThat(delays).isEmpty();
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"CUSTOMER_NOT_FOUND", "PRODUCT_NOT_FOUND", "CUSTOMER_INACTIVE", "PRODUCT_INACTIVE"})
+    void rejectionEventsUseFixedSafeReasons(String reason) {
+        if (reason.equals("CUSTOMER_NOT_FOUND"))
+            when(customers.lock(customer)).thenThrow(new CustomerNotFoundException());
+        else if (reason.equals("PRODUCT_NOT_FOUND"))
+            when(products.lock(first)).thenThrow(new ProductNotFoundException());
+        else if (reason.equals("CUSTOMER_INACTIVE"))
+            when(customers.lock(customer))
+                    .thenReturn(new CustomerResult(customer, "private", "secret@example.com", false));
+        else when(products.lock(first)).thenReturn(new ProductResult(first, "private", BigDecimal.ONE, false));
+        try (var capture =
+                new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
+            assertThatThrownBy(() -> coordinator.place(command())).isInstanceOf(RuntimeException.class);
+            assertThat(capture.messages()).containsExactly("event=ORDER_REJECTED attempt=1 reason=" + reason);
+            assertThat(capture.events.getFirst().getLevel()).isEqualTo(ch.qos.logback.classic.Level.DEBUG);
+        }
+    }
+
+    @Test
+    void retryTransitionsExhaustionAndCommitBoundaryHaveExplicitFields() {
+        when(products.lock(first)).thenThrow(new RuntimeException(new SQLException("secret-canary", "40P01")));
+        try (var capture =
+                new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
+            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(command()));
+            assertThat(capture.messages())
+                    .contains(
+                            "event=ORDER_RETRY_SCHEDULED attempt=1 nextAttempt=2 delayMs=25",
+                            "event=ORDER_RETRY_SCHEDULED attempt=2 nextAttempt=3 delayMs=50",
+                            "event=ORDER_RETRY_EXHAUSTED attempts=3 reason=ATTEMPT_LIMIT");
+            assertThat(capture.messages().stream()
+                            .filter(m -> m.contains("ORDER_RETRY_SCHEDULED"))
+                            .count())
+                    .isEqualTo(2);
+            assertThat(capture.messages())
+                    .noneMatch(m ->
+                            m.contains("secret-canary") || m.contains("countOrDelay") || m.contains("ORDER_COMMITTED"));
+        }
+    }
+
+    @Test
+    void budgetAndInterruptedBackoffHaveDistinctExhaustionReasons() {
+        when(products.lock(first)).thenThrow(new RuntimeException(new SQLException("private", "40P01")));
+        try (var capture =
+                new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
+            var budget = new OrderPlacementCoordinator(
+                    new TransactionTemplate(manager),
+                    jdbc,
+                    new AmbientTransactionGuard(),
+                    customers,
+                    products,
+                    orders,
+                    clock::get,
+                    delay -> clock.addAndGet(TimeUnit.SECONDS.toNanos(10)));
+            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> budget.place(command()));
+            assertThat(capture.messages()).contains("event=ORDER_RETRY_EXHAUSTED attempts=1 reason=SCHEDULING_BUDGET");
+            capture.events.clear();
+            var interrupted = new OrderPlacementCoordinator(
+                    new TransactionTemplate(manager),
+                    jdbc,
+                    new AmbientTransactionGuard(),
+                    customers,
+                    products,
+                    orders,
+                    clock::get,
+                    delay -> {
+                        throw new OrderFailure(OrderFailure.Reason.TECHNICAL, new InterruptedException("private"));
+                    });
+            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> interrupted.place(command()));
+            assertThat(capture.messages())
+                    .contains("event=ORDER_RETRY_EXHAUSTED attempts=1 reason=BACKOFF_INTERRUPTED");
+        }
+    }
+
+    @Test
+    void commitCheckpointPrecedesSuccessEmission() {
+        try (var capture =
+                new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
+            manager.beforeCommit = () -> assertThat(capture.messages()).noneMatch(m -> m.contains("ORDER_COMMITTED"));
+            coordinator.place(command());
+            assertThat(capture.messages()).containsExactly("event=ORDER_COMMITTED attempt=1 consolidatedItemCount=1");
+            assertThat(capture.events.getFirst().getLevel()).isEqualTo(ch.qos.logback.classic.Level.INFO);
+        }
+    }
+
     static class Manager extends AbstractPlatformTransactionManager {
         int begins, commits, rollbacks;
         boolean failCommit, leakResource;
+        Runnable beforeCommit = () -> {};
 
         @Override
         protected Object doGetTransaction() {
@@ -306,6 +455,7 @@ class OrderPlacementCoordinatorTest {
 
         @Override
         protected void doCommit(DefaultTransactionStatus status) {
+            beforeCommit.run();
             commits++;
             if (failCommit) {
                 throw new TransactionSystemException("confirmation lost");

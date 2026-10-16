@@ -78,7 +78,13 @@ public class OrderPlacementCoordinator {
         for (int number = 0; number < 3; number++) {
             var attempt = new Attempt();
             try {
-                return executeAttempt(command, quantities, attempt);
+                var result = executeAttempt(command, quantities, attempt);
+                event(
+                        org.slf4j.event.Level.INFO,
+                        "event=ORDER_COMMITTED attempt={} consolidatedItemCount={}",
+                        number + 1,
+                        quantities.size());
+                return result;
             } catch (RuntimeException failure) {
                 retryAfterRollback(failure, attempt, number, started);
             }
@@ -135,19 +141,72 @@ public class OrderPlacementCoordinator {
 
     private void retryAfterRollback(RuntimeException failure, Attempt attempt, int number, long started) {
         if (attempt.completion != TransactionSynchronization.STATUS_ROLLED_BACK) {
-            throw new OrderFailure(TECHNICAL, failure);
+            event(org.slf4j.event.Level.ERROR, "event=ORDER_OUTCOME_UNKNOWN attempt={} outcome=UNKNOWN", number + 1);
+            throw diagnosed(new OrderFailure(TECHNICAL, failure));
         }
         guard.check(); // Also confirms unbound resources before any backoff/new attempt.
         if (!OrderRetryPolicy.transientFailure(failure, attempt.lockCallFailure == failure)) {
+            if (failure instanceof com.example.agenticorderservice.customer.application.CustomerNotFoundException
+                    || failure instanceof com.example.agenticorderservice.product.application.ProductNotFoundException
+                    || failure instanceof OrderFailure expected
+                            && (expected.reason() == CUSTOMER_INACTIVE || expected.reason() == PRODUCT_INACTIVE)) {
+                String reason = failure
+                                instanceof
+                                com.example.agenticorderservice.customer.application.CustomerNotFoundException
+                        ? "CUSTOMER_NOT_FOUND"
+                        : failure
+                                        instanceof
+                                        com.example.agenticorderservice.product.application.ProductNotFoundException
+                                ? "PRODUCT_NOT_FOUND"
+                                : ((OrderFailure) failure).reason().name();
+                event(org.slf4j.event.Level.DEBUG, "event=ORDER_REJECTED attempt={} reason={}", number + 1, reason);
+            }
             throw failure;
         }
+        event(org.slf4j.event.Level.DEBUG, "event=ORDER_ATTEMPT_ROLLED_BACK attempt={}", number + 1);
         long delay = TimeUnit.MILLISECONDS.toNanos(number == 0 ? 25 : 50);
         if (number == 2 || clock.getAsLong() - started + delay >= TimeUnit.SECONDS.toNanos(10)) {
-            throw new OrderFailure(UNAVAILABLE, failure);
+            event(
+                    org.slf4j.event.Level.ERROR,
+                    "event=ORDER_RETRY_EXHAUSTED attempts={} reason={}",
+                    number + 1,
+                    number == 2 ? "ATTEMPT_LIMIT" : "SCHEDULING_BUDGET");
+            throw diagnosed(new OrderFailure(UNAVAILABLE, failure));
         }
-        pause.accept(delay);
+        event(
+                org.slf4j.event.Level.WARN,
+                "event=ORDER_RETRY_SCHEDULED attempt={} nextAttempt={} delayMs={}",
+                number + 1,
+                number + 2,
+                TimeUnit.NANOSECONDS.toMillis(delay));
+        try {
+            pause.accept(delay);
+        } catch (RuntimeException interrupted) {
+            // This is a confirmed rollback with aborted scheduling, never an uncertain commit.
+            event(
+                    org.slf4j.event.Level.ERROR,
+                    "event=ORDER_RETRY_EXHAUSTED attempts={} reason={}",
+                    number + 1,
+                    interrupted.getCause() instanceof InterruptedException ? "BACKOFF_INTERRUPTED" : "BACKOFF_FAILED");
+            if (interrupted instanceof OrderFailure terminal) diagnosed(terminal);
+            throw interrupted;
+        }
         if (clock.getAsLong() - started >= TimeUnit.SECONDS.toNanos(10)) {
-            throw new OrderFailure(UNAVAILABLE, failure);
+            event(
+                    org.slf4j.event.Level.ERROR,
+                    "event=ORDER_RETRY_EXHAUSTED attempts={} reason=SCHEDULING_BUDGET",
+                    number + 1);
+            throw diagnosed(new OrderFailure(UNAVAILABLE, failure));
         }
+    }
+
+    private static void event(org.slf4j.event.Level level, String template, Object... fields) {
+        com.example.agenticorderservice.shared.logging.SafeEvent.emit(
+                org.slf4j.LoggerFactory.getLogger(OrderPlacementCoordinator.class), level, template, fields);
+    }
+
+    private static OrderFailure diagnosed(OrderFailure failure) {
+        failure.markDiagnosticOwned();
+        return failure;
     }
 }

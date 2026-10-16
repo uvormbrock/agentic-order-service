@@ -22,6 +22,18 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @org.springframework.test.context.TestPropertySource(properties = "logging.level.org.hibernate.SQL=DEBUG")
 class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
+    com.example.agenticorderservice.shared.logging.EventCapture orderEvents;
+
+    @org.junit.jupiter.api.BeforeEach
+    void captureOrderEvents() {
+        orderEvents = new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class);
+    }
+
+    @org.junit.jupiter.api.AfterEach
+    void releaseOrderEvents() {
+        orderEvents.close();
+    }
+
     @Autowired
     OrderPlacementCoordinator placement;
 
@@ -323,6 +335,19 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
                 assertThatExceptionOfType(OrderFailure.class)
                         .isThrownBy(() -> placement.place(input))
                         .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.UNAVAILABLE));
+                assertThat(orderEvents.messages().stream()
+                                .filter(event -> event.contains("ORDER_ATTEMPT_ROLLED_BACK"))
+                                .count())
+                        .isEqualTo(3);
+                assertThat(orderEvents.messages().stream()
+                                .filter(event -> event.contains("ORDER_RETRY_SCHEDULED"))
+                                .count())
+                        .isEqualTo(2);
+                assertThat(orderEvents.messages().stream()
+                                .filter(event -> event.contains("ORDER_RETRY_EXHAUSTED"))
+                                .count())
+                        .isEqualTo(1);
+                assertThat(orderEvents.messages()).noneMatch(event -> event.contains("ORDER_COMMITTED"));
                 assertThat(contexts).hasSize(3);
                 var identities = Collections.newSetFromMap(new IdentityHashMap<Object, Boolean>());
                 identities.addAll(contexts);
@@ -361,6 +386,7 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
         assertThatExceptionOfType(OrderFailure.class)
                 .isThrownBy(() -> coordinator.place(input))
                 .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.TECHNICAL));
+        assertThat(orderEvents.messages()).singleElement().asString().contains("ORDER_OUTCOME_UNKNOWN");
         assertThat(commits.get()).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from orders where customer_id=?", Integer.class, c))
                 .isEqualTo(1);
@@ -601,6 +627,61 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
             assertThat(sql.getServerErrorMessage().getRoutine()).isEqualTo("exec_stmt_raise");
         } finally {
             jdbc.execute("drop function " + function + "()");
+        }
+    }
+
+    @Test
+    void realOrderCommitEventFollowsDatabaseCompletionAndCustomerDeleteWaitsForOuterCommit() {
+        UUID c = customer(), p = product();
+        doAnswer(call -> {
+                    assertThat(orderEvents.messages()).noneMatch(event -> event.contains("ORDER_COMMITTED"));
+                    return call.callRealMethod();
+                })
+                .when(productSpy())
+                .lock(p);
+        var result = placement.place(command(c, p));
+        assertThat(orderEvents.messages()).singleElement().asString().contains("ORDER_COMMITTED");
+        assertThat(jdbc.queryForObject("select count(*) from orders where id=?", Integer.class, result.id()))
+                .isEqualTo(1);
+        try (var events =
+                new com.example.agenticorderservice.shared.logging.EventCapture(CustomerApplicationService.class)) {
+            tx(() -> {
+                customerService.delete(c);
+                assertThat(events.messages()).isEmpty();
+                return null;
+            });
+            assertThat(events.messages()).containsExactly("event=CUSTOMER_DEACTIVATED_BY_DELETE");
+            assertThat(jdbc.queryForObject("select active from customers where id=?", Boolean.class, c))
+                    .isFalse();
+            tx(() -> {
+                customerService.delete(c);
+                assertThat(events.messages()).hasSize(1);
+                return null;
+            });
+            assertThat(events.messages())
+                    .containsExactly("event=CUSTOMER_DEACTIVATED_BY_DELETE", "event=CUSTOMER_DELETE_NOOP");
+            UUID unreferenced = customer();
+            tx(() -> {
+                customerService.delete(unreferenced);
+                assertThat(events.messages()).hasSize(2);
+                return null;
+            });
+            assertThat(events.messages())
+                    .containsExactly(
+                            "event=CUSTOMER_DEACTIVATED_BY_DELETE",
+                            "event=CUSTOMER_DELETE_NOOP",
+                            "event=CUSTOMER_DELETED");
+            assertThat(jdbc.queryForObject("select count(*) from customers where id=?", Integer.class, unreferenced))
+                    .isZero();
+            UUID rollback = customer();
+            new TransactionTemplate(manager).execute(status -> {
+                customerService.delete(rollback);
+                status.setRollbackOnly();
+                return null;
+            });
+            assertThat(events.messages()).hasSize(3);
+            assertThat(jdbc.queryForObject("select count(*) from customers where id=?", Integer.class, rollback))
+                    .isEqualTo(1);
         }
     }
 }

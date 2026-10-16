@@ -13,6 +13,7 @@ public final class OrderFailure extends RuntimeException {
     }
 
     private final Reason reason;
+    private boolean diagnosticOwned;
 
     public OrderFailure(Reason reason) {
         super(reason.name());
@@ -22,6 +23,15 @@ public final class OrderFailure extends RuntimeException {
     public OrderFailure(Reason reason, Throwable cause) {
         super(reason.name(), cause);
         this.reason = reason;
+    }
+
+    void markDiagnosticOwned() {
+        diagnosticOwned = true;
+    }
+
+    /** Indicates a coordinator-owned diagnostic attempt, not durable log delivery. */
+    public boolean diagnosticOwned() {
+        return diagnosticOwned;
     }
 
     public Reason reason() {

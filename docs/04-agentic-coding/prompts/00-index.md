@@ -28,6 +28,7 @@ Results and lessons remain pending until supported by actual execution. Intervie
 | 04 | [Domain Model & Persistence – Increment 3](04-domain-model.md) | **Reviewed – Accepted** |
 | 05 | [Product & Customer Application Services and REST API – Increment 4](05-product-customer-api.md) | **Reviewed – Accepted** |
 | 06 | [Order Placement & Concurrency – Increment 5](06-order-placement-concurrency.md) | **Reviewed – Accepted — 2026-10-16** |
+| 07 | [Application Logging & Observability – Increment 6](07-application-logging-observability.md) | **Increment 6 — Functionally Stabilized, Frozen — Full Acceptance Pending** |
 
 ## Authority and Workflow
 

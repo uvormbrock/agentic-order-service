@@ -27,6 +27,10 @@ public final class ApiErrorController implements ErrorController {
                     default -> ApiError.Code.INTERNAL_SERVER_ERROR;
                 }
                 : ApiError.Code.INTERNAL_SERVER_ERROR;
+        HttpFailureDiagnostic.record(
+                request,
+                code,
+                request.getAttribute(RequestDispatcher.ERROR_EXCEPTION) instanceof Throwable failure ? failure : null);
         writer.write(response, code);
     }
 }

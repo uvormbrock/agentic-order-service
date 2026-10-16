@@ -10,6 +10,19 @@ This document tracks **unresolved decisions**, **deferred implementation work**,
 
 **Status legend:** `Open` = not yet decided; `Planned` = agreed requirement awaiting implementation; `Proposed / unverified` = documented approach not yet validated; `Done` = completed with evidence; `Resolved (decision)` = explicitly accepted policy, without an implementation claim; `Executed / review pending` = scoped automated verification passed, human acceptance outstanding.
 
+## Increment 6 — Application Logging & Observability
+
+**Increment 6 — Functionally Stabilized, Frozen — Full Acceptance Pending.** The [human freeze decision](../04-agentic-coding/prompts/07-application-logging-observability.md#increment-6--human-freeze-decision--2026-10-16) records the preserved baseline: 528 Surefire and 148 Failsafe executions (136 PostgreSQL, 12 Servlet), 676 total, zero failures/errors/skips; Spotless and validate passed; JaCoCo 96.95% lines and 92.93% branches. Both async scenarios pass. Remaining acceptance evidence and operational risks stay open; see the [latest gap assessment](../04-agentic-coding/prompts/07-application-logging-observability.md#current-acceptance-evidence-and-remaining-gaps). No further development, remediation or quality optimization is authorized. Reopening requires a new explicit human decision; no correction budget resumes automatically. Functional stabilization does not grant full acceptance or production readiness. L1–L6 remain approved, Increment 5 remains Reviewed – Accepted and ADR-0002/0006 remain Proposed. PIT is historical; SonarQube Pending.
+
+| ID | Current status | Approved direction / remaining evidence |
+| --- | --- | --- |
+| OI-024 | L1 Human Approved; implementation acceptance Pending | Existing SLF4J/Logback, bounded console metadata and INFO default; no dependency change. Operational rotation/access/retention remains Open. |
+| OI-025 | L2 Human Approved; complete runtime evidence Pending | Generated UUID, response X-Request-ID, owned requestId MDC; REQUEST/ASYNC/ERROR, requestDestroyed owner, transparent startAsync observation and explicit worker scopes. Conservative UNKNOWN and runtime limitations apply. |
+| OI-026 | L3/L4 Human Approved; implementation acceptance Pending | Approved event ownership/levels and post-commit/rollback/retry/unknown observations; preserve accepted transaction and retry rules. |
+| OI-027 | L5/L6 Human Approved; verification and operational gates Pending | Safe-field allowlist; framework privacy remains separate. All applicable U/H/P/A and F evidence must be established before implementation acceptance. |
+
+Spotless remains the separately committed formatting baseline at `9345fa1`. Complete ADR-0002/0006 remain Proposed. Persistent-local recovery/migration and production/deployment gates remain unchanged; this implementation uses disposable test databases only.
+
 ## Priority Backlog
 
 | ID | Priority | Status | Item | Next action / acceptance evidence | Source |
@@ -122,3 +135,7 @@ Approved current scope is POST /orders, GET /orders, GET /orders/{id} and DELETE
 ### Final Increment 5 Acceptance — 2026-10-16
 
 Implementation and human review are complete for the approved four endpoints and G1–G6/U/H/P/A scope, including timeout attribution and fail-closed exception graphs. Preserved final evidence: 474 fast/122 PostgreSQL tests, zero failures/errors/skips; JaCoCo 684/696 lines and 523/561 branches; full PIT 512 = 433 KILLED, 51 SURVIVED, 27 NO_COVERAGE, 1 TIMED_OUT, 449 matching identities/no regressions. The [final acceptance record](../04-agentic-coding/prompts/06-order-placement-concurrency.md#final-human-acceptance--2026-10-16) supersedes historical Pending implementation/review descriptions. No tests/quality analysis were rerun during acceptance. Complete ADR-0002/0006, new Sonar/remote CI evidence, persistent-local recovery/migration and production operation/deployment remain separate gates.
+
+### Increment 6 Acceptance Gap Closure — 2026-10-16
+
+The separately authorized C1–C6 follow-up remains **Blocked — Human Decision Required** after three correction rounds. State/generation and Order metadata corrections plus independent Customer tests are implemented. Targeted fast runs passed; 13 async PostgreSQL and 27 existing concurrency cases passed. The 11-case lifecycle fixture has one failing native error-recovery status assertion (UNKNOWN versus expected recovered 502). Full regression and fresh coverage were not rerun because that targeted exit gate failed. See the [gap-closure execution record](../04-agentic-coding/prompts/07-application-logging-observability.md#acceptance-gap-closure-execution--2026-10-16). Historical 506/123 results remain historical; implementation acceptance is Pending. L1–L6 remain approved; Increment 5/ADR statuses are unchanged.

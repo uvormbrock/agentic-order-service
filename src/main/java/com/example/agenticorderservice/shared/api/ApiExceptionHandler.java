@@ -32,6 +32,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(Exception.class)
     public void handle(Exception failure, HttpServletRequest request, HttpServletResponse response) throws IOException {
         ApiError.Code code = classify(failure);
+        HttpFailureDiagnostic.record(request, code, failure);
         if (failure instanceof HttpRequestMethodNotSupportedException method) {
             String[] supported = method.getSupportedMethods();
             if (supported != null) {
