@@ -6,7 +6,7 @@
 
 **Technical decisions:** Human Accepted — boxed Long mapping, BIGINT/NOT NULL/backfill/default policy, sequential no-op deactivation
 
-**Implementation:** Not authorized; implementation/runtime verification Pending; complete ADR remains Proposed
+**Implementation:** Increment 4 Reviewed – Accepted on 2026-10-15; scoped version/V2 disposable verification passed; persistent local migration separately blocked; complete ADR remains Proposed
 
 ## Context
 
@@ -112,3 +112,11 @@ ALTER TABLE customers
 ```
 
 The temporary constant default supplies 0 for existing rows; final defaults are removed and Hibernate owns new versions. Explicit coding authorization permits creating V2 and disposable Testcontainers verification. Persistent local execution additionally requires identified local target/history/schema evidence and an established usable recovery mechanism under the [current implementation prompt](../04-agentic-coding/prompts/05-product-customer-api.md#persistent-local-database-safety-gate). If recovery evidence is unavailable, report only local migration as Blocked — Human Action Required and continue other approved work; complete ADR acceptance remains separate from coding authorization. No migration operation is authorized by this documentation task; preserve local records/volume and V1. Production deployment/permissions/rollout remain excluded/Open. Existing direct SQL fixtures must use explicit columns/version values, and current history expectations must cover V1+V2 without weakening prior constraint/checksum tests. [Current implementation prompt](../04-agentic-coding/prompts/05-product-customer-api.md#current-implementation-prompt--increment-4) owns the gated execution sequence.
+
+## Current Implementation Status Clarification — 2026-10-16
+
+The [final Increment 4 acceptance record](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15) supersedes earlier implementation-authorization/runtime-Pending statements in this ADR for the accepted scope. Those statements and the reviewed SQL remain historical design evidence, not current blockers to the already accepted implementation. Product/Customer versions, V2 disposable migration and scoped optimistic/no-op behavior were implemented, verified and human accepted. Persistent local migration/recovery remains separately blocked. **Status remains Proposed** for the complete ADR; Order locking/retry coordination remains unverified under ADR-0002 and requires its own approval. No decision or SQL history is rewritten by this clarification.
+
+## Increment 5 Compatible Locking Direction — Human Accepted 2026-10-16
+
+[Final Human Architecture Decisions — 2026-10-16](../04-agentic-coding/prompts/06-order-placement-concurrency.md#final-human-architecture-decisions--2026-10-16) accepts compatible pre-read pessimistic row locks for Product/Customer PUT/PATCH and includes coordinated Customer DELETE. Preserve existing @Version, confirmed optimistic conflicts, irreversible activity and inactive PATCH without UPDATE/version increment. This later direction extends coordination for Order placement rather than removing the accepted Increment 4 safeguards. Both-winner-order and existing stale-version/no-op behavior need real PostgreSQL verification. Complete ADR-0006 remains **Proposed**; no implementation authorization or new runtime evidence is claimed. Earlier deferral statements are historical for this specifically accepted direction.

@@ -244,16 +244,6 @@ Explicit human implementation acceptance and commit authorization are Pending. N
 - Passing zero-entity foundation tests proves infrastructure readiness, not domain mapping correctness; assertions must evolve with separately approved schema changes.
 - Keep PostgreSQL verification alongside schema/mapping changes within the increment, and preserve approval boundaries for business grammar, schema, and concurrency.
 
-## Interview Talking Points
-
-- Demonstrate the tested maximum two-line total, finite/scale checks, root-only cascade persistence and explicit per-order fetch query counts.
-- Explain why successful persistence tests do not establish application eligibility, HTTP serialization or the Proposed concurrency protocol.
-
-- Explain the difference between aggregate ownership and the child-owned relational foreign key.
-- Compare provider-generated UUIDs, composite child identity, and assigned-ID newness detection without introducing a generic entity framework.
-- Discuss preserving immutable historical prices/amounts while reading current customer information.
-- Explain why converter placement, numeric coercion, and Unicode normalization need explicit decisions and real provider/database tests.
-- Demonstrate documentation-first approval, immutable prompts, narrow increments, actual diffs, and evidence that distinguishes verified infrastructure from Pending domain/concurrency work.
 
 ## Historical Planning Prompt – Executed
 

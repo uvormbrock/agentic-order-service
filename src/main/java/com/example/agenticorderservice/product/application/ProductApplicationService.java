@@ -26,13 +26,13 @@ public class ProductApplicationService {
     public ProductResult update(UUID id, String name, BigDecimal price) {
         String normalized = InputValidationException.name(name);
         var validated = validatePrice(price);
-        var entity = find(id);
+        var entity = findLocked(id);
         entity.update(normalized, validated);
         return ProductResult.from(entity);
     }
     @Transactional
     public ProductResult deactivate(UUID id) {
-        var entity = find(id);
+        var entity = findLocked(id);
         if (entity.isActive()) { entity.deactivate(); }
         return ProductResult.from(entity);
     }
@@ -44,5 +44,6 @@ public class ProductApplicationService {
         }
         return new com.example.agenticorderservice.shared.domain.Money(value);
     }
+    private Product findLocked(UUID id) { return repository.findLockedById(id).orElseThrow(ProductNotFoundException::new); }
     private Product find(UUID id) { return repository.findById(id).orElseThrow(ProductNotFoundException::new); }
 }

@@ -24,7 +24,7 @@ public final class ApiRequestInterceptor implements HandlerInterceptor {
 
     private boolean isFeatureHandler(Object handler) {
         return handler instanceof HandlerMethod method
-                && method.getBeanType().getPackageName().matches(".*\\.(product|customer)\\.api");
+                && method.getBeanType().getPackageName().matches(".*\\.(product|customer|order)\\.api");
     }
 
     private void validateContentType(HttpServletRequest request) {

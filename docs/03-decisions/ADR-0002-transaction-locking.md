@@ -2,6 +2,8 @@
 
 **Status:** Proposed
 
+**Scoped direction:** Increment 5 G1–G6 Human Accepted on 2026-10-16; implementation not authorized and protocol runtime-unverified. Historical Proposed/Open settings below are superseded only where explicitly accepted in the later record.
+
 ## 1. Context
 
 The MVP is a Java 21 / Spring Boot modular monolith using Spring Data JPA and PostgreSQL. Customer, Product, and Order are independent aggregates; Order owns its items.
@@ -159,3 +161,9 @@ No code, dependencies, migrations, idempotency keys, or retry framework is presc
 - Java 21 and Spring Boot 4.1.1 are now accepted under [ADR-0005](ADR-0005-technology-stack.md). The earlier open-version list is historical; remaining provider/driver/server alignment is tracked there.
 
 The operational explanation is maintained in [Transaction and Locking](../02-architecture/transaction-locking.md). Acceptance requires explicit human approval separately from deterministic PostgreSQL verification.
+
+## Increment 5 Human Direction Acceptance — 2026-10-16
+
+[Final Human Architecture Decisions — 2026-10-16](../04-agentic-coding/prompts/06-order-placement-concurrency.md#final-human-architecture-decisions--2026-10-16) accepts the scoped coordinator/READ COMMITTED/fresh-state/no-ambient/no-suspension/commit-observation direction; Customer-first and individual Products by canonical lowercase UUID text; compatible Product/Customer PUT/PATCH with existing @Version/no-op behavior; three attempts, local 2s lock timeout, 25/50ms delays and 10s scheduling budget; proven-rollback/released-resource retry classification for 40P01/40001 and attributable 55P03; safe existing 503 exhaustion/500 unknown with no replay; and coordinated Customer DELETE. See [current transaction conventions](../02-architecture/transaction-locking.md#human-accepted-increment-5-transaction-direction--2026-10-16) and the [API catalog](../02-architecture/api-error-codes.md#human-accepted-increment-5-order-extensions--2026-10-16).
+
+The complete ADR remains **Proposed**. Exact guard/participation/completion mechanics and pool/statement/network/commit interactions still require implementation review and runtime verification; 10s is not a hard HTTP deadline. Original alternatives/proposals/history remain preserved. Architecture direction acceptance is not implementation authorization, runtime proof, complete ADR acceptance, production execution or reconciliation-feature approval.

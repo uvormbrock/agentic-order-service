@@ -1,6 +1,6 @@
 # REST API Design — Agentic Order Service
 
-**Status:** Draft — implementation pending  
+**Status:** Product/Customer Increment 4 Reviewed – Accepted; Increment 5 G1–G6 architecture accepted, implementation pending authorization
 **Scope:** Request validation, strict JSON handling, and API error responses  
 **Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Domain Model](domain-model.md) · [API error codes](api-error-codes.md)
 
@@ -14,7 +14,7 @@ The Product Requirements Document (PRD) is authoritative for endpoint behavior a
 
 Accepted API requirements come from the PRD: endpoints, response fields, status semantics, strict request rejection, server-authoritative pricing, and validation limits. Separate API DTOs, application orchestration, and transaction-safe materialization are accepted architecture conventions.
 
-Spring MVC, Jackson configuration, Bean Validation annotations/provider wiring, illustrative DTO field types, and concrete exception-handler classes remain Proposed implementation choices. Boot 4.1.1 is Accepted; choosing a framework mechanism does not change the HTTP contract. Use the [technology reference](technology-stack.md) for individual tool statuses.
+The early Spring MVC/Jackson/validation/handler proposals below are historical for the implemented Product/Customer scope, whose selected wiring and acceptance are recorded in Sections 10–11. The original Order-specific sketches remain historical; the accepted G1–G6 update below supersedes their explicitly unresolved policies without claiming implementation. Boot 4.1.1 is Accepted; choosing a framework mechanism does not change the HTTP contract. Use the [technology reference](technology-stack.md) for individual tool statuses.
 
 ## 2. API Boundary and DTOs
 
@@ -216,3 +216,24 @@ The technical design uses feature DTOs, a small central decoder with original nu
 The safe error writer must bypass success content negotiation when rendering accepted errors, including incompatible Accept/406, and share its envelope with the framework error-dispatch fallback. Do not leak SQL/constraint/parser details or fall back to HTML/default ProblemDetail. Classifiers inspect typed cause chains and structured SQLSTATE/constraint evidence, including flush/commit causes and operation phase. No blanket SQLException/timeout/connection→503/409 mapping.
 
 Eight behavioral choices are resolved. Scoped code wiring and runtime evidence are human accepted; complete ADR-0006 stays Proposed and Increment 4 is Reviewed – Accepted. See [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15). Production migration rollout and ADR-0002 are unaffected.
+
+## Historical Increment 5 Order API Proposal — Not Implementation Authorization
+
+The [Increment 5 playbook](../04-agentic-coding/prompts/06-order-placement-concurrency.md#proposed-order-api-contract) maps Accepted PRD POST /orders, GET /orders and GET /orders/{id} requirements to a proposed design. Exact new error codes/messages, Order nested validation/quantity lexical/tie policies, fetch details and ADR-0002 enforcement remain explicit human decision gates. Existing Product/Customer contracts and acceptance are unchanged; no Customer DELETE scope or protocol/ADR acceptance is implied.
+
+## Human-Accepted Increment 5 REST Direction — 2026-10-16
+
+The [final G1–G6 record](../04-agentic-coding/prompts/06-order-placement-concurrency.md#final-human-architecture-decisions--2026-10-16) resolves the earlier proposal. Architecture Decisions Accepted — Implementation Pending Human Authorization. Four business endpoints are included:
+
+| Endpoint | Accepted success / absence |
+| --- | --- |
+| POST /orders | 201, complete PRD Order response; Location: /orders/{id} |
+| GET /orders | 200, complete PRD Order array or [] |
+| GET /orders/{id} | 200, complete PRD Order; ORDER_NOT_FOUND/404 when absent |
+| DELETE /customers/{id} | Existing unreferenced Customer physically deleted, referenced Customer deactivated, already inactive referenced Customer unchanged: 204/no body; absent Customer: CUSTOMER_NOT_FOUND/404 |
+
+Keep original item product names/prices and stored amounts, current Customer fields, currency EUR and all PRD fields; no managed entities, internal item IDs/versions, new pagination, sorting promise or global multi-query snapshot guarantee. OrderQueryService owns read-only transactions, explicit persisted-item loading and immutable materialization with Customer-owned distinct-ID batch access for lists, verified on PostgreSQL for N+1/lazy-query absence.
+
+Strict nested Order processing preserves complete syntax/duplicate/trailing/root and header/path/body precedence. Canonical UUIDs, recursive unknown/forbidden rejection, customerId→items then productId→quantity/index order and lexicographic property paths are accepted. Quantities require integer tokens (not 1.0/exponents/strings/booleans), positive values and consolidated maximum 10,000. Resource-error priority is Customer-first then sorted distinct Products across missing/inactive findings. Exact new/reused templates and recognized forbidden fields are owned by the [Increment 5 API catalog extension](api-error-codes.md#human-accepted-increment-5-order-extensions--2026-10-16).
+
+Order success follows actual committed placement; read DTOs are fully materialized before serialization. Customer DELETE uses Customer lock followed by a separate Order-reference query, with both winner orders against first placement required in deterministic PostgreSQL tests. Interim Customer DELETE/405 remains the current runtime behavior until separately authorized implementation. Product DELETE and Order PUT/PATCH/DELETE remain unsupported; all existing Product/Customer accepted behavior is preserved. Complete ADR-0002 and ADR-0006 remain Proposed and runtime protocol verification Pending.

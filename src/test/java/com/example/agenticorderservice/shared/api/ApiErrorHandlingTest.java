@@ -80,7 +80,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         error(post("/customers").contentType("application/json").content("{\"version\":1}"),UNSUPPORTED_FIELD);
         error(post("/customers").contentType("application/json").content("{\"name\":true,\"email\":false}"),INVALID_FIELD_TYPE);
         error(post("/products").accept("text/html").contentType("application/json").content("not json"),NOT_ACCEPTABLE);
-        error(delete("/customers/not-a-uuid"),OPERATION_NOT_AVAILABLE);
+        error(delete("/customers/not-a-uuid"),INVALID_RESOURCE_ID);
         mvc.perform(get("/products/aaaaAAAA-bBbB-cCcC-dDdD-eeEEeeEEeeEE")).andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
     }
 

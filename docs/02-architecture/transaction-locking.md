@@ -1,6 +1,10 @@
 # Transaction and Locking Conventions
 
-**Status:** Accepted application conventions; detailed protocol Proposed and implementation-unverified
+**Status:** Accepted application conventions and scoped Increment 5 G1/G2/G4/G6 directions; scoped implementation Reviewed – Accepted — 2026-10-16; complete ADR-0002 remains Proposed
+
+## Current Decision Precedence
+
+[Final Human Architecture Decisions — 2026-10-16](../04-agentic-coding/prompts/06-order-placement-concurrency.md#final-human-architecture-decisions--2026-10-16) accepts the scoped Increment 5 direction below. Earlier Proposed/Open comparator, bounds and classifier wording is retained as historical proposal context, superseded only for explicitly accepted settings. The human subsequently authorized implementation; scoped runtime evidence is recorded in the playbook. Human implementation review and complete ADR acceptance are separate.
 
 ## Authority
 
@@ -57,3 +61,16 @@ Product/Customer @Version direction is Human Accepted; [ADR-0006](../03-decision
 This scoped policy adds Product/Customer version checking; it does not implement/replace the Order TransactionTemplate, ambient guard, pessimistic protocol, retries, timeout/exhaustion classifiers or customer-delete race in ADR-0002. Earlier Proposed technical-response statements apply to that deferred Order work, not a reopening of Accepted Increment 4 catalog decisions. Optimistic versions alone cannot validate all Order placement reads. Full protocol and production gates remain Pending/Open.
 
 Sequential repeated Product/Customer deactivation is Accepted as 200 with unchanged inactive representation and no SQL UPDATE/version increment. Concurrent overlapping writes may conflict according to observed versions and actual writes; do not retry automatically. The exact declaration/migration policy and seven PostgreSQL scenarios are owned by [ADR-0006](../03-decisions/ADR-0006-product-customer-optimistic-locking.md#human-approved-idempotent-deactivation), not duplicated here.
+
+## Human-Accepted Increment 5 Transaction Direction — 2026-10-16
+
+G1/G2/G4/G6 are Human Accepted under the linked decision record. Their scoped implementation is Reviewed – Accepted on 2026-10-16; see the [final acceptance](../04-agentic-coding/prompts/06-order-placement-concurrency.md#final-human-acceptance--2026-10-16). Preserve Accepted ADR-0001 business ordering and Product/Customer @Version/no-op behavior. Complete ADR-0002/0006 remain Proposed.
+
+- OrderPlacementCoordinator owns explicit TransactionTemplate attempts, each an independent read-write READ COMMITTED transaction with fresh persistence state. Reject ambient transactions before processing; never suspend them with REQUIRES_NEW. Exact guard/participation wiring requires implementation review and runtime proof. Callback return/flush is not commit; success follows completed commit only.
+- Lock Customer first; then each distinct Product individually by canonical lowercase UUID text using authoritative pessimistic row reads without stale preloads. Product PUT/PATCH and Customer PUT/PATCH participate compatibly. Preserve @Version, confirmed optimistic conflicts, irreversible activity and inactive PATCH without UPDATE/version increment. Ordering reduces deadlocks but cannot eliminate them.
+- At most three attempts total; transaction-local PostgreSQL lock_timeout 2 s; retry delays 25 ms/50 ms; monotonic retry-scheduling budget 10s. These initial project settings are not universal production recommendations or a hard end-to-end HTTP deadline. Pool, statement, network and commit timeout interactions require implementation review/runtime verification.
+- Retry only after definitive full rollback, released resources/fresh attempt state, an approved transient classification and remaining attempt/budget allowance. Approved candidates: 40P01, 40001; 55P03 only positively attributable to the configured lock timeout. No generic cancellation/SQL/unique/optimistic/business/missing/inactive/unknown/post-potential-commit retries. Do not retry queries/savepoints or continue rollback-only state.
+- Confirmed-rollback transient exhaustion uses existing SERVICE_UNAVAILABLE/503; unknown commit uses existing INTERNAL_SERVER_ERROR/500 where transport permits. Reuse fixed safe templates, never assert rollback or replay an uncertain result. No new reconciliation/idempotency feature is accepted.
+- Customer DELETE is included: Customer-owned transaction locks Customer first and subsequently issues a separate READ COMMITTED reference query through an independent Order-owned contract. Unreferenced → physical delete/204; referenced → deactivate/204; already inactive referenced → 204/no reactivation; absent → existing CUSTOMER_NOT_FOUND/404. No reference check before the lock or inside its original statement; preserve restrictive FKs. The accepted Increment 5 implementation supersedes the interim 405 with this protocol.
+
+Real PostgreSQL tests must prove both operation winner orders, post-wait reference visibility, actual individual lock order/SQL, fresh context and released resources before retries, atomic rollback, commit-before-success and lost-confirmation nonreplay. The approved matrix now has scoped implementation/runtime evidence in the [execution record](../04-agentic-coding/prompts/06-order-placement-concurrency.md#implementation-execution-evidence--2026-10-16); decision acceptance alone does not establish concurrency safety. This evidence does not accept the complete ADR or establish production timeout/operational guarantees.

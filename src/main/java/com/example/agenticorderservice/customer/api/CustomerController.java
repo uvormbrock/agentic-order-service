@@ -29,6 +29,11 @@ public class CustomerController {
     public ResponseEntity<CustomerResponse> update(@PathVariable UUID id, @RequestBody CustomerDetailsRequest input) {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(CustomerResponse.from(service.update(id, input.name(), input.email())));
     }
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        service.delete(id);
+        return ResponseEntity.noContent().build();
+    }
     @PatchMapping("/{id}")
     public ResponseEntity<CustomerResponse> deactivate(@PathVariable UUID id, @RequestBody DeactivateCustomerRequest input) {
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(CustomerResponse.from(service.deactivate(id)));

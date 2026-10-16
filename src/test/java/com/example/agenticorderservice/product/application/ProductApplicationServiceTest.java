@@ -38,7 +38,7 @@ class ProductApplicationServiceTest {
     }
     @Test void updatesInactiveResourceAndPreservesActivity() {
         var entity = new Product("Original", Money.of("12.34")); entity.deactivate();
-        when(repository.findById(id)).thenReturn(Optional.of(entity));
+        when(repository.findLockedById(id)).thenReturn(Optional.of(entity));
         var originalId = entity.getId();
         var result = service.update(id, "Changed", new BigDecimal("45.67"));
         assertThat(result.price()).isEqualByComparingTo("45.67");
@@ -52,7 +52,7 @@ class ProductApplicationServiceTest {
     }
     @Test void repeatedDeactivationIsUnchangedAndDoesNotSave() {
         var entity = new Product("Original", Money.of("12.34"));
-        when(repository.findById(id)).thenReturn(Optional.of(entity));
+        when(repository.findLockedById(id)).thenReturn(Optional.of(entity));
         var first = service.deactivate(id); var second = service.deactivate(id);
         assertThat(second).isEqualTo(first); assertThat(second.active()).isFalse();
         verify(repository, never()).save(any());

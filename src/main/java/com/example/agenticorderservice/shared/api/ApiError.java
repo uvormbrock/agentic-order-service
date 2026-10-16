@@ -2,6 +2,11 @@ package com.example.agenticorderservice.shared.api;
 public record ApiError(String code, String message) {
     public ApiError(Code value) { this(value.name(), value.message()); }
     public enum Code {
+        INVALID_ORDER_ITEMS(400, "The order must contain at least one item."),
+        INVALID_ORDER_QUANTITY(400, "Order item quantities must be positive integers and the consolidated quantity must not exceed 10,000."),
+        CUSTOMER_INACTIVE(409, "The customer is inactive."),
+        PRODUCT_INACTIVE(409, "The product is inactive."),
+        ORDER_NOT_FOUND(404, "The order was not found."),
         MALFORMED_JSON(400, "The request body must be a valid JSON object." ),
         UNKNOWN_FIELD(400, "The request contains an unknown field." ),
         UNSUPPORTED_FIELD(400, "The request contains a field or activation value that this operation does not permit." ),

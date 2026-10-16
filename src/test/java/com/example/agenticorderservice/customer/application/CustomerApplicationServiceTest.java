@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 class CustomerApplicationServiceTest {
     private final CustomerRepository repository = mock(CustomerRepository.class);
-    private final CustomerApplicationService service = new CustomerApplicationService(repository);
+    private final CustomerApplicationService service = new CustomerApplicationService(repository, mock(com.example.agenticorderservice.order.application.OrderReferenceQuery.class));
     private final UUID id = UUID.randomUUID();
     @Test void createsNormalizedActiveResource() {
         when(repository.save(any())).thenAnswer(call -> call.getArgument(0));
@@ -37,7 +37,7 @@ class CustomerApplicationServiceTest {
     }
     @Test void updatesInactiveResourceAndPreservesActivity() {
         var entity = new Customer("Original", new EmailAddress("user@example.com")); entity.deactivate();
-        when(repository.findById(id)).thenReturn(Optional.of(entity));
+        when(repository.findLockedById(id)).thenReturn(Optional.of(entity));
         var originalId = entity.getId();
         var result = service.update(id, "Changed", " CHANGED+Tag@Example.COM ");
         assertThat(result.email()).isEqualTo("changed+tag@example.com");
@@ -51,7 +51,7 @@ class CustomerApplicationServiceTest {
     }
     @Test void repeatedDeactivationIsUnchangedAndDoesNotSave() {
         var entity = new Customer("Original", new EmailAddress("user@example.com"));
-        when(repository.findById(id)).thenReturn(Optional.of(entity));
+        when(repository.findLockedById(id)).thenReturn(Optional.of(entity));
         var first = service.deactivate(id); var second = service.deactivate(id);
         assertThat(second).isEqualTo(first); assertThat(second.active()).isFalse();
         verify(repository, never()).save(any());

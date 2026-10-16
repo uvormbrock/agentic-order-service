@@ -1,8 +1,8 @@
-# API Error Codes — Increment 4
+# API Error Codes
 
-**Status:** Authoritative technical catalog; human-accepted names/statuses and classification precedence; implementation Reviewed – Accepted
+**Status:** Authoritative human-accepted catalog; Increment 4 implementation Reviewed – Accepted; Increment 5 contract accepted, implementation unauthorized
 
-**Scope:** Product/Customer API; no Order Placement error taxonomy
+**Scope:** Product/Customer implemented catalog; Human Accepted Increment 5 Order extensions below, implementation pending
 
 **Authority:** [PRD](../01-requirements/product-requirements.md) · [REST design](rest-api-design.md) · [approved Increment 4 record](../04-agentic-coding/prompts/05-product-customer-api.md#approved-architecture-and-api-decisions--2026-10-14)
 
@@ -71,3 +71,36 @@ Only a confirmed known normalized-email uniqueness violation maps to DUPLICATE_E
 - Prove Human Accepted D1–D8 body/duplicate/trailing/tie-breaker/UUID-case/header-path-body/media/outage policies; they are no longer Open choices. No extra lexical/business restrictions.
 - Verify precise optimistic-lock/commit cause translation and the selected narrow establishment/pre-write outage classifier. Do not expose diagnostics or infer rollback from 500/503.
 - Test every applicable catalog code through actual MVC and real PostgreSQL where persistence matters; controlled faults must distinguish confirmed rollback from lost completion confirmation. Scoped implementation/runtime evidence and human acceptance are recorded in [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15). Real lost-commit-confirmation fault injection and full Order protocol verification remain deferred.
+
+## Human-Accepted Increment 5 Order Extensions — 2026-10-16
+
+The [final G1–G6 decision record](../04-agentic-coding/prompts/06-order-placement-concurrency.md#final-human-architecture-decisions--2026-10-16) accepts the following five additional codes and exact fixed messages. These are contract decisions, not implemented enum values or verified responses. Earlier Product/Customer-only applicability statements describe the Increment 4 implementation scope and do not override these accepted extensions. No other new code or response field is selected.
+
+| Code | HTTP | Exact message | Trigger |
+| --- | ---: | --- | --- |
+| INVALID_ORDER_ITEMS | 400 | The order must contain at least one item. | Empty items array after type/presence checks. |
+| INVALID_ORDER_QUANTITY | 400 | Order item quantities must be positive integers and the consolidated quantity must not exceed 10,000. | Nonpositive/out-of-range integer quantity or invalid/overflowing consolidated quantity. |
+| CUSTOMER_INACTIVE | 409 | The customer is inactive. | Placement references an existing inactive Customer. |
+| PRODUCT_INACTIVE | 409 | The product is inactive. | Placement references an existing inactive Product. |
+| ORDER_NOT_FOUND | 404 | The order was not found. | Valid canonical order ID has no stored Order. |
+
+Reuse existing exact messages/statuses for INVALID_RESOURCE_ID, CUSTOMER_NOT_FOUND, PRODUCT_NOT_FOUND, MALFORMED_JSON, UNKNOWN_FIELD, UNSUPPORTED_FIELD, INVALID_FIELD_TYPE, REQUIRED_FIELD_MISSING, METHOD_NOT_ALLOWED and technical INTERNAL_SERVER_ERROR/500 and SERVICE_UNAVAILABLE/503. Existing media/route envelope policies continue. Do not add an unknown-outcome code, diagnostic field or blind retry instruction. Return exactly code/message; INTERNAL_SERVER_ERROR does not assert rollback. Confirmed transient full-rollback exhaustion uses SERVICE_UNAVAILABLE; unknown commit uses INTERNAL_SERVER_ERROR if a response remains possible.
+
+### Order Input Classification and Precedence
+
+Apply complete syntax/root/duplicate/trailing validation first, then recursively unknown/forbidden properties, types, missing/null required fields, business values, then application resource findings. Preserve earlier routing/method/headers → path → body → application precedence. Scalar coercion is prohibited. Quantity must be a JSON integer token: 1.0, exponent tokens, strings and booleans use INVALID_FIELD_TYPE; invalid integer values/sums use INVALID_ORDER_QUANTITY. Parse without narrowing overflow. Missing/null customerId/items/productId/quantity (and null required item) uses REQUIRED_FIELD_MISSING; an item object/array shape mismatch uses INVALID_FIELD_TYPE. Empty items uses INVALID_ORDER_ITEMS, after earlier categories. Malformed canonical UUID text uses INVALID_RESOURCE_ID, including body references. Do not manufacture a new lexical restriction beyond the accepted integer-token rule.
+
+| DTO level | Allowed properties | Recognized forbidden properties (UNSUPPORTED_FIELD) |
+| --- | --- | --- |
+| Order root | customerId, items | id, version, customer, currency, subtotal, discount, total, unitPrice |
+| Order item | productId, quantity | id, version, productName, unitPrice, lineTotal, subtotal, discount, total, currency |
+
+These server-owned fields derive from the PRD response/pricing contract; any other unrecognized property uses UNKNOWN_FIELD. Inspect all nested fields before selecting a later type/value/resource error. Do not ignore caller-supplied monetary data at either level.
+
+Deterministic ordering: customerId before items; productId before quantity within each item; indices ascending; unknown/forbidden paths lexicographic. Application resource findings use Customer-first, then distinct Products sorted by canonical lowercase UUID text, across missing/inactive cases; do not prioritize all missing Products ahead of an inactive Customer. Validate request syntax and values before any lookup; retrieve all authoritative facts under the approved consistent locking protocol.
+
+### Customer DELETE Transition and Verification
+
+Increment 5 includes DELETE /customers/{id}: existing unreferenced → physical deletion/204/no body; referenced → deactivation/204/no body, including already inactive without reactivation; absent → CUSTOMER_NOT_FOUND/404. The Increment 4 interim OPERATION_NOT_AVAILABLE/405 is replaced only by subsequently authorized implementation, not by this documentation. Product DELETE and Order PUT/PATCH/DELETE remain METHOD_NOT_ALLOWED/405 with accurate Allow. No unrelated endpoint behavior is changed.
+
+Extend literal error-contract tests to these five templates and all reused Order triggers, actual MVC malformed/forbidden/type/presence/value precedence and real PostgreSQL commit/race/rollback paths. All new runtime evidence remains Pending. No accepted Increment 4 historical response or test result is rewritten.

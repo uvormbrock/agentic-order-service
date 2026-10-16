@@ -9,6 +9,11 @@ public final class ExpectedApiErrors {
     public record Expected(int status, String message) { }
     private static final JsonMapper JSON = JsonMapper.builder().build();
     public static final Map<String, Expected> CATALOG = Map.ofEntries(
+            Map.entry("INVALID_ORDER_ITEMS", new Expected(400, "The order must contain at least one item.")),
+            Map.entry("INVALID_ORDER_QUANTITY", new Expected(400, "Order item quantities must be positive integers and the consolidated quantity must not exceed 10,000.")),
+            Map.entry("CUSTOMER_INACTIVE", new Expected(409, "The customer is inactive.")),
+            Map.entry("PRODUCT_INACTIVE", new Expected(409, "The product is inactive.")),
+            Map.entry("ORDER_NOT_FOUND", new Expected(404, "The order was not found.")),
             Map.entry("MALFORMED_JSON", new Expected(400, "The request body must be a valid JSON object.")),
             Map.entry("UNKNOWN_FIELD", new Expected(400, "The request contains an unknown field.")),
             Map.entry("UNSUPPORTED_FIELD", new Expected(400, "The request contains a field or activation value that this operation does not permit.")),

@@ -20,6 +20,18 @@ class AgenticOrderServiceApplicationTest {
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     private com.example.agenticorderservice.customer.application.CustomerApplicationService customers;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.OrderPlacementCoordinator placement;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.OrderQueryService orderQueries;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.customer.application.CustomerOrderAccess customerOrderAccess;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.ProductOrderAccess productOrderAccess;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.OrderReferenceQuery orderReferences;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean(name = "orderPlacementTransactionTemplate")
+    protected org.springframework.transaction.support.TransactionTemplate orderPlacementTransactions;
     @Autowired
     private ApplicationContext context;
 

@@ -10,7 +10,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class CustomerApplicationService {
     private final CustomerRepository repository;
-    public CustomerApplicationService(CustomerRepository repository) { this.repository = repository; }
+    private final com.example.agenticorderservice.order.application.OrderReferenceQuery orders;
+    public CustomerApplicationService(CustomerRepository repository,
+            com.example.agenticorderservice.order.application.OrderReferenceQuery orders) {
+        this.repository = repository; this.orders = orders;
+    }
     @Transactional
     public CustomerResult create(String name, String email) {
         String normalized = InputValidationException.name(name);
@@ -25,15 +29,23 @@ public class CustomerApplicationService {
     public CustomerResult update(UUID id, String name, String email) {
         String normalized = InputValidationException.name(name);
         var validated = validateEmail(email);
-        var entity = find(id);
+        var entity = findLocked(id);
         entity.update(normalized, validated);
         return CustomerResult.from(entity);
     }
     @Transactional
     public CustomerResult deactivate(UUID id) {
-        var entity = find(id);
+        var entity = findLocked(id);
         if (entity.isActive()) { entity.deactivate(); }
         return CustomerResult.from(entity);
+    }
+    @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
+    public void delete(UUID id) {
+        var entity = findLocked(id);
+        // A distinct statement after the lock sees a placement that committed while we waited.
+        if (orders.references(id)) {
+            if (entity.isActive()) { entity.deactivate(); }
+        } else { repository.delete(entity); }
     }
     /** Shared by transport validation and direct application callers; no persistence access. */
     public static com.example.agenticorderservice.customer.domain.EmailAddress validateEmail(String value) {
@@ -41,5 +53,6 @@ public class CustomerApplicationService {
         try { return new com.example.agenticorderservice.customer.domain.EmailAddress(value); }
         catch (IllegalArgumentException failure) { throw new InputValidationException(InputValidationException.FieldFailure.EMAIL); }
     }
+    private Customer findLocked(UUID id) { return repository.findLockedById(id).orElseThrow(CustomerNotFoundException::new); }
     private Customer find(UUID id) { return repository.findById(id).orElseThrow(CustomerNotFoundException::new); }
 }

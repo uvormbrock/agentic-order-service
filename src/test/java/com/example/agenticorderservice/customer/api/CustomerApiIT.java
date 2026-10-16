@@ -54,8 +54,8 @@ class CustomerApiIT extends PostgreSqlApiTestSupport {
         String otherId=json(other).get("id").asString();
         assertError(request("PUT","/customers/"+otherId,mapper.writeValueAsString(Map.of("name","Unwanted","email",email))),DUPLICATE_EMAIL);
         assertThat(request("GET","/customers/"+otherId,null).body()).isEqualTo(other.body());
-        assertError(request("DELETE","/customers/"+id,null),OPERATION_NOT_AVAILABLE);
-        assertThat(request("GET","/customers/"+id,null).body()).isEqualTo(own.body());
+        assertThat(request("DELETE","/customers/"+id,null).statusCode()).isEqualTo(204);
+        assertError(request("GET","/customers/"+id,null),CUSTOMER_NOT_FOUND);
     }
 
     @Test

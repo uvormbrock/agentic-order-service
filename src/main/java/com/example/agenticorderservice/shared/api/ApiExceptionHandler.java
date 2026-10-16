@@ -34,7 +34,6 @@ public class ApiExceptionHandler {
                 allow.add("OPTIONS");
                 response.setHeader("Allow", String.join(", ", allow));
             }
-            if (request.getMethod().equals("DELETE") && request.getRequestURI().matches("/customers/[^/]+")) { code = OPERATION_NOT_AVAILABLE; }
         }
         writer.write(response, code);
     }
@@ -57,6 +56,18 @@ public class ApiExceptionHandler {
     }
 
     private static ApiError.Code knownFailure(Throwable cause) {
+        if (cause instanceof com.example.agenticorderservice.order.application.OrderFailure failure) {
+            return switch (failure.reason()) {
+                case REQUIRED -> REQUIRED_FIELD_MISSING;
+                case ITEMS -> INVALID_ORDER_ITEMS;
+                case QUANTITY -> INVALID_ORDER_QUANTITY;
+                case CUSTOMER_INACTIVE -> ApiError.Code.CUSTOMER_INACTIVE;
+                case PRODUCT_INACTIVE -> ApiError.Code.PRODUCT_INACTIVE;
+                case NOT_FOUND -> ORDER_NOT_FOUND;
+                case UNAVAILABLE -> SERVICE_UNAVAILABLE;
+                case TECHNICAL -> INTERNAL_SERVER_ERROR;
+            };
+        }
         if (cause instanceof ApiInputException input) { return input.code(); }
         if (cause instanceof InputValidationException input) {
             return switch (input.failure()) {

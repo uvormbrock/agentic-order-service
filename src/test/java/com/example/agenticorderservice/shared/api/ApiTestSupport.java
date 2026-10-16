@@ -17,6 +17,18 @@ import static org.mockito.Mockito.*;
         + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
         + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration")
 public abstract class ApiTestSupport {
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.OrderPlacementCoordinator placement;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.OrderQueryService orderQueries;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.customer.application.CustomerOrderAccess customerOrderAccess;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.ProductOrderAccess productOrderAccess;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.OrderReferenceQuery orderReferences;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean(name = "orderPlacementTransactionTemplate")
+    protected org.springframework.transaction.support.TransactionTemplate orderPlacementTransactions;
     @Autowired protected WebApplicationContext context;
     @MockitoBean protected ProductApplicationService products;
     @MockitoBean protected CustomerApplicationService customers;

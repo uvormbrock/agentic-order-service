@@ -13,8 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class ApiErrorContractTest {
     @Test
-    void catalogContainsExactlyTheTwentyApprovedCodes() {
-        assertThat(ExpectedApiErrors.CATALOG).hasSize(20);
+    void catalogContainsExactlyTheTwentyFiveApprovedCodes() {
+        assertThat(ExpectedApiErrors.CATALOG).hasSize(25);
         assertThat(Arrays.stream(ApiError.Code.values()).map(Enum::name).toList())
                 .containsExactlyInAnyOrderElementsOf(ExpectedApiErrors.CATALOG.keySet());
     }

@@ -22,11 +22,12 @@ class CustomerApiTest extends ApiTestSupport {
         error(post("/customers").contentType("application/json").content("{\"name\":\"Valid\",\"email\":"+context.getBean(tools.jackson.databind.json.JsonMapper.class).writeValueAsString(email)+"}"),INVALID_EMAIL);
         verify(customers,never()).create(any(),any());
     }
-    @Test void notFoundAndInterimDeleteHaveDistinctContracts() throws Exception {
+    @Test void notFoundAndApprovedDeleteHaveDistinctContracts() throws Exception {
         when(customers.get(id)).thenThrow(new CustomerNotFoundException());error(get("/customers/"+id),CUSTOMER_NOT_FOUND);
-        error(delete("/customers/"+id),OPERATION_NOT_AVAILABLE);
-        var allow=mvc.perform(delete("/customers/"+id)).andReturn().getResponse().getHeader("Allow");
-        assertThat(allow).contains("GET","HEAD","PUT","PATCH","OPTIONS").doesNotContain("DELETE","POST");
+        mvc.perform(delete("/customers/"+id)).andExpect(status().isNoContent()).andExpect(content().string(""));
+        verify(customers).delete(id);
+        doThrow(new CustomerNotFoundException()).when(customers).delete(id);
+        error(delete("/customers/"+id),CUSTOMER_NOT_FOUND);
         error(delete("/products/"+id),METHOD_NOT_ALLOWED);
         verify(customers,never()).deactivate(any());
     }

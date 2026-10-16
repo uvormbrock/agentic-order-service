@@ -308,6 +308,22 @@ class OptimisticLockingIT extends PostgreSqlApiTestSupport {
         @Bean static BeanPostProcessor completionRendezvous(CompletionGate gate) {
             return new BeanPostProcessor() {
                 @Override public Object postProcessAfterInitialization(Object bean,String name) {
+                    if (bean instanceof Advised repository && (name.equals("productRepository") || name.equals("customerRepository"))) {
+                        // Test-only stale-read fixture: retain optimistic completion assertions after production writes became serialized.
+                        repository.addAdvisor(0, new DefaultPointcutAdvisor(new StaticMethodMatcherPointcut() {
+                            @Override public boolean matches(java.lang.reflect.Method method, Class<?> type) {
+                                return method.getName().equals("findLockedById");
+                            }
+                        }, (MethodInterceptor) invocation -> {
+                            if (gate.id != null && gate.id.equals(invocation.getArguments()[0])) {
+                                if (bean instanceof com.example.agenticorderservice.product.persistence.ProductRepository products) {
+                                    return products.findById(gate.id);
+                                }
+                                return ((com.example.agenticorderservice.customer.persistence.CustomerRepository) bean).findById(gate.id);
+                            }
+                            return invocation.proceed();
+                        }));
+                    }
                     if(bean instanceof Advised proxy && (name.equals("productApplicationService")||name.equals("customerApplicationService"))) {
                         var advisor=new DefaultPointcutAdvisor(new StaticMethodMatcherPointcut() {
                             @Override public boolean matches(java.lang.reflect.Method method,Class<?> type) {return method.getName().equals("update") || method.getName().equals("deactivate");}

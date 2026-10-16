@@ -21,7 +21,7 @@ public final class StrictJsonRequestDecoder {
     private record Scalar(JsonToken token, String text) { }
 
     public boolean supports(Class<?> type) {
-        return type == ProductDetailsRequest.class || type == CustomerDetailsRequest.class
+        return type == com.example.agenticorderservice.order.api.CreateOrderRequest.class || type == ProductDetailsRequest.class || type == CustomerDetailsRequest.class
                 || type == DeactivateProductRequest.class || type == DeactivateCustomerRequest.class;
     }
     private static final String NAME = "name";
@@ -33,6 +33,7 @@ public final class StrictJsonRequestDecoder {
         if (!supports(type)) { throw new IllegalArgumentException("Unsupported request DTO"); }
         if (bytes.length == 0) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
         Map<String, Object> fields = parse(bytes);
+        if (type == com.example.agenticorderservice.order.api.CreateOrderRequest.class) { return order(fields); }
         boolean product = type == ProductDetailsRequest.class || type == DeactivateProductRequest.class;
         boolean patch = type == DeactivateProductRequest.class || type == DeactivateCustomerRequest.class;
         List<String> required = requiredFields(product, patch);
@@ -42,6 +43,74 @@ public final class StrictJsonRequestDecoder {
         return decodeValidatedFields(fields, product, patch);
     }
 
+    private Object order(Map<String, Object> fields) {
+        var propertyErrors = new TreeMap<String, ApiError.Code>();
+        orderProperties(fields, Set.of("customerId", "items"),
+                Set.of("id", "version", "customer", "currency", "subtotal", "discount", "total", "unitPrice"), "", propertyErrors);
+        Object rawItems = fields.get("items");
+        if (rawItems instanceof List<?> items) {
+            for (int index = 0; index < items.size(); index++) {
+                if (items.get(index) instanceof Map<?, ?> item) {
+                    orderProperties(item, Set.of("productId", "quantity"),
+                            Set.of("id", "version", "productName", "unitPrice", "lineTotal", "subtotal", "discount", "total", "currency"),
+                            "items[" + index + "].", propertyErrors);
+                }
+            }
+        }
+        if (!propertyErrors.isEmpty()) { throw new ApiInputException(propertyErrors.firstEntry().getValue()); }
+        scalarType(fields.get("customerId"), JsonToken.VALUE_STRING);
+        if (rawItems != null && !(rawItems instanceof List<?>)) { throw new ApiInputException(INVALID_FIELD_TYPE); }
+        List<?> items = rawItems instanceof List<?> list ? list : List.of();
+        for (Object raw : items) {
+            if (raw == null) { continue; }
+            if (!(raw instanceof Map<?, ?> item)) { throw new ApiInputException(INVALID_FIELD_TYPE); }
+            scalarType(item.get("productId"), JsonToken.VALUE_STRING);
+            scalarType(item.get("quantity"), JsonToken.VALUE_NUMBER_INT);
+        }
+        if (fields.get("customerId") == null || rawItems == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
+        for (Object raw : items) {
+            if (raw == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
+            Map<?, ?> item = (Map<?, ?>) raw;
+            if (item.get("productId") == null || item.get("quantity") == null) { throw new ApiInputException(REQUIRED_FIELD_MISSING); }
+        }
+        UUID customerId = orderId(fields.get("customerId"));
+        if (items.isEmpty()) { throw new ApiInputException(INVALID_ORDER_ITEMS); }
+        List<com.example.agenticorderservice.order.api.OrderItemRequest> result = new ArrayList<>();
+        Map<UUID, Integer> sums = new HashMap<>();
+        for (Object raw : items) {
+            Map<?, ?> item = (Map<?, ?>) raw;
+            UUID productId = orderId(item.get("productId"));
+            var number = new java.math.BigInteger(((Scalar) item.get("quantity")).text());
+            if (number.signum() <= 0 || number.compareTo(java.math.BigInteger.valueOf(10000)) > 0) {
+                throw new ApiInputException(INVALID_ORDER_QUANTITY);
+            }
+            int quantity = number.intValueExact();
+            int total = sums.getOrDefault(productId, 0) + quantity;
+            if (total > 10000) { throw new ApiInputException(INVALID_ORDER_QUANTITY); }
+            sums.put(productId, total);
+            result.add(new com.example.agenticorderservice.order.api.OrderItemRequest(productId, quantity));
+        }
+        return new com.example.agenticorderservice.order.api.CreateOrderRequest(customerId, result);
+    }
+    private void orderProperties(Map<?, ?> fields, Set<String> allowed, Set<String> forbidden,
+                                 String prefix, Map<String, ApiError.Code> errors) {
+        for (Object key : fields.keySet()) {
+            String name = (String) key;
+            if (!allowed.contains(name)) { errors.put(prefix + name, forbidden.contains(name) ? UNSUPPORTED_FIELD : UNKNOWN_FIELD); }
+        }
+    }
+    private void scalarType(Object value, JsonToken expected) {
+        if (value != null && (!(value instanceof Scalar scalar) || scalar.token() != expected)) {
+            throw new ApiInputException(INVALID_FIELD_TYPE);
+        }
+    }
+    private UUID orderId(Object value) {
+        String text = ((Scalar) value).text();
+        if (!text.matches("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")) {
+            throw new ApiInputException(INVALID_RESOURCE_ID);
+        }
+        return UUID.fromString(text);
+    }
     private List<String> requiredFields(boolean product, boolean patch) {
         if (patch) { return List.of(ACTIVE); }
         if (product) { return List.of(NAME, PRICE); }

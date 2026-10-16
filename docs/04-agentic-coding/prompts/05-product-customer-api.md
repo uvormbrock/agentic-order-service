@@ -782,10 +782,6 @@ Repository configuration identifies a loopback Compose service and named develop
 - Only real PostgreSQL commit and HTTP tests establish uniqueness/version failure translation and success-after-completion. Mocks and flush-only assertions do not replace them.
 - Persistent migration recovery is independent from disposable migration correctness and must be reported separately.
 
-### Interview Talking Points — Observed
-
-Explain the feature-owned application transaction boundary and why immutable results are constructed before commit but HTTP success follows completion. Demonstrate strict JSON category ordering and an input-only MVC converter without replacing response infrastructure. Show V1-to-V2 preservation evidence, actual Hibernate version predicates, controlled overlapping HTTP commits and no-update repeated deactivation. Explain the difference between confirmed acquisition failure, uncertain completion and a blocked persistent recovery gate.
-
 ### Remaining Risks and Review Gates
 
 Explicit human implementation acceptance is Pending. Persistent local V2 execution is Blocked — Human Action Required; no recoverable local rollout is claimed. Production migration/rollout, Customer deletion, Order placement/API, pessimistic locking/retry protocol and ADR-0002 verification remain deferred. ADR-0002 and ADR-0006 remain Proposed; tests do not accept either ADR. New-code SonarQube/CI results require the user's separately authorized commit/push workflow. No commit, push, merge, deployment or next increment was performed.
@@ -908,7 +904,7 @@ Migration checks: representative existing V1 records and fresh V1+V2, preservati
 
 A/B1–B11 incorporated; catalog and current proposal updated, ADR-0006 created as Proposed, architecture/transaction/domain/test navigation aligned. Original prompt, initial proposal/evidence and Accepted Increment 3/D1–D10 preserved. Documentation verification: 339 internal links/anchors passed, all 20 Accepted code/status pairs and exactly ten endpoint rows checked, tables/fences and staged/unstaged/new-file whitespace passed. File hashes confirm original prompt, source/tests/POM/CI/PRD/V1 preserved and no V2 exists. ADR-0001–0005 statuses unchanged, ADR-0006 Proposed. Implementation, HTTP/PostgreSQL/version/migration verification remain Pending. No application code, dependency, CI or migration was changed or executed.
 
-## Lessons Learned and Interview Talking Points — Decision Update
+## Lessons Learned — Decision Update
 
 Documentation observation: field-type strictness, numeric lexical preservation and whole-request error precedence are separate obligations; optimistic transaction versions do not replace stale-client preconditions or the future Order locking protocol. Explain proxy completion before response/conflict mapping, special deferred-operation errors, and additive V2 planning while preserving immutable V1/history. These are planning observations, not invented runtime lessons.
 
@@ -1068,14 +1064,6 @@ The target playbook existed as an empty untracked file and is populated in place
 ### Lessons Learned
 
 Planning observations: unknown-property rejection alone does not establish numeric/coercion correctness; transaction completion must be observed before HTTP success and conflict translation; an accepted irreversible-deactivation rule also requires review of actual SQL write sets. Runtime implementation lessons remain Pending.
-
-### Interview Talking Points
-
-- Trace each endpoint to the PRD, separating accepted HTTP behavior from proposed framework mechanisms.
-- Reuse accepted aggregate invariants while preventing API/JPA coupling.
-- Explain why deferred customer deletion needs future Order coordination instead of check-then-delete.
-- Separate unit, actual MVC and real PostgreSQL evidence; recognize that source inspection is not runtime verification.
-- Use explicit approval gates and immutable prompts to keep implementation and decision history auditable.
 
 
 ## Final Human Acceptance — 2026-10-15
