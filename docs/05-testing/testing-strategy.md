@@ -98,14 +98,14 @@ Run commands from the repository root using the Maven Wrapper. Both test groups 
 
 ### Fast Tests and Integration Tests
 
-| Aspect | Fast tests | PostgreSQL integration tests |
-| --- | --- | --- |
-| Maven plugin | Surefire | Failsafe |
-| Project naming convention | `*Test` | `*IT` |
-| Execution phase | `test` | `integration-test`, with results checked in `verify` |
-| Current scope | Smoke, image-configuration and pure domain checks | Real PostgreSQL foundation, migrations, mappings and constraints |
-| PostgreSQL / Docker required | No | Yes |
-| Command | `./mvnw test` | `./mvnw verify` also runs the fast tests |
+| Aspect                       | Fast tests                                        | PostgreSQL integration tests                                     |
+| ---------------------------- | ------------------------------------------------- | ---------------------------------------------------------------- |
+| Maven plugin                 | Surefire                                          | Failsafe                                                         |
+| Project naming convention    | `*Test`                                           | `*IT`                                                            |
+| Execution phase              | `test`                                            | `integration-test`, with results checked in `verify`             |
+| Current scope                | Smoke, image-configuration and pure domain checks | Real PostgreSQL foundation, migrations, mappings and constraints |
+| PostgreSQL / Docker required | No                                                | Yes                                                              |
+| Command                      | `./mvnw test`                                     | `./mvnw verify` also runs the fast tests                         |
 
 Fast tests provide frequent development feedback without starting containers. They are not necessarily unit tests: the smoke test loads a Spring web application context. PostgreSQL integration tests additionally exercise database connectivity and framework integration, including container and database startup.
 
