@@ -8,6 +8,7 @@ import io.swagger.v3.oas.models.examples.Example;
 import io.swagger.v3.oas.models.headers.Header;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.media.*;
+import io.swagger.v3.oas.models.parameters.*;
 import io.swagger.v3.oas.models.responses.*;
 import io.swagger.v3.oas.models.servers.Server;
 import java.util.*;
@@ -18,6 +19,9 @@ import org.springframework.context.annotation.*;
 @Configuration(proxyBeanMethods = false)
 @Profile("demo")
 public class OpenApiConfiguration {
+    private static final String MESSAGE = "message";
+    private static final String ACTIVE = "active";
+    private static final String CUSTOMERS = "customers";
     private static final String JSON = "application/json";
     private static final String REQUEST_ID = "X-Request-ID";
     private static final String UUID_EXAMPLE = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
@@ -60,92 +64,101 @@ public class OpenApiConfiguration {
                             "ApiError",
                             new ObjectSchema()
                                     .addProperty("code", new StringSchema())
-                                    .addProperty("message", new StringSchema())
-                                    .required(List.of("code", "message"))
+                                    .addProperty(MESSAGE, new StringSchema())
+                                    .required(List.of("code", MESSAGE))
                                     .additionalProperties(false));
-            api.getComponents().getSchemas().forEach((name, schema) -> {
-                if (schema.getProperties() != null) {
-                    schema.setRequired(new ArrayList<>(schema.getProperties().keySet()));
-                    if (name.endsWith("Request")) schema.setAdditionalProperties(false);
-                    if (name.startsWith("Deactivate")) {
-                        BooleanSchema active = new BooleanSchema();
-                        active.setEnum(List.of(false));
-                        active.description("Only false is accepted; reactivation is unsupported");
-                        schema.getProperties().put("active", active);
-                    }
-                }
-            });
+            api.getComponents().getSchemas().forEach(OpenApiConfiguration::customizeSchema);
             api.getPaths()
-                    .forEach((path, item) -> item.readOperationsMap().forEach((method, operation) -> {
-                        String feature = path.split("/")[1];
-                        var codes = errors(path, feature, method);
-                        Map<Integer, List<Code>> byStatus = new LinkedHashMap<>();
-                        codes.forEach(code -> byStatus.computeIfAbsent(code.status(), ignored -> new ArrayList<>())
-                                .add(code));
-                        byStatus.forEach((status, values) -> {
-                            var media = new MediaType().schema(new Schema<>().$ref("#/components/schemas/ApiError"));
-                            values.forEach(code -> media.addExamples(
-                                    code.name(),
-                                    new Example()
-                                            .summary(code.name())
-                                            .value(Map.of("code", code.name(), "message", code.message()))));
-                            operation
-                                    .getResponses()
-                                    .addApiResponse(
-                                            String.valueOf(status),
-                                            new ApiResponse()
-                                                    .description(errorDescription(status))
-                                                    .content(new Content().addMediaType(JSON, media)));
-                        });
-                        String success = method == PathItem.HttpMethod.POST
-                                ? "201"
-                                : method == PathItem.HttpMethod.DELETE ? "204" : "200";
-                        if (!success.equals("200")) operation.getResponses().remove("200");
-                        ApiResponse response = operation.getResponses().get(success);
-                        if (success.equals("204")) response.setContent(null);
-                        else {
-                            response.setContent(jsonContent(response.getContent()));
-                            Object example = responseExample(feature);
-                            if (method == PathItem.HttpMethod.GET && !path.contains("{id}")) example = List.of(example);
-                            response.getContent().get(JSON).setExample(example);
-                        }
-                        if (success.equals("201"))
-                            response.addHeaderObject(
-                                    "Location",
-                                    new Header()
-                                            .description("Relative URL of the created resource")
-                                            .schema(new StringSchema().example(path + "/" + UUID_EXAMPLE)));
-                        operation
-                                .getResponses()
-                                .values()
-                                .forEach(value -> value.addHeaderObject(
-                                        REQUEST_ID, new Header().$ref("#/components/headers/RequestId")));
-                        if (operation.getRequestBody() != null) {
-                            operation.getRequestBody().setRequired(true);
-                            operation
-                                    .getRequestBody()
-                                    .setDescription(
-                                            "Required JSON object; only the documented fields are allowed. "
-                                                    + "Null required fields and scalar coercion are rejected by the custom decoder.");
-                            operation
-                                    .getRequestBody()
-                                    .setContent(jsonContent(
-                                            operation.getRequestBody().getContent()));
-                        }
-                        if (operation.getParameters() != null)
-                            operation.getParameters().forEach(parameter -> {
-                                if ("path".equals(parameter.getIn())) {
-                                    parameter.setDescription(
-                                            "Canonical 36-character UUID text; upper/lowercase hex accepted");
-                                    parameter.setExample(UUID_EXAMPLE);
-                                    parameter
-                                            .getSchema()
-                                            .setPattern(
-                                                    "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
-                                }
-                            });
-                    }));
+                    .forEach((path, item) -> item.readOperationsMap()
+                            .forEach((method, operation) -> customizeOperation(path, method, operation)));
         };
+    }
+
+    private static void customizeSchema(String name, Schema<?> schema) {
+        if (schema.getProperties() == null) return;
+        schema.setRequired(new ArrayList<>(schema.getProperties().keySet()));
+        if (name.endsWith("Request")) schema.setAdditionalProperties(false);
+        if (name.startsWith("Deactivate")) {
+            BooleanSchema active = new BooleanSchema();
+            active.setEnum(List.of(false));
+            active.description("Only false is accepted; reactivation is unsupported");
+            schema.getProperties().put(ACTIVE, active);
+        }
+    }
+
+    private static void customizeOperation(String path, PathItem.HttpMethod method, Operation operation) {
+        String feature = path.split("/")[1];
+        addErrorResponses(operation.getResponses(), errors(path, feature, method));
+        customizeSuccessResponse(path, feature, method, operation.getResponses());
+        operation
+                .getResponses()
+                .values()
+                .forEach(value ->
+                        value.addHeaderObject(REQUEST_ID, new Header().$ref("#/components/headers/RequestId")));
+        customizeRequestBody(operation.getRequestBody());
+        customizePathParameters(operation.getParameters());
+    }
+
+    private static void addErrorResponses(ApiResponses responses, List<Code> codes) {
+        Map<Integer, List<Code>> byStatus = new LinkedHashMap<>();
+        codes.forEach(code -> byStatus.computeIfAbsent(code.status(), ignored -> new ArrayList<>())
+                .add(code));
+        byStatus.forEach((status, values) -> {
+            var media = new MediaType().schema(new Schema<>().$ref("#/components/schemas/ApiError"));
+            values.forEach(code -> media.addExamples(
+                    code.name(),
+                    new Example().summary(code.name()).value(Map.of("code", code.name(), MESSAGE, code.message()))));
+            responses.addApiResponse(
+                    String.valueOf(status),
+                    new ApiResponse()
+                            .description(errorDescription(status))
+                            .content(new Content().addMediaType(JSON, media)));
+        });
+    }
+
+    private static void customizeSuccessResponse(
+            String path, String feature, PathItem.HttpMethod method, ApiResponses responses) {
+        String success = switch (method) {
+            case POST -> "201";
+            case DELETE -> "204";
+            default -> "200";
+        };
+        if (!success.equals("200")) responses.remove("200");
+        ApiResponse response = responses.get(success);
+        if (success.equals("204")) response.setContent(null);
+        else {
+            response.setContent(jsonContent(response.getContent()));
+            Object example = responseExample(feature);
+            if (method == PathItem.HttpMethod.GET && !path.contains("{id}")) example = List.of(example);
+            response.getContent().get(JSON).setExample(example);
+        }
+        if (success.equals("201"))
+            response.addHeaderObject(
+                    "Location",
+                    new Header()
+                            .description("Relative URL of the created resource")
+                            .schema(new StringSchema().example(path + "/" + UUID_EXAMPLE)));
+    }
+
+    private static void customizeRequestBody(RequestBody body) {
+        if (body == null) return;
+        body.setRequired(true);
+        body.setDescription("Required JSON object; only the documented fields are allowed. "
+                + "Null required fields and scalar coercion are rejected by the custom decoder.");
+        body.setContent(jsonContent(body.getContent()));
+    }
+
+    private static void customizePathParameters(List<Parameter> parameters) {
+        if (parameters == null) return;
+        parameters.forEach(parameter -> {
+            if ("path".equals(parameter.getIn())) {
+                parameter.setDescription("Canonical 36-character UUID text; upper/lowercase hex accepted");
+                parameter.setExample(UUID_EXAMPLE);
+                parameter
+                        .getSchema()
+                        .setPattern("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+            }
+        });
     }
 
     private static Content jsonContent(Content content) {
@@ -155,10 +168,10 @@ public class OpenApiConfiguration {
 
     private static Map<String, Object> responseExample(String feature) {
         var customer = Map.<String, Object>of(
-                "id", UUID_EXAMPLE, "name", "Demo Alice", "email", "alice@example.invalid", "active", true);
-        if (feature.equals("customers")) return customer;
+                "id", UUID_EXAMPLE, "name", "Demo Alice", "email", "alice@example.invalid", ACTIVE, true);
+        if (feature.equals(CUSTOMERS)) return customer;
         if (feature.equals("products"))
-            return Map.of("id", UUID_EXAMPLE, "name", "Demo Keyboard", "price", 50, "active", true);
+            return Map.of("id", UUID_EXAMPLE, "name", "Demo Keyboard", "price", 50, ACTIVE, true);
         return Map.of(
                 "id",
                 UUID_EXAMPLE,
@@ -195,7 +208,7 @@ public class OpenApiConfiguration {
             codes.add(INVALID_RESOURCE_ID);
             codes.add(
                     switch (feature) {
-                        case "customers" -> CUSTOMER_NOT_FOUND;
+                        case CUSTOMERS -> CUSTOMER_NOT_FOUND;
                         case "products" -> PRODUCT_NOT_FOUND;
                         default -> ORDER_NOT_FOUND;
                     });
@@ -222,10 +235,10 @@ public class OpenApiConfiguration {
                         PRODUCT_INACTIVE));
             else if (method != PathItem.HttpMethod.PATCH) {
                 codes.add(INVALID_NAME);
-                codes.add(feature.equals("customers") ? INVALID_EMAIL : INVALID_PRODUCT_PRICE);
+                codes.add(feature.equals(CUSTOMERS) ? INVALID_EMAIL : INVALID_PRODUCT_PRICE);
             }
         }
-        if (feature.equals("customers") && (method == PathItem.HttpMethod.POST || method == PathItem.HttpMethod.PUT))
+        if (feature.equals(CUSTOMERS) && (method == PathItem.HttpMethod.POST || method == PathItem.HttpMethod.PUT))
             codes.add(DUPLICATE_EMAIL);
         if (!feature.equals("orders")
                 && (method == PathItem.HttpMethod.PUT

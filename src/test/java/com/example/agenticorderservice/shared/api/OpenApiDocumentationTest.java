@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.core.util.Json;
 import io.swagger.v3.core.util.Yaml;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -71,6 +73,8 @@ class OpenApiDocumentationTest extends ApiTestSupport {
                 .getResponse()
                 .getContentAsByteArray();
         assertThat(Yaml.mapper().readTree(yaml)).isEqualTo(Json.mapper().readTree(json));
+        var snapshot = Files.readAllBytes(Path.of("docs/02-architecture/openapi.yaml"));
+        assertThat(Yaml.mapper().readTree(snapshot)).isEqualTo(Json.mapper().readTree(json));
         mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isOk());
         mvc.perform(get("/v3/api-docs/swagger-config"))
                 .andExpect(status().isOk())
