@@ -19,6 +19,8 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.*;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.boot.web.error.ErrorPage;
+import org.springframework.boot.web.error.ErrorPageRegistrar;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletListenerRegistrationBean;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
@@ -43,6 +45,7 @@ class HttpRequestLifecycleIT extends ApiTestSupport {
         final CountDownLatch entered = new CountDownLatch(1),
                 release = new CountDownLatch(1),
                 callback = new CountDownLatch(1),
+                completed = new CountDownLatch(1),
                 recovery = new CountDownLatch(1),
                 errorDispatch = new CountDownLatch(1);
         volatile String requestId, nestedBefore, nestedAfter;
@@ -117,6 +120,7 @@ class HttpRequestLifecycleIT extends ApiTestSupport {
                 probe.release.countDown();
             }
             var response = future.get(15, TimeUnit.SECONDS);
+            if (mode.equals("timeout-error")) await(probe.completed);
             var terminal = events.await(probe.requestId, "HTTP_REQUEST_COMPLETED");
             assertThat(response.headers().firstValue("X-Request-ID")).contains(probe.requestId);
             assertThat(UUID.fromString(probe.requestId)).hasToString(probe.requestId);
@@ -146,7 +150,11 @@ class HttpRequestLifecycleIT extends ApiTestSupport {
                 assertThat(message).contains("cycles=2");
             } else if (mode.equals("timeout-error")) {
                 await(probe.errorDispatch);
+                assertThat(response.statusCode()).isEqualTo(503);
+                assertThat(response.body()).isEqualTo("timeout");
                 assertThat(message).contains("status=503", "outcome=COMPLETED_AFTER_TIMEOUT");
+                assertThat(probe.errors.get()).isZero();
+                assertThat(probe.callbackFailures).isEmpty();
             } else if (mode.equals("committed")) assertThat(message).contains("status=202");
             else if (mode.equals("reset")) assertThat(message).contains("status=201");
             else {
@@ -244,12 +252,9 @@ class HttpRequestLifecycleIT extends ApiTestSupport {
                     throw new ServletException("transport-canary");
                 if (probe.errors.get() == 0 && mode.equals("injected-disconnect"))
                     throw new IOException("transport-canary");
-                if (mode.equals("timeout-error")) response.sendError(503);
-                else {
-                    response.setStatus(502);
-                    response.getWriter().write("recovered");
-                    if (mode.equals("precommit-recovery")) probe.recovery.countDown();
-                }
+                response.setStatus(502);
+                response.getWriter().write("recovered");
+                if (mode.equals("precommit-recovery")) probe.recovery.countDown();
                 return;
             }
             if (mode.equals("committed")) {
@@ -273,6 +278,7 @@ class HttpRequestLifecycleIT extends ApiTestSupport {
                 @Override
                 public void onComplete(AsyncEvent event) {
                     probe.completions.incrementAndGet();
+                    probe.completed.countDown();
                 }
 
                 @Override
@@ -290,10 +296,13 @@ class HttpRequestLifecycleIT extends ApiTestSupport {
                 }
 
                 @Override
-                public void onTimeout(AsyncEvent event) {
+                public void onTimeout(AsyncEvent event) throws IOException {
                     probe.callback.countDown();
-                    if (mode.equals("timeout-error")) event.getAsyncContext().dispatch();
-                    else event.getAsyncContext().complete();
+                    // Render the test-owned error page before completion, without a second async dispatch.
+                    if (mode.equals("timeout-error")) {
+                        ((HttpServletResponse) event.getAsyncContext().getResponse()).sendError(503);
+                    }
+                    event.getAsyncContext().complete();
                 }
 
                 @Override
@@ -350,6 +359,28 @@ class HttpRequestLifecycleIT extends ApiTestSupport {
             var registration = new ServletRegistrationBean<>(new NativeServlet(probes), "/lifecycle");
             registration.setAsyncSupported(true);
             return registration;
+        }
+
+        @Bean
+        ErrorPageRegistrar timeoutErrorPage() {
+            // The production fallback intentionally maps unsupported error-page statuses to 500.
+            return registry -> registry.addErrorPages(
+                    new ErrorPage(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE, "/lifecycle-timeout-error"));
+        }
+
+        @Bean
+        ServletRegistrationBean<HttpServlet> timeoutErrorServlet() {
+            var servlet = new HttpServlet() {
+                @Override
+                protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+                    assertThat(request.getDispatcherType()).isEqualTo(DispatcherType.ERROR);
+                    assertThat(request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE))
+                            .isEqualTo(503);
+                    response.setStatus(503);
+                    response.getWriter().write("timeout");
+                }
+            };
+            return new ServletRegistrationBean<>(servlet, "/lifecycle-timeout-error");
         }
 
         @Bean
