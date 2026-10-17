@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/branding/vormbrock-logo.png" alt="Vormbrock" width="520">
+</p>
+
 # Agentic Order Service
 
 A Java 21 / Spring Boot REST backend demonstrating **agentic software engineering with human-controlled architecture, implementation and quality assurance**.
@@ -5,6 +9,67 @@ A Java 21 / Spring Boot REST backend demonstrating **agentic software engineerin
 The application manages customers, products and orders, with a focus on transactional consistency, PostgreSQL concurrency control, bounded retries and observability. It follows a feature-oriented modular monolith architecture.
 
 Developed with OpenAI Codex under explicit human review and acceptance controls, the project serves as a practical engineering demonstration rather than a commercial e-commerce platform. Production deployment readiness has not been established.
+
+## Try the Application Locally
+
+Start with the isolated, disposable demo to explore the application without accessing the persistent development database.
+
+### Prerequisites
+
+- **Java 21 / JDK 21**, with `JAVA_HOME` set to that installation.
+- **Docker Desktop or a compatible Docker Engine with Compose v2**; Docker must be running.
+- **Git, GNU Make, Python 3 and curl**.
+
+You do **not** need to install PostgreSQL or Maven separately: PostgreSQL runs in Docker and the Maven Wrapper is included. See [platform/tool setup](docs/06-operations/local-demo-technical.md#requirements) and [troubleshooting](docs/06-operations/local-demo.md#troubleshooting) for environment guidance. Keep ports 15432 and 18080 free.
+
+### Step 1 — Start Database and Application
+
+From the repository root, in Terminal 1:
+
+```sh
+make demo-setup
+make demo-run
+```
+
+`demo-run` runs in the **foreground**; keep this terminal open and wait for Spring Boot's `Started` message.
+
+### Step 2 — Load Sample Data
+
+After successful startup, open Terminal 2 in the repository root:
+
+```sh
+make demo-seed
+```
+
+This creates **5 customers, 8 products, 4 orders and 8 order items** through the REST APIs. The [dataset description](demo/data/README.md) explains the discount and historical-price scenarios. Seeding requires an empty database; a second run refuses writes rather than duplicating or overwriting data.
+
+### Step 3 — Inspect Data with DBeaver
+
+Follow the **[DBeaver connection instructions](docs/06-operations/local-demo.md#view-data-in-dbeaver)** to create a PostgreSQL connection: host `127.0.0.1`, port `15432`, database `agentic_order_demo`, username `demo`, password `demo_only_local`.
+
+Open **Schemas → public → Tables** and choose `customers`, `products`, `orders` or `order_items`, then **View Data → All Rows**. These intentionally insecure credentials are exclusively for the isolated disposable demo, never production or shared environments. Existing legacy installations require the guide's explicit credential-transition steps.
+
+### Step 4 — Try the REST API
+
+Application base URL: **http://localhost:18080**.
+
+```sh
+curl http://localhost:18080/customers
+curl http://localhost:18080/products
+curl http://localhost:18080/orders
+```
+
+Use `127.0.0.1` if `localhost` resolves only to IPv6. See the [detailed REST examples](docs/06-operations/local-demo-technical.md#rest-examples) for order creation, updates and validation responses.
+
+### Step 5 — Stop the Demo
+
+```sh
+make demo-down
+```
+
+This stops the owned application/container. The database uses disposable storage: stopping or removing its container **loses all demo data**. The persistent development database is unaffected.
+
+For advanced instructions and troubleshooting, see the **[complete Local Demo Guide](docs/06-operations/local-demo.md#quick-start)**.
 
 ## Key Engineering Features
 
@@ -59,77 +124,9 @@ Spotless / Palantir Java Format checks formatting during the build. SonarQube Cl
 
 See the **[Quality Report](docs/05-testing/quality-report.md)** for dated test results, coverage, mutation outcomes, static-analysis evidence and limitations. Results apply to their recorded source snapshot and do not automatically verify later changes or certify production readiness.
 
-## Getting Started
+## Advanced Development Setup
 
-### Prerequisites
-
-- JDK 21, with `JAVA_HOME` pointing to that installation and its `bin` directory on `PATH`.
-- Docker Engine and Docker Compose v2 for the development database and PostgreSQL integration tests.
-- Git; use the included Maven Wrapper instead of requiring system Maven.
-- GNU Make, Python 3 and `shasum` for the optional mutation workflow.
-
-Run commands from the repository root. Confirm the selected Java/Maven environment:
-
-```sh
-./mvnw -v
-```
-
-### Development Database
-
-For a new local setup, create the ignored environment file without overwriting an existing one:
-
-```sh
-test -e .env || cp .env.example .env
-```
-
-Edit `.env` locally: set `POSTGRES_USER` and `POSTGRES_PASSWORD`, and review `POSTGRES_DB` and `POSTGRES_HOST_PORT`. Use shell-compatible assignments because the application startup example exports this file. Never commit credentials. For an existing database, preserve its existing credentials and volume.
-
-The shared image reference is defined in [config/postgres.properties](config/postgres.properties). Compose uses it for variable substitution; Testcontainers loads it directly with Java `Properties`.
-
-```sh
-# Exported shell variables override Compose environment files.
-# Remove an unintended image override before resolving configuration.
-unset POSTGRES_IMAGE
-docker compose --env-file .env --env-file config/postgres.properties config --quiet
-docker compose --env-file .env --env-file config/postgres.properties up -d --wait
-```
-
-The database port binds to loopback. `config --quiet` validates without printing resolved credentials. Review any exported `POSTGRES_*` values as well: they take precedence over the files.
-
-**Existing database safety:** the `local` profile enables Flyway and applies pending migrations on startup. Before starting against an existing persistent database, satisfy the documented backup/recovery and target-verification gate. That persistent-local migration gate remains blocked in the execution record; disposable Testcontainers verification does not authorize it. See the [local configuration and migration guidance](docs/02-architecture/technology-stack.md#postgresql-configuration-source-and-local-credentials).
-
-### Build and Start
-
-With Docker available, build and verify the application:
-
-```sh
-./mvnw -B -ntp clean verify
-```
-
-Spring Boot does **not** load `.env` automatically. For a new development database, or an existing database whose migration gate has been approved, export the trusted local file before startup:
-
-```sh
-set -a
-. ./.env
-set +a
-./mvnw -B -ntp spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-The application runs on port 8080 and needs the configured PostgreSQL database. The `local` profile enables Flyway validation/migration; Hibernate validates the schema. Flyway is disabled in the default application configuration, and production migration execution remains a separate decision.
-
-| Resource | Implemented operations |
-| --- | --- |
-| `/products` | POST, GET; GET/PUT/PATCH on `/products/{id}`; PATCH deactivates |
-| `/customers` | POST, GET; GET/PUT/PATCH/DELETE on `/customers/{id}` |
-| `/orders` | POST, GET; GET on `/orders/{id}` |
-
-Customer DELETE physically deletes an unreferenced customer or deactivates a referenced one. See the [PRD](docs/01-requirements/product-requirements.md) and [API error catalog](docs/02-architecture/api-error-codes.md) for request fields, status codes and fixed error templates.
-
-Stop Compose while retaining its named database volume:
-
-```sh
-docker compose --env-file .env --env-file config/postgres.properties down
-```
+A [persistent local database setup](docs/06-operations/local-development.md) is optional for developers who specifically need data to survive container shutdown. It is separate from the recommended disposable demo. Existing-database migration approval, target verification, backup and recovery requirements still apply; read the full instructions before startup.
 
 ## Running Tests and Quality Checks
 

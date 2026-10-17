@@ -1,0 +1,25 @@
+{
+  "customers": [
+    {"name": "Demo Alice", "email": "alice@example.invalid"},
+    {"name": "Demo Bob", "email": "bob@example.invalid"},
+    {"name": "Demo Carol", "email": "carol@example.invalid"},
+    {"name": "Demo Drew", "email": "drew@example.invalid"},
+    {"name": "Demo Eve", "email": "eve@example.invalid"}
+  ],
+  "products": [
+    {"name": "Demo Keyboard", "price": 50.00},
+    {"name": "Demo Mouse", "price": 25.00},
+    {"name": "Demo Notebook", "price": 10.00},
+    {"name": "Demo Monitor", "price": 99.99},
+    {"name": "Demo Sticker", "price": 0.00},
+    {"name": "Demo Desk", "price": 100.00},
+    {"name": "Demo Pen", "price": 7.50},
+    {"name": "Demo Legacy Item", "price": 20.00}
+  ],
+  "orders": [
+    {"customer": 0, "items": [[0, 1], [1, 2]], "expected": [100.00, 10.00, 90.00]},
+    {"customer": 0, "items": [[2, 2], [6, 2]], "expected": [35.00, 0.00, 35.00]},
+    {"customer": 1, "items": [[3, 1], [4, 1]], "expected": [99.99, 0.00, 99.99]},
+    {"customer": 3, "items": [[5, 1], [1, 2]], "expected": [150.00, 15.00, 135.00]}
+  ]
+}

@@ -13,7 +13,9 @@ help:
 	  'Set JAVA_HOME to a Java 21 installation.' \
 	  'Override MUTATION_EVIDENCE_ROOT to change the external evidence location.' \
 	  'Requires Python 3 (standard library) to validate Surefire XML results.' \
-	  'All scopes select the complete project-wide fast-test suite (*Test); *IT integration tests are excluded.'
+	  'All scopes select the complete project-wide fast-test suite (*Test); *IT integration tests are excluded.' \
+	  'Local demo: make demo-setup, demo-run, demo-seed, demo-status, demo-db, demo-down' \
+	  'Demo uses ports 15432/18080 and temporary database storage; demo-down discards demo data.'
 
 mutation-test:
 	@set -eu; \
@@ -103,3 +105,8 @@ mutation-test:
 	printf '%s\n' 'Actual PIT execution counts are above; test discovery/execution details are in verbose pit.log and XML killingTest entries.' \
 	  'Selection does not establish that every eligible test ran. No PostgreSQL *IT verification is claimed.'; \
 	status='EXECUTED - PENDING HUMAN REVIEW'
+
+.PHONY: demo-setup demo-run demo-seed demo-status demo-db demo-down
+
+demo-setup demo-run demo-seed demo-status demo-db demo-down:
+	@python3 demo/demo.py $(@:demo-%=%)
