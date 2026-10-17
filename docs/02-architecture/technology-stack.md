@@ -1,7 +1,7 @@
 # Technology Stack Reference
 
 **Status:** Authoritative inventory of Accepted, Proposed, and Open selections
-**Last reviewed:** 2026-10-15
+**Last reviewed:** 2026-10-17
 **Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; Increment 3 domain/persistence Reviewed – Accepted; Increment 4 application/optimistic verification Reviewed – Accepted; full Order concurrency Pending
 
 ## Purpose and Authority
@@ -194,6 +194,18 @@ env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw 
 ```
 
 Earlier prompt-playbook version tables record what was actually used during those executions and remain unchanged. Use this section and the current POM for the latest dependency versions. Reassess the overrides when a separately approved Boot update manages suitable fixed versions; do not silently change the accepted Boot baseline or discard the recorded security rationale.
+
+### Authorized Jackson 2 Security Remediation — 2026-10-17
+
+**Status:** Jackson remediation executed and remotely verified; pending human review. JAXB remains unresolved. This separately authorized remediation preserves the Accepted Java 21 / Spring Boot 4.1.1 baseline and all earlier security overrides.
+
+The OpenAPI integration brings Jackson 2 through `springdoc-openapi-starter-webmvc-ui:3.1.1` → `swagger-core-jakarta:2.2.55`. Boot manages that family independently through `jackson-2-bom.version`; the existing `jackson-bom.version=3.1.7` applies to `tools.jackson` (Jackson 3) and does not patch `com.fasterxml.jackson` Core/Databind.
+
+Root [pom.xml](../../pom.xml) now sets `jackson-2-bom.version=2.21.7`. Effective dependency-graph comparison confirms that only Jackson 2 Core, Databind, YAML and JSR-310 move from **2.21.5 to 2.21.7**. Shared Jackson annotations remain **2.21**, as selected by the BOM; Jackson 3 Core/Databind remain **3.1.7**. No artifacts are added or removed, and other selected versions remain unchanged. The [2.21.6](https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.21.6) and [2.21.7](https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.21.7) release notes identify the seven reported Jackson fixes. This is a patch update within Boot's selected 2.21 line, not a new JSON implementation or framework upgrade.
+
+**Unresolved JAXB risk:** Hibernate 7.4.5.Final brings `jaxb-runtime` → `jaxb-core`, both **4.0.9**. CVE-2026-92877 concerns XML external-entity hardening. On 2026-10-17, Maven Central metadata for [Core](https://repo.maven.apache.org/maven2/org/glassfish/jaxb/jaxb-core/maven-metadata.xml) and [Runtime](https://repo.maven.apache.org/maven2/org/glassfish/jaxb/jaxb-runtime/maven-metadata.xml) lists 4.0.9 as the latest stable release. The [upstream hardening fix](https://github.com/eclipse-ee4j/jaxb-ri/pull/2013) is merged, but the [release-tracking issue](https://github.com/eclipse-ee4j/jaxb-ri/issues/2031) remains open; no published compatible fixed release was verified. JAXB Core/Runtime/TXW2 therefore remain aligned at 4.0.9. No snapshot, exclusion, replacement implementation, risk acceptance or security-disabling workaround is introduced. Reassess an aligned update when a compatible fixed release is published; the finding remains open.
+
+See the [separate verification record](../05-testing/quality-report.md#dependency-security-remediation--2026-10-17) for exact advisories, tests and fresh scanner results. Local replacement of vulnerable versions is distinct from remote confirmation and does not imply that all dependency risks or the `main` quality gate are resolved. No ADR status is changed.
 
 ### Approved Maven Wrapper Enhancement
 
