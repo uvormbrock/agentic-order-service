@@ -95,3 +95,52 @@ The [human freeze decision](../04-agentic-coding/prompts/07-application-logging-
 These results are historical snapshots tied to their recorded source state, selected tests, configuration and environment. Later code changes require fresh applicable verification. Do not combine test, coverage, mutation and static-analysis snapshots into a single implied execution.
 
 A successful automated suite is not production-readiness certification, a clean static analysis is not mutation-testing evidence, and agent verification does not replace human acceptance. No acceptance status, architecture decision, existing execution record or quality threshold was changed by this report.
+
+
+## Dependency Security Remediation — 2026-10-17
+
+**Status: executed locally, pending human review; one JAXB risk remains unresolved.** This is a separate execution record, not a revision of the historical evidence above.
+
+### Source and Branch Safety
+
+The task began on clean `main` at `1f23b6f1e5e1392efcb7d1f5873e1deb4f176b73` after PR #1. Its file tree matched `develop` exactly. As explicitly authorized, execution switched to `develop` at `779bb0e0036922253cf2aa7b0ec3e647cca183f3`. Remediation consists of the uncommitted POM change plus the directly related documentation updates; results must not be attributed to that base commit alone. The verified POM SHA-256 is `43c762e6b280a1a2159665b5383197fba0ba94074ef36ec85d37c9a15ab19f62`. No source/test, CI, migration, application configuration or earlier override was changed. Main's commit remains unchanged; there was no commit, merge or push.
+
+### Eight Reported Dependency Risks
+
+A fresh read-only SonarQube MCP query of `main` returned these eight OPEN findings. They are dependency/SCA risks, distinct from ordinary source-code issues and security hotspots. Sonar's contextual severity is recorded separately from advisory CVSS scoring.
+
+| Advisory | Artifact | Sonar severity | Before | Local candidate | Verified upstream fixed release |
+| --- | --- | --- | --- | --- | --- |
+| CVE-2026-19032 | com.fasterxml.jackson.core:jackson-databind | MEDIUM | 2.21.5 | 2.21.7 | 2.21.6 |
+| CVE-2026-68497 | com.fasterxml.jackson.core:jackson-databind | MEDIUM | 2.21.5 | 2.21.7 | 2.21.6 |
+| CVE-2026-83557 | com.fasterxml.jackson.core:jackson-databind | MEDIUM | 2.21.5 | 2.21.7 | 2.21.6 |
+| CVE-2026-89407 | com.fasterxml.jackson.core:jackson-core | MEDIUM | 2.21.5 | 2.21.7 | 2.21.7 |
+| CVE-2026-89425 | com.fasterxml.jackson.core:jackson-core | LOW | 2.21.5 | 2.21.7 | 2.21.7 |
+| CVE-2026-91776 | com.fasterxml.jackson.core:jackson-databind | LOW | 2.21.5 | 2.21.7 | 2.21.7 |
+| CVE-2026-91777 | com.fasterxml.jackson.core:jackson-databind | LOW | 2.21.5 | 2.21.7 | 2.21.7 |
+| CVE-2026-92877 | org.glassfish.jaxb:jaxb-core | LOW | 4.0.9 | 4.0.9, unchanged | No published compatible fix verified |
+
+The [Jackson 2.21.6](https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.21.6) and [2.21.7](https://github.com/FasterXML/jackson/wiki/Jackson-Release-2.21.7) release notes independently identify the Jackson fixes. The application already overrides Jackson **3** through `jackson-bom.version=3.1.7`; that property does not update Jackson **2**. Swagger brings Jackson 2 transitively through springdoc 3.1.1 → swagger-core-jakarta 2.2.55. The minimal change is Boot's existing `jackson-2-bom.version=2.21.7` property, keeping the supported patch line and BOM alignment.
+
+The JSON dependency-tree comparison before/after confirms exactly four selected changes: Jackson 2 Core, Databind, YAML and JSR-310 **2.21.5 → 2.21.7**. Shared annotations stay **2.21**; Jackson 3 Core/Databind remain **3.1.7**. No selected artifacts were added/removed, no artifact has multiple selected versions, and all other selected versions are identical. Verbose dependency output retains normal Maven omitted/managed entries; those are not duplicate packaged libraries.
+
+Hibernate 7.4.5.Final brings JAXB Runtime → Core → TXW2, all at 4.0.9. The [JAXB hardening PR](https://github.com/eclipse-ee4j/jaxb-ri/pull/2013) is merged, but [release tracking](https://github.com/eclipse-ee4j/jaxb-ri/issues/2031) remains open. Independently retrieved Maven Central Core/Runtime metadata still identifies **4.0.9** as the latest stable release, with no 4.0.10 published. The JAXB finding is therefore still open. There is no exclusion, snapshot, replacement implementation, blanket parser-property workaround or risk acceptance. A source search found no direct application JAXB unmarshalling call; that does not establish non-exploitability or waive the transitive dependency risk.
+
+### Local Verification
+
+- Java 21 / Maven Wrapper 3.9.9; Spring Boot remains 4.1.1.
+- Focused OpenAPI/default-disabled checks: **11 passed**, zero failures/errors/skips. Swagger UI/config, JSON/YAML equivalence, local-reference resolution and equality with the versioned YAML remain covered. No snapshot rewrite was required.
+- The single full `./mvnw -B -ntp clean verify` run completed at **2026-10-17T20:37:56+02:00**, exit 0: **539 Surefire + 148 Failsafe = 687 executions**, zero failures/errors/skips. Spotless passed and a fresh JaCoCo XML report was generated for the subsequent scan. These checks include PostgreSQL/Flyway and the existing concurrency/Servlet integration tests on disposable test infrastructure.
+- No correction cycle was required. PIT was not run. Persistent databases were not migrated.
+
+### Fresh SonarQube Verification
+
+A fresh Java 21 Maven scanner execution ran on `develop` with `sonar.branch.name=develop` and `sonar.qualitygate.wait=true`, using the configured credential through the environment without printing it. The command was `./mvnw -B -ntp org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar -Dsonar.host.url=https://sonarcloud.io -Dsonar.projectKey=uvormbrock_agentic-order-service -Dsonar.branch.name=develop -Dsonar.qualitygate.wait=true`. It imported the newly generated JaCoCo XML and uploaded fresh SCA dependency files from the verified Maven graph; no stale report was substituted.
+
+Scanner exit was **0**, finishing at **2026-10-17T20:38:55+02:00**. SonarQube records analysis time **2026-10-17T18:38:24Z** and confirms **Quality Gate: PASSED / OK** on `develop`. A subsequent read-only dependency-risk query independently confirms all seven targeted Jackson 2 findings are now **FIXED**. CVE-2026-92877 for `jaxb-core:4.0.9` remains **OPEN**. These statuses were updated by the fresh analysis, not by manual issue transitions.
+
+Sonar identifies `develop` as a SHORT branch targeting `main`; the remaining JAXB risk is reported as `newlyIntroduced=false`. A passed new-code gate is therefore not a claim of zero remaining dependency vulnerabilities. `main` was neither changed nor reanalyzed: it retains its failed 2026-10-17T18:17:59Z analysis until separately updated and analyzed. No passing-main claim is made.
+
+The scanner's SCM revision is the unchanged base `779bb0e0036922253cf2aa7b0ec3e647cca183f3`; the scanned POM includes the verified uncommitted override identified by the SHA-256 above. Documentation evidence was finalized after scanning; Java sources, resolved dependency versions and the verified POM remained unchanged. The full suite supplied JaCoCo counts of **1,329/1,367 covered lines** and **725/782 covered branches** for that code snapshot. Scan success is not mutation-testing evidence, acceptance of the JAXB risk or a production security guarantee.
+
+The external temporary evidence set `dependency-security-qotq8xq_` preserves original POM/source references, full before/after JSON dependency graphs and verbose output, JAXB Central metadata, focused/full Maven logs and reports, JaCoCo XML, scanner command/result and the final diff. Temporary evidence is not durable archival storage. The [technology inventory](../02-architecture/technology-stack.md#authorized-jackson-2-security-remediation--2026-10-17) records the selected override and unresolved JAXB update. No quality threshold, ADR status or human acceptance was changed; no manual issue-status transition was performed.
