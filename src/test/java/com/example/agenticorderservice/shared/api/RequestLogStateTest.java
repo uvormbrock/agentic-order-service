@@ -454,7 +454,9 @@ class RequestLogStateTest {
             }
 
             @Override
-            protected void append(ch.qos.logback.classic.spi.ILoggingEvent e) {}
+            protected void append(ch.qos.logback.classic.spi.ILoggingEvent e) {
+                // doAppend deliberately fails before this hook can be reached.
+            }
         };
         appender.start();
         logger.addAppender(appender);

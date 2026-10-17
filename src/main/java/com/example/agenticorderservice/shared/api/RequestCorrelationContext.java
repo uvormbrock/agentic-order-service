@@ -7,6 +7,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 
 /** Explicit request-owned producer propagation; never captures Servlet or transaction resources. */
 public final class RequestCorrelationContext {
+    private static final String REQUEST_ID = "requestId";
     private final RequestLogState state;
 
     private RequestCorrelationContext(RequestLogState state) {
@@ -49,9 +50,9 @@ public final class RequestCorrelationContext {
         private Scope(RequestLogState state) {
             if (state == null) return;
             try {
-                previous = MDC.get("requestId");
+                previous = MDC.get(REQUEST_ID);
                 bound = true;
-                MDC.put("requestId", state.id);
+                MDC.put(REQUEST_ID, state.id);
             } catch (RuntimeException unavailable) {
                 state.incomplete();
             }
@@ -65,8 +66,8 @@ public final class RequestCorrelationContext {
         public void close() {
             if (!bound) return;
             try {
-                if (previous == null) MDC.remove("requestId");
-                else MDC.put("requestId", previous);
+                if (previous == null) MDC.remove(REQUEST_ID);
+                else MDC.put(REQUEST_ID, previous);
             } catch (RuntimeException unavailable) {
                 // An unavailable provider cannot be repaired by clearing unrelated context.
             }

@@ -13,7 +13,7 @@ class EmailAddressTest {
         var email = new EmailAddress("\u2003 Alice+Orders@Example.COM \t");
         assertThat(email.value()).isEqualTo("alice+orders@example.com");
         assertThat(new EmailAddress(email.value())).isEqualTo(email);
-        assertThat(email.hashCode()).isEqualTo(new EmailAddress("ALICE+ORDERS@example.com").hashCode());
+        assertThat(email).hasSameHashCodeAs(new EmailAddress("ALICE+ORDERS@example.com"));
         assertThat(new EmailAddress("a.b@example.com")).isNotEqualTo(new EmailAddress("ab@example.com"));
         assertThat(new EmailAddress("a+tag@example.com")).isNotEqualTo(new EmailAddress("a@example.com"));
     }

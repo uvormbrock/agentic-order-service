@@ -13,20 +13,30 @@ public final class OrderFailure extends RuntimeException {
     }
 
     private final Reason reason;
-    private boolean diagnosticOwned;
+    private final boolean diagnosticOwned;
 
     public OrderFailure(Reason reason) {
         super(reason.name());
         this.reason = reason;
+        this.diagnosticOwned = false;
     }
 
     public OrderFailure(Reason reason, Throwable cause) {
-        super(reason.name(), cause);
-        this.reason = reason;
+        this(reason, cause, false);
     }
 
-    void markDiagnosticOwned() {
-        diagnosticOwned = true;
+    OrderFailure(Reason reason, Throwable cause, boolean diagnosticOwned) {
+        super(reason.name(), cause);
+        this.reason = reason;
+        this.diagnosticOwned = diagnosticOwned;
+    }
+
+    OrderFailure withDiagnosticOwnership() {
+        if (diagnosticOwned) return this;
+        var diagnosed = new OrderFailure(reason, getCause(), true);
+        diagnosed.setStackTrace(getStackTrace());
+        for (Throwable suppressed : getSuppressed()) diagnosed.addSuppressed(suppressed);
+        return diagnosed;
     }
 
     /** Indicates a coordinator-owned diagnostic attempt, not durable log delivery. */

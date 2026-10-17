@@ -3105,3 +3105,27 @@ Operational logging retention/access controls, deployment security, production r
 Only a new explicit human decision may reopen Increment 6. A future reopening must start from the existing acceptance-gap matrix and remaining risks, without restarting architecture planning. No automatic resumption of correction rounds or new implementation budget follows from this freeze.
 
 This task changes only the playbook, playbook index, implementation plan and open-items status references. No source, tests, configuration, dependencies or historical evidence are changed. No build, test, formatter, PIT, SonarQube, Docker, PostgreSQL or deployment execution is performed. No staging, commit, push, merge, rebase or branch change is authorized.
+
+## Separately Authorized SonarQube Remediation — 2026-10-17
+
+The human explicitly requested fixing all current SonarQube issues after the freeze. This authorizes only the reported findings and their necessary regression verification, not general Increment 6 development, closure of outstanding acceptance gaps or production deployment. The current status remains **Functionally Stabilized, Frozen — Full Acceptance Pending**. All earlier prompts, freeze decisions and verification records are preserved.
+
+At the clean develop revision `8b350c54b5532589cea60758c336f1a7cdafb260`, SonarQube MCP returned 31 OPEN/CONFIRMED issues for project uvormbrock_agentic-order-service, branch develop. The project key was verified from the existing GitHub workflow. All 31 reported findings were addressed locally without suppressions, issue-status changes, assertion removal or quality-threshold changes:
+
+| Rule | Count | Correction |
+| --- | --- | --- |
+| S1165 | 1 | Make diagnostic ownership immutable constructor state. Backoff copies preserve reason, immediate cause, original stack and suppressed exceptions; the original failure remains unchanged. |
+| S3776 | 1 | Extract rejection reason and backoff handling from retryAfterRollback. Transaction boundaries, classifier, lock ordering, attempts, budget and delays remain unchanged. |
+| S3358 | 5 | Replace nested ternaries with named status/diagnostic/level and rejection helpers. |
+| S1192 | 2 | Name the requestId MDC key and OTHER fallback literals. |
+| S1186 | 8 | Document intentionally empty fixture lifecycle/transaction/appender hooks. |
+| S5838 | 9 | Use equivalent typed AssertJ string, hash and Comparable assertions. |
+| S5778 | 5 | Construct validated command input before exception assertions; only the intended operation remains inside each throwing lambda. |
+
+The interrupted-backoff test additionally verifies diagnostic ownership and preservation of the original cause, stack trace and suppressed exceptions. The first full verification caught an immediate-cause regression from an extra wrapper; it was corrected without weakening the existing InterruptedException assertion. The following focused run passed 80 coordinator/retry-policy tests. Final Java 21 Maven Wrapper `clean verify` passed **528 Surefire and 148 Failsafe executions, 0 failures/errors/skips**. This includes the 12 Servlet lifecycle and 136 PostgreSQL executions. Spotless formatting was applied and its lifecycle check passed; git diff --check passed. No POM, dependencies, CI, migrations, locking/retry policy, persistent database or deployment configuration changed.
+
+Fresh JaCoCo: **1188/1226 lines = 96.90%; 658/709 branches = 92.81%**. These counters belong to this remediation snapshot; the frozen baseline above remains historical evidence with its original counters. PIT was not rerun.
+
+SonarQube MCP snippet analysis of all 13 changed Java files no longer reports the 31 fetched findings. Its pathless snippets emit an S1598 package/path artifact. The coordinator also reports the unchanged eight-parameter constructor S107; baseline snippet analysis confirms that warning already existed. These snippet limitations were not used to restructure unrelated code. A complete CI/SonarQube branch reanalysis remains Pending; no cloud-zero or passed-quality-gate claim is made, and no analysis was published.
+
+Evidence is preserved at `/tmp/increment6-sonar-remediation-awjy37wh`: issue inventory/local checks, initial failed and final successful Maven logs, focused-test log, final XML and JaCoCo reports, complete Git diff and final status. This is temporary storage, not durable archival storage. Changes comprise 13 Java files and this execution-record addendum; the initial working tree was clean. No files were staged, committed or pushed. Remaining acceptance-matrix and operational limitations remain unchanged; implementation acceptance is Pending.

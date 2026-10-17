@@ -317,11 +317,12 @@ class OrderPlacementCoordinatorTest {
 
     @Test
     void unknownCompletionLogsOnlyUnknownAndMarksDiagnosticOwnership() {
+        var input = command();
         manager.failCommit = true;
         try (var capture =
                 new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
             assertThatExceptionOfType(OrderFailure.class)
-                    .isThrownBy(() -> coordinator.place(command()))
+                    .isThrownBy(() -> coordinator.place(input))
                     .satisfies(failure -> assertThat(failure.diagnosticOwned()).isTrue());
             assertThat(capture.messages()).singleElement().asString().contains("ORDER_OUTCOME_UNKNOWN");
         }
@@ -337,7 +338,9 @@ class OrderPlacementCoordinatorTest {
             }
 
             @Override
-            protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {}
+            protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {
+                // doAppend deliberately fails before this hook can be reached.
+            }
         };
         appender.start();
         logger.addAppender(appender);
@@ -355,6 +358,7 @@ class OrderPlacementCoordinatorTest {
     @ParameterizedTest
     @ValueSource(strings = {"CUSTOMER_NOT_FOUND", "PRODUCT_NOT_FOUND", "CUSTOMER_INACTIVE", "PRODUCT_INACTIVE"})
     void rejectionEventsUseFixedSafeReasons(String reason) {
+        var input = command();
         if (reason.equals("CUSTOMER_NOT_FOUND"))
             when(customers.lock(customer)).thenThrow(new CustomerNotFoundException());
         else if (reason.equals("PRODUCT_NOT_FOUND"))
@@ -365,7 +369,7 @@ class OrderPlacementCoordinatorTest {
         else when(products.lock(first)).thenReturn(new ProductResult(first, "private", BigDecimal.ONE, false));
         try (var capture =
                 new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
-            assertThatThrownBy(() -> coordinator.place(command())).isInstanceOf(RuntimeException.class);
+            assertThatThrownBy(() -> coordinator.place(input)).isInstanceOf(RuntimeException.class);
             assertThat(capture.messages()).containsExactly("event=ORDER_REJECTED attempt=1 reason=" + reason);
             assertThat(capture.events.getFirst().getLevel()).isEqualTo(ch.qos.logback.classic.Level.DEBUG);
         }
@@ -373,10 +377,11 @@ class OrderPlacementCoordinatorTest {
 
     @Test
     void retryTransitionsExhaustionAndCommitBoundaryHaveExplicitFields() {
+        var input = command();
         when(products.lock(first)).thenThrow(new RuntimeException(new SQLException("secret-canary", "40P01")));
         try (var capture =
                 new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
-            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(command()));
+            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> coordinator.place(input));
             assertThat(capture.messages())
                     .contains(
                             "event=ORDER_RETRY_SCHEDULED attempt=1 nextAttempt=2 delayMs=25",
@@ -394,6 +399,7 @@ class OrderPlacementCoordinatorTest {
 
     @Test
     void budgetAndInterruptedBackoffHaveDistinctExhaustionReasons() {
+        var input = command();
         when(products.lock(first)).thenThrow(new RuntimeException(new SQLException("private", "40P01")));
         try (var capture =
                 new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
@@ -406,9 +412,11 @@ class OrderPlacementCoordinatorTest {
                     orders,
                     clock::get,
                     delay -> clock.addAndGet(TimeUnit.SECONDS.toNanos(10)));
-            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> budget.place(command()));
+            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> budget.place(input));
             assertThat(capture.messages()).contains("event=ORDER_RETRY_EXHAUSTED attempts=1 reason=SCHEDULING_BUDGET");
             capture.events.clear();
+            var backoffFailure = new OrderFailure(OrderFailure.Reason.TECHNICAL, new InterruptedException("private"));
+            backoffFailure.addSuppressed(new IllegalStateException("suppressed context"));
             var interrupted = new OrderPlacementCoordinator(
                     new TransactionTemplate(manager),
                     jdbc,
@@ -418,9 +426,18 @@ class OrderPlacementCoordinatorTest {
                     orders,
                     clock::get,
                     delay -> {
-                        throw new OrderFailure(OrderFailure.Reason.TECHNICAL, new InterruptedException("private"));
+                        throw backoffFailure;
                     });
-            assertThatExceptionOfType(OrderFailure.class).isThrownBy(() -> interrupted.place(command()));
+            assertThatExceptionOfType(OrderFailure.class)
+                    .isThrownBy(() -> interrupted.place(input))
+                    .satisfies(failure -> {
+                        assertThat(failure.reason()).isEqualTo(OrderFailure.Reason.TECHNICAL);
+                        assertThat(failure.diagnosticOwned()).isTrue();
+                        assertThat(failure.getCause()).isSameAs(backoffFailure.getCause());
+                        assertThat(failure.getStackTrace()).containsExactly(backoffFailure.getStackTrace());
+                        assertThat(failure.getSuppressed()).containsExactly(backoffFailure.getSuppressed());
+                        assertThat(backoffFailure.diagnosticOwned()).isFalse();
+                    });
             assertThat(capture.messages())
                     .contains("event=ORDER_RETRY_EXHAUSTED attempts=1 reason=BACKOFF_INTERRUPTED");
         }

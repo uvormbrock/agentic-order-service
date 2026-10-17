@@ -29,9 +29,7 @@ public final class RequestLoggingListener implements ServletRequestListener {
                         snapshot.pending().equals("ASYNC_ERROR") ? Level.ERROR : Level.WARN,
                         "event=HTTP_TECHNICAL_FAILURE category={}",
                         snapshot.pending());
-            Level level = !snapshot.outcome().equals("COMPLETED") || snapshot.status() >= 500
-                    ? Level.WARN
-                    : snapshot.status() >= 400 ? Level.DEBUG : Level.INFO;
+            Level level = completionLevel(snapshot);
             SafeEvent.emit(
                     logger,
                     level,
@@ -44,5 +42,10 @@ public final class RequestLoggingListener implements ServletRequestListener {
                     snapshot.cycles(),
                     snapshot.asyncCompleted());
         }
+    }
+
+    private static Level completionLevel(RequestLogState.Snapshot snapshot) {
+        if (!snapshot.outcome().equals("COMPLETED") || snapshot.status() >= 500) return Level.WARN;
+        return snapshot.status() >= 400 ? Level.DEBUG : Level.INFO;
     }
 }

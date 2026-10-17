@@ -114,7 +114,9 @@ class CustomerDeletionTest {
             }
 
             @Override
-            protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {}
+            protected void append(ch.qos.logback.classic.spi.ILoggingEvent event) {
+                // doAppend deliberately fails before this hook can be reached.
+            }
         };
         appender.start();
         logger.addAppender(appender);
@@ -147,7 +149,9 @@ class CustomerDeletionTest {
         }
 
         @Override
-        protected void doBegin(Object transaction, org.springframework.transaction.TransactionDefinition definition) {}
+        protected void doBegin(Object transaction, org.springframework.transaction.TransactionDefinition definition) {
+            // Spring owns synchronization; this fixture has no physical transaction to begin.
+        }
 
         @Override
         protected void doCommit(org.springframework.transaction.support.DefaultTransactionStatus status) {
@@ -157,6 +161,8 @@ class CustomerDeletionTest {
         }
 
         @Override
-        protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus status) {}
+        protected void doRollback(org.springframework.transaction.support.DefaultTransactionStatus status) {
+            // Only synchronization sequencing is exercised; no database resources exist to roll back.
+        }
     }
 }

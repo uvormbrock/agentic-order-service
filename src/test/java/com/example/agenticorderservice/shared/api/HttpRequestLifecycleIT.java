@@ -119,7 +119,7 @@ class HttpRequestLifecycleIT extends ApiTestSupport {
             var response = future.get(15, TimeUnit.SECONDS);
             var terminal = events.await(probe.requestId, "HTTP_REQUEST_COMPLETED");
             assertThat(response.headers().firstValue("X-Request-ID")).contains(probe.requestId);
-            assertThat(UUID.fromString(probe.requestId).toString()).isEqualTo(probe.requestId);
+            assertThat(UUID.fromString(probe.requestId)).hasToString(probe.requestId);
             String message = terminal.getFormattedMessage();
             if (Set.of("gate", "supplied", "timeout-complete", "injected-disconnect", "direct")
                     .contains(mode)) assertThat(message).contains("status=UNKNOWN", "outcome=UNKNOWN");

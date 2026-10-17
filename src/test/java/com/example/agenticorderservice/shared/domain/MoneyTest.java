@@ -14,7 +14,7 @@ class MoneyTest {
     @Test
     void canonicalizesAcceptedScaleAndHashWithoutRounding() {
         assertThat(Money.of("1")).isEqualTo(Money.of("1.0")).isEqualTo(Money.of("1.00"));
-        assertThat(Money.of("1").hashCode()).isEqualTo(Money.of("1.00").hashCode());
+        assertThat(Money.of("1")).hasSameHashCodeAs(Money.of("1.00"));
         assertThat(Money.of("1").amount().scale()).isEqualTo(2);
     }
 
@@ -44,8 +44,8 @@ class MoneyTest {
         var value = Money.of(source);
         assertThat(value.amount()).isEqualTo(new BigDecimal(canonical));
         assertThat(value).isEqualTo(Money.of(canonical));
-        assertThat(value.hashCode()).isEqualTo(Money.of(canonical).hashCode());
-        assertThat(value.compareTo(Money.of(canonical))).isZero();
+        assertThat(value).hasSameHashCodeAs(Money.of(canonical));
+        assertThat(value).isEqualByComparingTo(Money.of(canonical));
     }
 
     @ParameterizedTest
@@ -62,8 +62,8 @@ class MoneyTest {
         assertThat(source.minus(Money.of("0.58"))).isEqualTo(Money.of("-0.29"));
         assertThat(source.multiply(-3)).isEqualTo(Money.of("-0.87"));
         assertThat(source).isEqualTo(Money.of("0.29"));
-        assertThat(source.compareTo(Money.of("0.30"))).isNegative();
-        assertThat(source.compareTo(Money.of("0.28"))).isPositive();
+        assertThat(source).isLessThan(Money.of("0.30"));
+        assertThat(source).isGreaterThan(Money.of("0.28"));
         assertThatNullPointerException().isThrownBy(() -> source.minus(null));
         assertThatNullPointerException().isThrownBy(() -> source.compareTo(null));
         assertThatNullPointerException().isThrownBy(() -> Money.of(null));

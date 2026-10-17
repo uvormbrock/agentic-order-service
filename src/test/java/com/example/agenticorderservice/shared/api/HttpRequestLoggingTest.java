@@ -75,7 +75,7 @@ class HttpRequestLoggingTest extends ApiTestSupport {
                         HttpResponse.BodyHandlers.ofString());
         assertThat(response.statusCode()).isEqualTo(200);
         String id = response.headers().firstValue("X-Request-ID").orElseThrow();
-        assertThat(UUID.fromString(id).toString()).isEqualTo(id);
+        assertThat(UUID.fromString(id)).hasToString(id);
         assertThat(response.body()).isEqualTo(id);
         var event = terminal.poll(10, TimeUnit.SECONDS);
         assertThat(event).isNotNull();
@@ -230,13 +230,20 @@ class HttpRequestLoggingTest extends ApiTestSupport {
                                     }
 
                                     @Override
-                                    public void onError(AsyncEvent event) {}
+                                    public void onError(AsyncEvent event) {
+                                        // The production observer owns error recording; this fixture only initiates
+                                        // timeout dispatch.
+                                    }
 
                                     @Override
-                                    public void onComplete(AsyncEvent event) {}
+                                    public void onComplete(AsyncEvent event) {
+                                        // The production observer and request listener own completion recording.
+                                    }
 
                                     @Override
-                                    public void onStartAsync(AsyncEvent event) {}
+                                    public void onStartAsync(AsyncEvent event) {
+                                        // This fixture callback does not register work for later async cycles.
+                                    }
                                 });
                                 return;
                             }

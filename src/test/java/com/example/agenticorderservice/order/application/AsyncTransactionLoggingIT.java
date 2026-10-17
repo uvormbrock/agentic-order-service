@@ -141,7 +141,7 @@ class AsyncTransactionLoggingIT extends PostgreSqlApiTestSupport {
             var response = invoke("order", mode, c, p, key);
             await(probe.businessDone);
             assertThat(probe.workerId).isNotNull();
-            assertThat(UUID.fromString(probe.workerId).toString()).isEqualTo(probe.workerId);
+            assertThat(UUID.fromString(probe.workerId)).hasToString(probe.workerId);
             assertThat(probe.ambient).isFalse();
             assertThat(probe.resources).isFalse();
             assertThat(probe.resourcesAfter).isFalse();

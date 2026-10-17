@@ -6,9 +6,10 @@ import java.util.UUID;
 /** Bounded metadata only. No request, response, exception or transaction is retained. */
 final class RequestLogState {
     static final String ATTRIBUTE = RequestLogState.class.getName();
+    private static final String OTHER = "OTHER";
     final String id = UUID.randomUUID().toString();
     private final long started = System.nanoTime();
-    private String method = "OTHER", route = "OTHER";
+    private String method = OTHER, route = OTHER;
     private long sequence, failureSequence, statusSequence;
     private int cycle, status;
     private boolean closed, diagnostic, timeout, error, incomplete, asyncCompleted;
@@ -18,7 +19,7 @@ final class RequestLogState {
         method = Set.of("GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                         .contains(candidate)
                 ? candidate
-                : "OTHER";
+                : OTHER;
         return ++sequence;
     }
 
@@ -79,10 +80,8 @@ final class RequestLogState {
     synchronized Snapshot close() {
         if (closed) return null;
         closed = true;
-        String outcome = incomplete || status == 0
-                ? "UNKNOWN"
-                : timeout ? "COMPLETED_AFTER_TIMEOUT" : error ? "COMPLETED_AFTER_ERROR" : "COMPLETED";
-        String pending = !diagnostic && (timeout || error) ? error ? "ASYNC_ERROR" : "TIMEOUT" : "NONE";
+        String outcome = outcome();
+        String pending = pendingDiagnostic();
         diagnostic = true;
         return new Snapshot(
                 id,
@@ -94,6 +93,18 @@ final class RequestLogState {
                 Math.max(0, System.nanoTime() - started) / 1_000_000,
                 cycle,
                 asyncCompleted);
+    }
+
+    private String outcome() {
+        if (incomplete || status == 0) return "UNKNOWN";
+        if (timeout) return "COMPLETED_AFTER_TIMEOUT";
+        if (error) return "COMPLETED_AFTER_ERROR";
+        return "COMPLETED";
+    }
+
+    private String pendingDiagnostic() {
+        if (diagnostic || !(timeout || error)) return "NONE";
+        return error ? "ASYNC_ERROR" : "TIMEOUT";
     }
 
     record Snapshot(
