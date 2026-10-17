@@ -71,6 +71,12 @@ This stops the owned application/container. The database uses disposable storage
 
 For advanced instructions and troubleshooting, see the **[complete Local Demo Guide](docs/06-operations/local-demo.md#quick-start)**.
 
+## API Documentation
+
+Start the application using the [local demo quick start](docs/06-operations/local-demo.md#quick-start), then open [Swagger UI](http://localhost:18080/swagger-ui/index.html) to explore Customers, Products and Orders. **Interactive write requests modify demo data.** Documentation endpoints are disabled outside the demo profile.
+
+The runtime-generated [OpenAPI YAML specification](docs/02-architecture/openapi.yaml) is versioned for review. See [API documentation and maintenance](docs/06-operations/api-documentation.md) for JSON/YAML URLs, snapshot regeneration, drift checks and demo-only exposure details. Integration acceptance remains pending human review.
+
 ## Key Engineering Features
 
 - **Customer, Product and Order APIs:** create, query and update customers/products, deactivate products, delete or deactivate customers according to order references, and place/retrieve orders.

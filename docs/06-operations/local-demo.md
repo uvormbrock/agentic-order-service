@@ -50,6 +50,10 @@ The first seeded order has subtotal **EUR 100.00**, discount **EUR 10.00** and t
 
 For order creation, updates, validation errors and the endpoint table, use the [additional API examples](local-demo-technical.md#rest-examples). Those write examples intentionally change the baseline record counts.
 
+### Interactive Swagger UI
+
+After `make demo-run` reports successful startup, open [Swagger UI](http://localhost:18080/swagger-ui/index.html). The runner activates the demo-only documentation profile. Use real IDs from list responses; **interactive write requests change demo data**. See [API documentation](api-documentation.md) for the generated specification and drift checks.
+
 ## View Data in DBeaver
 
 | Setting | Value |

@@ -17,3 +17,10 @@ logging:
     com.example.agenticorderservice: INFO
   pattern:
     level: "%5p [requestId=%X{requestId:-}]"
+
+# API documentation is opt-in for the isolated demo, not the default/local runtime.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

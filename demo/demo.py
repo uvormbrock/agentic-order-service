@@ -164,6 +164,7 @@ def start(config):
     command = [executable, "-Dagentic.demo.owner=" + OWNER, "-jar",
                str(ROOT / "target/agentic-order-service-0.0.1-SNAPSHOT.jar"),
                "--server.address=127.0.0.1", "--server.port=18080",
+               "--spring.profiles.active=demo",
                "--spring.datasource.url=jdbc:postgresql://127.0.0.1:15432/agentic_order_demo",
                "--spring.datasource.username=demo", "--spring.flyway.enabled=true",
                "--spring.flyway.validate-on-migrate=true", "--spring.flyway.baseline-on-migrate=false",
