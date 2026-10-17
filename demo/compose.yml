@@ -1,0 +1,18 @@
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?Load config/postgres.properties}
+    labels:
+      org.agentic-order-service.demo-owner: ${DEMO_OWNER:?Use make demo-setup}
+    environment:
+      POSTGRES_DB: agentic_order_demo
+      POSTGRES_USER: demo
+      POSTGRES_PASSWORD: ${DEMO_PASSWORD:?Use make demo-setup}
+    ports:
+      - "127.0.0.1:15432:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U demo -d agentic_order_demo"]
+      interval: 2s
+      timeout: 3s
+      retries: 30

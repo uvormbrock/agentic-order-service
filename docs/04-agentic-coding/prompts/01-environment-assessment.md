@@ -55,7 +55,3 @@ Pending. This prompt has not been executed. No environment findings, blockers, p
 ## Lessons Learned
 
 Pending actual execution and review. No lessons have been inferred or fabricated.
-
-## Interview Talking Points
-
-Planned discussion topics: documenting the exact prompt, separating read-only assessment from implementation authorization, respecting unresolved decisions, and reporting verification evidence honestly. These are intended methodology, not observed results.

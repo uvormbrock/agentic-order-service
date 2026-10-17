@@ -11,6 +11,7 @@ public class MoneyConverter implements AttributeConverter<Money, BigDecimal> {
     public BigDecimal convertToDatabaseColumn(Money attribute) {
         return attribute == null ? null : attribute.amount();
     }
+
     @Override
     public Money convertToEntityAttribute(BigDecimal value) {
         return value == null ? null : new Money(value);

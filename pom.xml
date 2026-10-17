@@ -20,9 +20,21 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Security fixes for the dependency vulnerabilities reported by SonarQube. -->
+        <postgresql.version>42.7.14</postgresql.version>
+        <tomcat.version>11.0.26</tomcat.version>
+        <jackson-bom.version>3.1.7</jackson-bom.version>
+        <logback.version>1.6.5</logback.version>
+        <sonar.organization>uvormbrock</sonar.organization>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>3.1.1</version>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -69,6 +81,35 @@
     <build>
         <plugins>
             <plugin>
+                <groupId>com.diffplug.spotless</groupId>
+                <artifactId>spotless-maven-plugin</artifactId>
+                <version>3.10.4</version>
+                <executions>
+                    <execution>
+                        <id>check-java-formatting</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <java>
+                        <includes>
+                            <include>src/main/java/**/*.java</include>
+                            <include>src/test/java/**/*.java</include>
+                        </includes>
+                        <palantirJavaFormat>
+                            <version>2.102.0</version>
+                            <style>PALANTIR</style>
+                            <formatJavadoc>false</formatJavadoc>
+                        </palantirJavaFormat>
+                        <trimTrailingWhitespace/>
+                        <endWithNewline/>
+                    </java>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-failsafe-plugin</artifactId>
                 <executions>
@@ -81,9 +122,74 @@
                 </executions>
             </plugin>
             <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.15</version>
+                <executions>
+                    <execution>
+                        <id>prepare-coverage-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>generate-coverage-report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>
+    <profiles>
+        <profile>
+            <id>mutation-order</id>
+            <properties>
+                <targetClasses>com.example.agenticorderservice.*</targetClasses>
+                <targetTests>com.example.agenticorderservice.*</targetTests>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <version>1.30.1</version>
+                        <configuration>
+                            <targetClasses>
+                                <param>${targetClasses}</param>
+                            </targetClasses>
+                            <targetTests>
+                                <param>${targetTests}</param>
+                            </targetTests>
+                            <mutators>
+                                <mutator>DEFAULTS</mutator>
+                            </mutators>
+                            <threads>1</threads>
+                            <outputFormats>
+                                <param>HTML</param>
+                                <param>XML</param>
+                            </outputFormats>
+                            <parseSurefireConfig>false</parseSurefireConfig>
+                            <parseSurefireArgLine>false</parseSurefireArgLine>
+                            <failWhenNoMutations>true</failWhenNoMutations>
+                            <skipFailingTests>false</skipFailingTests>
+                        </configuration>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.pitest</groupId>
+                                <artifactId>pitest-junit5-plugin</artifactId>
+                                <version>1.2.3</version>
+                            </dependency>
+                        </dependencies>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

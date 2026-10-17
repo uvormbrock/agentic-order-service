@@ -3,15 +3,15 @@ package com.example.agenticorderservice.order.domain;
 import com.example.agenticorderservice.shared.domain.Money;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import jakarta.persistence.Id;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
-import jakarta.persistence.Column;
+import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.CascadeType;
-import jakarta.persistence.FetchType;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -29,18 +29,24 @@ public class Order {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;
+
     @OneToMany(mappedBy = "order", cascade = CascadeType.PERSIST, fetch = FetchType.LAZY, orphanRemoval = false)
     private List<OrderItem> items = new ArrayList<>();
+
     @Column(nullable = false, columnDefinition = "numeric")
     private Money subtotal;
+
     @Column(nullable = false, columnDefinition = "numeric")
     private Money discount;
+
     @Column(nullable = false, columnDefinition = "numeric")
     private Money total;
 
-    protected Order() { }
+    protected Order() {}
+
     public Order(UUID customerId, List<OrderLineInput> inputs) {
         this.customerId = Objects.requireNonNull(customerId, "customerId");
         if (Objects.requireNonNull(inputs, "items").isEmpty()) {
@@ -51,10 +57,14 @@ public class Order {
             Objects.requireNonNull(input, "item");
             OrderLineInput prior = consolidated.get(input.productId());
             if (prior != null) {
-                if (!prior.productName().equals(input.productName()) || !prior.unitPrice().equals(input.unitPrice())) {
+                if (!prior.productName().equals(input.productName())
+                        || !prior.unitPrice().equals(input.unitPrice())) {
                     throw new IllegalArgumentException("Conflicting trusted facts for one product");
                 }
-                input = new OrderLineInput(input.productId(), input.productName(), input.unitPrice(),
+                input = new OrderLineInput(
+                        input.productId(),
+                        input.productName(),
+                        input.unitPrice(),
                         Math.addExact(prior.quantity(), input.quantity()));
             }
             consolidated.put(input.productId(), input);

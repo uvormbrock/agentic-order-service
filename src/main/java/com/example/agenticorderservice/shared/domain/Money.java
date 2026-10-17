@@ -42,6 +42,7 @@ public record Money(BigDecimal amount, Currency currency) implements Comparable<
     public Money multiply(int quantity) {
         return new Money(amount.multiply(BigDecimal.valueOf(quantity)), currency);
     }
+
     @Override
     public int compareTo(Money other) {
         compatible(other);

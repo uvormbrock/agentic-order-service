@@ -71,3 +71,7 @@ On 2026-10-13 the human explicitly authorized the finalized implementation promp
 ## Increment 3 Human Acceptance
 
 On 2026-10-13 the human accepted the reviewed implementation and test hardening after the local diff and 120 fast/21 PostgreSQL reports were confirmed. See the [final acceptance record](../04-agentic-coding/prompts/04-domain-model.md#final-human-review-and-acceptance). Earlier Pending review statements remain historical execution evidence. Accepted decisions and their history are unchanged; ADR-0002 remains Proposed and implementation-unverified, and later application/concurrency and production gates remain deferred.
+
+## Increment 4 Additive Version Direction — 2026-10-14
+
+The human explicitly selected Product/Customer @Version; [ADR-0006](ADR-0006-product-customer-optimistic-locking.md) captures that approved direction as a Proposed complete ADR with exact mapping/V2 mechanics and implementation verification Pending. This adds version metadata without reopening D1–D10 UUIDs, direct mapping/converters, reference equality, relationships or V1 constraints; Increment 3 acceptance/history and this ADR status are unchanged. No migration is created/executed, V1 is immutable, and versions do not replace Proposed ADR-0002's future Order protocol.

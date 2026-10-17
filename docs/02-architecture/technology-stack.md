@@ -1,8 +1,8 @@
 # Technology Stack Reference
 
 **Status:** Authoritative inventory of Accepted, Proposed, and Open selections
-**Last reviewed:** 2026-10-13
-**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; Increment 3 domain/persistence Reviewed – Accepted; application/concurrency gates Pending
+**Last reviewed:** 2026-10-15
+**Implementation verification:** Increment 1 accepted; Increment 2 foundation verified, human review passed, implementation accepted; Increment 3 domain/persistence Reviewed – Accepted; Increment 4 application/optimistic verification Reviewed – Accepted; full Order concurrency Pending
 
 ## Purpose and Authority
 
@@ -29,7 +29,7 @@ This reference describes technology roles, version policies, and compatibility c
 | --- | --- | --- | --- |
 | REST over HTTP with JSON | PRD contract; no extra versioned API prefix selected | Product/customer management and order creation/retrieval | **Accepted** contract |
 | Spring MVC | Boot-managed Spring version | Imperative controllers and HTTP binding in the existing REST design | **Proposed** implementation approach |
-| Jackson | Boot-compatible managed stack; concrete configuration must match selected artifacts | Strict JSON parsing, DTO binding, and serialization | **Proposed** REST design; configuration Open |
+| Jackson | Boot-aligned stack with the [approved security override](#approved-security-version-overrides--2026-10-14); concrete REST configuration remains Open | Strict JSON parsing, DTO binding, and serialization | **Proposed** REST design; configuration Open |
 | Jakarta Bean Validation / provider | Boot-managed compatible validation stack | Required fields and approved limits, supplemented by domain/cross-item checks | **Proposed** REST design; annotations/provider configuration Open |
 
 Unknown nested properties and caller prices must be rejected. Selecting a parser does not prove correct coercion behavior. See [REST API design](rest-api-design.md) for binding requirements rather than treating default settings as evidence.
@@ -57,7 +57,7 @@ No separate DI framework is selected.
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
 | PostgreSQL | **17.11**; official `postgres:17.11-bookworm` for local development and integration tests; production deployment details Open | Durable orders/catalog/customer data, constraints and row locking | **Accepted** database, version, and development/test image |
-| PostgreSQL JDBC driver | Prefer Boot-compatible managed version; verify server/provider compatibility | JDBC access beneath Hibernate and transaction management | **Accepted** integration requirement; 42.7.13 resolved and foundation-tested |
+| PostgreSQL JDBC driver | [Approved security override](#approved-security-version-overrides--2026-10-14); verify server/provider compatibility | JDBC access beneath Hibernate and transaction management | **Accepted** integration and security override; updated driver integration-tested |
 
 ## 7. Database Migrations
 
@@ -65,7 +65,7 @@ No separate DI framework is selected.
 | --- | --- | --- | --- |
 | Flyway with PostgreSQL support | Boot-compatible managed artifacts; exact module coordinates verified before POM approval | Git-versioned schema evolution | **Accepted** tool and local/test startup; production execution Open |
 
-Increment 2 approved local/test metadata only. D10 now accepts V1 domain migration in local/test environments, immutable applied versions, validation, no automatic baseline/repair/clean and Hibernate validate. This is design/execution-policy acceptance; the implementation prompt still needs explicit authorization. No domain migration exists or has run. Default/production execution stays disabled; production execution/privileges remain Open.
+Increment 2 approved local/test metadata only. D10 now accepts V1 domain migration in local/test environments, immutable applied versions, validation, no automatic baseline/repair/clean and Hibernate validate. Increment 3 subsequently implemented and verified V1 in isolated PostgreSQL tests and is Reviewed – Accepted; its prompt preserves the earlier pre-execution/metadata-only history. This does not authorize the proposed Increment 4 V2 or production execution. Default/production execution stays disabled; production execution/privileges remain Open.
 
 ## 8. Transaction Management
 
@@ -82,7 +82,7 @@ Reject ambient transactions before coordination; use fresh transaction-scoped st
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
 | Maven, single module | **3.9.9**, pinned by the official Apache Maven Wrapper (wrapper scripts 3.3.4) | Compile/package and execute approved quality gates consistently across developer environments | **Accepted** build tool, structure, and wrapper-managed Maven version |
-| Spring Boot dependency management | **4.1.1** parent/BOM alignment; parent/BOM used by the existing POM | Keep compatible Spring and supported library versions aligned | **Accepted** version policy |
+| Spring Boot dependency management | **4.1.1** parent/BOM alignment with the explicitly approved security overrides below | Keep compatible Spring and supported library versions aligned | **Accepted** version policy |
 | Maven Surefire / Failsafe | Boot-managed versions (3.5.6) | Docker-free smoke/unit tests via Surefire; PostgreSQL `*IT` via Failsafe during `verify` | **Accepted** execution convention for Increment 2 |
 
 ## 10. Unit Testing
@@ -106,7 +106,7 @@ Container execution needs a compatible container runtime; no host/container-runt
 
 | Technology | Version / management policy | Purpose | Decision status |
 | --- | --- | --- | --- |
-| Spring MVC Test / MockMvc | Boot-compatible Spring test version | Suggested actual JSON binding and controller/error-path tests | **Proposed** tooling, not yet selected |
+| Spring MVC Test / MockMvc | Existing Boot-managed spring-test (7.0.9 source inspection) | Actual binding/controller/error tests via MockMvcBuilders.webAppContextSetup | **Accepted** minimal Increment 4 approach; no new test dependency; runtime verification passed; Increment 4 Reviewed – Accepted |
 | Real HTTP client against a running test application | Client/library choice and version Open | Verify full transport behavior where required, including connection-loss cases | **Open** concrete tool |
 
 Required API outcomes are already Accepted in the PRD. These client suggestions do not create additional dependencies or substitute mocked controller calls for binding tests.
@@ -168,10 +168,32 @@ flowchart TB
 3. Before build approval, verify Boot 4 artifact/starter coordinates, resolved transitive versions, Java compatibility, test API/engine alignment, and driver/Flyway/PostgreSQL support. The earlier Boot 3.5 skeleton is not an approved dependency list.
 4. Use the Accepted JUnit 6 baseline and Boot 4.1.1-managed Jupiter/Platform versions under ADR-0005. Verify the resolved graph; do not add JUnit 5-retention overrides.
 5. Pin the selected database image and match integration tests to deployment major version. Inspect actual Hibernate locking SQL and transaction behavior with deterministic PostgreSQL tests.
-6. Record dependency-tree/build evidence and relevant runtime tests; verify strict unknown-field/numeric parsing, context startup, mappings/migrations, and DTO serialization with OSIV disabled. Foundation dependency resolution/context startup/OSIV evidence is in Increment 2; scoped mappings/migrations passed in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review); HTTP binding and concurrency checks remain **Pending**.
+6. Record dependency-tree/build evidence and relevant runtime tests; verify strict unknown-field/numeric parsing, context startup, mappings/migrations, and DTO serialization with OSIV disabled. Foundation dependency resolution/context startup/OSIV evidence is in Increment 2; scoped mappings/migrations passed in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review); Increment 4 HTTP binding/application/optimistic checks passed and are human accepted; full Order concurrency remains **Pending**. See [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15).
 7. Keep decisions in ADRs, version roles in this inventory, and unresolved execution details in [open items](../00-overview/open-items.md). Avoid maintaining duplicate version lists with competing authority.
 
 For recorded upstream compatibility observations and links, consult [ADR-0005](../03-decisions/ADR-0005-technology-stack.md). This reference changes no business rules, ADR statuses, or tool approvals.
+
+### Approved Security Version Overrides — 2026-10-14
+
+The user authorized targeted POM updates for the dependency vulnerabilities reported by SonarQube. The executable version declarations are in root [pom.xml](../../pom.xml). These selections are exceptions to the default Boot-managed versions, not an upgrade of Spring Boot or the PostgreSQL server. [ADR-0005](../03-decisions/ADR-0005-technology-stack.md#security-dependency-overrides--2026-10-14) records the rationale, consequences and approval history.
+
+| Component | Previously resolved | Current selected/resolved version | POM property | Decision status |
+| --- | --- | --- | --- | --- |
+| PostgreSQL JDBC driver | 42.7.13 | **42.7.14** | postgresql.version | **Accepted** security override |
+| Embedded Tomcat modules | 11.0.24 | **11.0.26** | tomcat.version | **Accepted** security override |
+| Jackson 3 BOM, Core and Databind | 3.1.5 | **3.1.7** | jackson-bom.version | **Accepted** security override |
+| Logback Core and Classic | 1.5.38 | **1.6.5** | logback.version | **Accepted** security override |
+
+Java 21, Boot 4.1.1, Maven Wrapper 3.9.9, Boot-managed JUnit Jupiter/Platform 6.0.3, Hibernate 7.4.5.Final, Flyway 12.4.0 and Testcontainers 2.0.5 are unchanged. PostgreSQL **17.11** and postgres:17.11-bookworm remain selected for local/test databases; the JDBC driver version is independent of the server image. The Jackson property aligns the Jackson 3 modules through their BOM; the Logback property aligns Core/Classic and the Tomcat property aligns the embedded modules. No individual JUnit override or new dependency declaration was introduced.
+
+Actual verification on 2026-10-14: Maven dependency-tree inspection confirmed these versions and module alignment. With command-local Java 21, the existing Maven verify suite passed **120 fast and 21 PostgreSQL integration tests**, zero failures/errors/skips, including context startup, Flyway/Hibernate validation and persistence round trips. These results cover implemented compatibility gates; they do not establish future HTTP or concurrency behavior. SonarQube reanalysis is still required to confirm clearance of the reported vulnerabilities.
+
+```sh
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw -B -ntp dependency:tree
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw -B -ntp verify
+```
+
+Earlier prompt-playbook version tables record what was actually used during those executions and remain unchanged. Use this section and the current POM for the latest dependency versions. Reassess the overrides when a separately approved Boot update manages suitable fixed versions; do not silently change the accepted Boot baseline or discard the recorded security rationale.
 
 ### Approved Maven Wrapper Enhancement
 
@@ -205,3 +227,9 @@ docker compose --env-file .env --env-file config/postgres.properties config --im
 If the override is unintended, use `unset POSTGRES_IMAGE` in the shell before running Compose. Testcontainers deliberately reads the file directly and ignores this shell override. Check the resolved Compose image to prevent disagreement. Commands without the explicit environment-file options are outside the documented startup contract; the required image substitution fails when no image variable is supplied. No wrapper script was added.
 
 Spring Boot does not read `.env` automatically: export its trusted, shell-compatible values into the application process and use the `local` profile, as shown in the [current enhancement record](../04-agentic-coding/prompts/03-postgresql-foundation.md#post-review-enhancement--central-postgresql-image-configuration). Existing credentials and volume remain preserved, `.env.example` stays credential-free, and the original temporary verification file remains untouched. Production migration strategy and ADR-0002 status are unchanged.
+
+### Increment 4 Approved Technical Direction
+
+Global strict JSON scalar types/no coercion, price numeric lexeme restrictions, canonical UUIDs and single-error precedence are Human Accepted in the [REST design](rest-api-design.md#10-human-accepted-increment-4-api-and-transaction-decisions); the scoped Boot 4.1.1/Jackson implementation has passing verification and human acceptance. Product/Customer application @Transactional/readOnly policy and JPA @Version direction are Human Accepted. [ADR-0006](../03-decisions/ADR-0006-product-customer-optimistic-locking.md) remains Proposed as a complete record, with exact mapping/schema choices Accepted, reviewed V2 SQL proposal recorded and scoped implementation/runtime verification passed; Increment 4 Reviewed – Accepted. No new library/version is selected; approved minimal MockMvc uses existing test dependencies. The earlier test-starter proposal is not required/selected. Final edge D1–D8 are Human Accepted in REST design; scoped decoder/writer/MVC/proxy/provider evidence is recorded in [final Increment 4 acceptance](../04-agentic-coding/prompts/05-product-customer-api.md#final-human-acceptance--2026-10-15). Existing version overrides/JUnit 6 and ADR statuses remain unchanged. Detailed Order pessimistic/retry protocol and production migration policy are not superseded.
+
+Before local-profile startup can apply Increment 4 V2 to an existing persistent database, satisfy the [persistent local target/recovery safety gate](../04-agentic-coding/prompts/05-product-customer-api.md#persistent-local-database-safety-gate). Disposable Testcontainers verification is independent; missing persistent recovery evidence blocks only local migration and must not be presented as a passed gate.

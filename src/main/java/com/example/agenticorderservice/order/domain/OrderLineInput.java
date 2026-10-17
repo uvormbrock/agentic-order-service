@@ -11,7 +11,10 @@ public record OrderLineInput(UUID productId, String productName, Money unitPrice
         productName = Objects.requireNonNull(productName, "productName").strip();
         int length = productName.codePointCount(0, productName.length());
         if (productName.codePoints().anyMatch(c -> c >= 0xD800 && c <= 0xDFFF)
-                || length < 1 || length > 200 || quantity < 1 || quantity > 10000) {
+                || length < 1
+                || length > 200
+                || quantity < 1
+                || quantity > 10000) {
             throw new IllegalArgumentException("Invalid order line name or quantity");
         }
         Objects.requireNonNull(unitPrice, "unitPrice");

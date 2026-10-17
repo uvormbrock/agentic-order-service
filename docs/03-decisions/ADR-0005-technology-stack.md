@@ -75,3 +75,15 @@ On 2026-10-13 the human explicitly authorized the finalized implementation promp
 ## Increment 3 Human Acceptance
 
 On 2026-10-13 the human accepted the reviewed implementation and test hardening after the local diff and 120 fast/21 PostgreSQL reports were confirmed. See the [final acceptance record](../04-agentic-coding/prompts/04-domain-model.md#final-human-review-and-acceptance). Earlier Pending review statements remain historical execution evidence. Accepted decisions and their history are unchanged; ADR-0002 remains Proposed and implementation-unverified, and later application/concurrency and production gates remain deferred.
+
+## Security Dependency Overrides — 2026-10-14
+
+The user explicitly authorized necessary POM version updates after review of 13 SonarQube dependency-vulnerability reports. Retain Java 21 and Boot 4.1.1, while overriding the PostgreSQL JDBC, embedded Tomcat, Jackson 3 BOM and Logback version properties. The [technology reference](../02-architecture/technology-stack.md#approved-security-version-overrides--2026-10-14) owns the current selected/resolved versions and executable property names; root [pom.xml](../../pom.xml) configures them. Earlier Boot-managed version observations remain historical evidence, not the current resolved graph.
+
+Rationale: the existing Boot BOM selects versions covered by the reported vulnerabilities. Narrow overrides address those libraries without changing application architecture, adding frameworks or upgrading the approved Boot baseline. The vendor fix records are [Tomcat security advisories](https://tomcat.apache.org/security-11.html), [Jackson 3.1.6](https://github.com/FasterXML/jackson/wiki/Jackson-Release-3.1.6) and [3.1.7](https://github.com/FasterXML/jackson/wiki/Jackson-Release-3.1.7) release notes, [pgJDBC 42.7.14](https://jdbc.postgresql.org/changelogs/2026-10-07-42.7.14-release/), and [Logback release notes](https://logback.qos.ch/news.html).
+
+Alternatives: retaining the old versions leaves the reported dependency exposure; a Boot patch upgrade could restore fully managed versions but requires its own explicit approval and compatibility evidence. Suppressing findings is not a substitute for remediation or a documented applicability assessment.
+
+Consequences: these approved exceptions need maintenance and compatibility checks. Keep Jackson 3 modules, Logback Core/Classic and embedded Tomcat modules aligned using their version properties. The database server/image, JUnit baseline, mappings, migrations and business rules are unchanged. No broader dependency-update permission or change to Proposed ADR-0002 follows from this approval.
+
+Verification: dependency-tree inspection and command-local Java 21 Maven verify succeeded on 2026-10-14, with 120 fast/21 real PostgreSQL tests and zero failures/errors/skips. The technology reference records commands and limits. Reanalysis in SonarQube remains Pending; existing tests do not prove absence of every vulnerability or establish deferred HTTP/concurrency gates. Keep the earlier execution records and ADR decision history intact.

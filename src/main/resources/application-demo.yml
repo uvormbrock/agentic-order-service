@@ -1,0 +1,20 @@
+# Documentation only; datasource and Flyway settings stay pinned by the demo helper.
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    disable-swagger-default-url: true
+  packages-to-scan:
+    - com.example.agenticorderservice.customer.api
+    - com.example.agenticorderservice.product.api
+    - com.example.agenticorderservice.order.api
+  paths-to-match:
+    - /customers
+    - /customers/**
+    - /products
+    - /products/**
+    - /orders
+    - /orders/**
+  override-with-generic-response: false
+  writer-with-order-by-keys: true

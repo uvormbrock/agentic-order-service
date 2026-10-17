@@ -15,14 +15,16 @@ public record EmailAddress(String value) {
         }
         value = value.toLowerCase(Locale.ROOT);
         int separator = value.indexOf('@');
-        if (value.codePointCount(0, value.length()) > 254 || separator < 1
-                || separator != value.lastIndexOf('@')) {
+        if (value.codePointCount(0, value.length()) > 254 || separator < 1 || separator != value.lastIndexOf('@')) {
             throw new IllegalArgumentException("Invalid email");
         }
         String local = value.substring(0, separator);
         String[] labels = value.substring(separator + 1).split("\\.", -1);
-        if (!LOCAL.matcher(local).matches() || local.startsWith(".") || local.endsWith(".")
-                || local.contains("..") || labels.length < 2) {
+        if (!LOCAL.matcher(local).matches()
+                || local.startsWith(".")
+                || local.endsWith(".")
+                || local.contains("..")
+                || labels.length < 2) {
             throw new IllegalArgumentException("Invalid email");
         }
         for (String label : labels) {

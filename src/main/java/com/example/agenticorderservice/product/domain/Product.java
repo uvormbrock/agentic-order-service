@@ -3,12 +3,13 @@ package com.example.agenticorderservice.product.domain;
 import com.example.agenticorderservice.shared.domain.Money;
 import jakarta.persistence.Access;
 import jakarta.persistence.AccessType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
-import jakarta.persistence.Column;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -19,14 +20,22 @@ public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
     @Column(nullable = false, columnDefinition = "text")
     private String name;
+
     @Column(nullable = false, columnDefinition = "numeric")
     private Money price;
+
     @Column(nullable = false)
     private boolean active = true;
 
-    protected Product() { }
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
+    protected Product() {}
+
     public Product(String name, Money price) {
         update(name, price);
     }
@@ -34,8 +43,7 @@ public class Product {
     public void update(String name, Money price) {
         String normalized = Objects.requireNonNull(name, "name").strip();
         int length = normalized.codePointCount(0, normalized.length());
-        if (normalized.codePoints().anyMatch(c -> c >= 0xD800 && c <= 0xDFFF)
-                || length < 1 || length > 200) {
+        if (normalized.codePoints().anyMatch(c -> c >= 0xD800 && c <= 0xDFFF) || length < 1 || length > 200) {
             throw new IllegalArgumentException("Name requires 1–200 code points");
         }
         Objects.requireNonNull(price, "price");
