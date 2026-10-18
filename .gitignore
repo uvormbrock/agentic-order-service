@@ -24,3 +24,6 @@ target/
 
 # Local demo runtime output
 /logs/
+
+# Mutable product image storage; demo sources remain version controlled
+/var/product-images/

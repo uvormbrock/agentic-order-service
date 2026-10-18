@@ -17,6 +17,9 @@ import org.springframework.web.context.WebApplicationContext;
 class AgenticOrderServiceApplicationTest {
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.agenticorderservice.product.application.ProductImageApplicationService productImages;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
     private com.example.agenticorderservice.product.application.ProductApplicationService products;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean

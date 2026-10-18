@@ -125,6 +125,6 @@ class OrderApiIT extends PostgreSqlApiTestSupport {
         assertError(request("DELETE", "/customers/" + disposable, null), CUSTOMER_NOT_FOUND);
         assertError(request("GET", "/orders/" + UUID.randomUUID(), null), ORDER_NOT_FOUND);
         assertThat(jdbc.queryForObject("select count(*) from flyway_schema_history where success", Integer.class))
-                .isEqualTo(2);
+                .isEqualTo(3);
     }
 }

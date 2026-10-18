@@ -19,7 +19,7 @@ class OpenApiDocumentationTest extends ApiTestSupport {
         var result = mvc.perform(get("/v3/api-docs")).andExpect(status().isOk()).andReturn();
         var spec = Json.mapper().readTree(result.getResponse().getContentAsByteArray());
         assertThat(spec.get("openapi").asText()).startsWith("3.");
-        assertThat(spec.get("paths").properties()).hasSize(6);
+        assertThat(spec.get("paths").properties()).hasSize(8);
         var paths = spec.get("paths");
         assertThat(paths.get("/customers").properties()).hasSize(2);
         assertThat(paths.get("/customers/{id}").properties()).hasSize(4);
@@ -40,6 +40,39 @@ class OpenApiDocumentationTest extends ApiTestSupport {
                 .isTrue();
         assertThat(spec.get("servers").get(0).get("url").asText()).isEqualTo("/");
         assertThat(spec.toString()).doesNotContain("OPERATION_NOT_AVAILABLE");
+    }
+
+    @Test
+    void productImagesDocumentMultipartBinaryVariantsAndBodylessMutations() throws Exception {
+        var response = mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse();
+        var spec = Json.mapper().readTree(response.getContentAsByteArray());
+        var image = spec.at("/paths/~1products~1{id}~1image");
+        var part = image.at("/put/requestBody/content/multipart~1form-data/schema");
+        assertThat(image.at("/put/requestBody/required").asBoolean()).isTrue();
+        assertThat(part.path("required")).extracting(JsonNode::asText).contains("file");
+        assertThat(part.at("/properties/file/type").asText()).isEqualTo("string");
+        assertThat(part.at("/properties/file/format").asText()).isEqualTo("binary");
+        for (String method : new String[] {"put", "delete"}) {
+            assertThat(image.at("/" + method + "/responses/204").isMissingNode())
+                    .isFalse();
+            assertThat(image.at("/" + method + "/responses/204").has("content")).isFalse();
+        }
+        for (String media : new String[] {"image~1jpeg", "image~1png"}) {
+            assertThat(image.at("/get/responses/200/content/" + media + "/schema/format")
+                            .asText())
+                    .isEqualTo("binary");
+        }
+        assertThat(spec.at(
+                                "/paths/~1products~1{id}~1image~1thumbnail/get/responses/200/content/image~1png/schema/format")
+                        .asText())
+                .isEqualTo("binary");
+        assertThat(image.at(
+                                "/put/responses/403/content/application~1json/examples/PRODUCT_IMAGE_WRITES_DISABLED/value/code")
+                        .asText())
+                .isEqualTo("PRODUCT_IMAGE_WRITES_DISABLED");
     }
 
     @Test

@@ -6,6 +6,11 @@ public record ApiError(String code, String message) {
     }
 
     public enum Code {
+        INVALID_PRODUCT_IMAGE(400, "The product image is empty, corrupt or exceeds the supported dimensions."),
+        PRODUCT_IMAGE_TOO_LARGE(413, "The product image must not exceed 10 MiB."),
+        UNSUPPORTED_PRODUCT_IMAGE(415, "The product image must be JPEG or PNG and match its declared media type."),
+        PRODUCT_IMAGE_NOT_FOUND(404, "The product image was not found."),
+        PRODUCT_IMAGE_WRITES_DISABLED(403, "Product image writes are disabled."),
         INVALID_ORDER_ITEMS(400, "The order must contain at least one item."),
         INVALID_ORDER_QUANTITY(
                 400,

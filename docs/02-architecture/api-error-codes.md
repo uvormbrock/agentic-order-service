@@ -121,3 +121,16 @@ Extend literal error-contract tests to these five templates and all reused Order
 The message is fixed and safe; do not include database diagnostics. An unreferenced active or inactive customer is physically deleted with 204/no body. An absent customer retains CUSTOMER_NOT_FOUND/404 and the existing message `The customer was not found.` PATCH {"active":false} remains separate; DELETE never implicitly deactivates.
 
 **Current implementation:** CUSTOMER_HAS_ORDERS is a specific application failure mapped to the exact 409 envelope above. Only a positive Order-owned reference query after locking the Customer produces this business failure; arbitrary integrity failures retain technical handling. Existing validation precedence, concurrent-modification and missing-resource responses remain unchanged. Phase 2 verification and human acceptance are tracked in the [Phase 2 review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md).
+## Product Image Errors — CH-002
+
+These additive fixed templates implement the scoped [Product image contract](rest-api-design.md#product-image-rest-contract--ch-002). Responses retain exactly `code` and `message`; no paths, uploaded names, decoder details or database diagnostics are exposed. Verification and Human Acceptance remain in the [CH-002 review](../04-agentic-coding/change-requests/CH-002-product-images/03-review.md).
+
+| Code | HTTP | Exact message | Trigger |
+| --- | ---: | --- | --- |
+| `INVALID_PRODUCT_IMAGE` | 400 | The product image is empty, corrupt or exceeds the supported dimensions. | Empty file, malformed multipart content, undecodable content, or decoded dimension/area violation |
+| `PRODUCT_IMAGE_TOO_LARGE` | 413 | The product image must not exceed 10 MiB. | Original exceeds 10,485,760 bytes, including multipart size rejection |
+| `UNSUPPORTED_PRODUCT_IMAGE` | 415 | The product image must be JPEG or PNG and match its declared media type. | Unsupported part type/decoded format or content/type mismatch |
+| `PRODUCT_IMAGE_NOT_FOUND` | 404 | The product image was not found. | Existing product has no image association on GET original/thumbnail |
+| `PRODUCT_IMAGE_WRITES_DISABLED` | 403 | Product image writes are disabled. | Image PUT/DELETE capability not explicitly enabled |
+
+A missing required `file` part uses REQUIRED_FIELD_MISSING/400 with the existing fixed message. Reuse PRODUCT_NOT_FOUND/404 for absent products, INVALID_RESOURCE_ID/400 for malformed UUIDs, UNSUPPORTED_MEDIA_TYPE/415 for unsupported outer request media, and existing routing/negotiation errors. Technical storage and database failures retain INTERNAL_SERVER_ERROR/500 and its exact safe message; missing referenced filesystem content is a technical failure, not proof that no association exists. Confirmed commit precedes image-write success; technical errors never assert rollback or authorize automatic replay. Post-commit retired-file cleanup failure is recorded for maintenance while the committed association operation remains successful. Product DELETE itself remains unsupported; deleting its image does not delete the product.

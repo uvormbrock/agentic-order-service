@@ -176,3 +176,16 @@ Updating and deleting orders, physical product deletion, reactivation, and separ
 ## Remaining Business Clarifications
 
 Name/email validation is resolved by BR-011 and the policies above. Any additional overall order-size/total restriction remains undecided and requires approval; no new limit is introduced.
+
+## Product Images — CH-002
+
+**Status:** Scoped implementation authorized on 2026-10-18; verification and Human Acceptance remain Pending in the [CH-002 review](../04-agentic-coding/change-requests/CH-002-product-images/03-review.md). Existing product JSON fields and activity rules remain unchanged.
+
+- A product, active or inactive, may have no image or one original with one automatically generated thumbnail. No administration UI is included.
+- Upload/replacement preserves the original bytes and resolution and atomically changes the original/thumbnail association. The generated PNG thumbnail preserves aspect ratio, fits within 320 × 320 pixels and never upscales.
+- JPEG and PNG originals require matching decoded content and declared part media type. Maximum original size is 10 MiB (10,485,760 bytes), maximum decoded dimensions 16,384 pixels per edge and maximum area 40,000,000 pixels. Empty, corrupt and undecodable images are rejected.
+- Original and thumbnail are retrieved separately. Missing products and missing images are distinct. Deletion is idempotent for an existing imageless product and does not delete or deactivate the product.
+- Image writes are disabled by default. Human-approved opt-in is limited to the isolated demo and explicitly trusted deployments with externally supplied access control; no identity system or production authentication is introduced.
+- Actual bytes live in configurable filesystem storage, while PostgreSQL stores relative managed references and metadata. Demo sources are version controlled independently of runtime storage.
+
+Acceptance requires byte-preserving original retrieval; decodable thumbnails with proportional dimensions; replacement/deletion and failure recovery; PostgreSQL uniqueness and foreign-key enforcement; unchanged product APIs and inactive behavior; a separate imageless-product scenario; repeatable image seeding for all eight approved demo products; and actual security, concurrency, quality and independent-review evidence. Unrun or incomplete checks remain Pending. See [REST contracts](../02-architecture/rest-api-design.md#product-image-rest-contract--ch-002), [storage lifecycle](../02-architecture/system-architecture.md#product-image-storage-and-lifecycle--ch-002) and [demo instructions](../06-operations/local-demo.md#product-images).

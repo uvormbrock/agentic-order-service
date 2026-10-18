@@ -189,3 +189,24 @@ To deliberately start fresh, repeat `demo-setup`, `demo-run` and `demo-seed` aft
 The [technical reference](local-demo-technical.md) covers Compose ownership, credential handling, migration safety, temporary storage, psql, advanced API examples and historical verification evidence. Existing development-database migration/recovery gates remain unchanged.
 
 The [quality report](../05-testing/quality-report.md) records separate application-quality snapshots. This documentation change did not run the application or verification tools, and historical results do not verify a new source revision.
+
+## Product Images
+
+The demo uses the eight real JPEG sources in [demo/assets/products](../../demo/assets/products/README.md), derived with human approval from the preserved PNG originals. `notebook.jpg` depicts a laptop computer. The isolated demo explicitly enables image writes; runtime content stays in the separate Git-ignored image storage directory, not alongside source assets.
+
+Initial `make demo-seed` loads the dataset and uploads its matching images through the Product image REST API. The complete seed still requires an empty database and must not be rerun. After a successful dataset seed, image-only seeding is repeatable:
+
+```sh
+python3 demo/demo.py seed-images
+```
+
+It resolves the stored seeded product IDs, replaces each product's image through `PUT /products/{id}/image` and creates no duplicate associations. It leaves Demo Legacy Item inactive. This image-only operation is distinct from restarting a partially failed full dataset seed; inspect partial failures first.
+
+Use an ID from `GET /products` to retrieve a variant:
+
+```sh
+curl -f http://127.0.0.1:18080/products/PRODUCT_ID/image -o /tmp/product-original.jpg
+curl -f http://127.0.0.1:18080/products/PRODUCT_ID/image/thumbnail -o /tmp/product-thumbnail.png
+```
+
+Products without images remain valid; a missing image returns PRODUCT_IMAGE_NOT_FOUND/404. Uploaded originals remain byte-identical, while thumbnails are PNG, fit within 320 × 320 pixels and never upscale. Database shutdown discards demo metadata; runtime files can survive and become unreferenced. Follow the [quiescent recovery instructions](local-development.md#product-image-runtime-storage) before cleanup; never treat demo image sources as disposable runtime data. [CH-002 review](../04-agentic-coding/change-requests/CH-002-product-images/03-review.md) records actual seeding and quality evidence; this guide alone does not establish verification.

@@ -87,6 +87,10 @@ public class OpenApiConfiguration {
     }
 
     private static void customizeOperation(String path, PathItem.HttpMethod method, Operation operation) {
+        if (path.equals("/products/{id}/image") || path.equals("/products/{id}/image/thumbnail")) {
+            customizeImageOperation(path, method, operation);
+            return;
+        }
         String feature = path.split("/")[1];
         addErrorResponses(operation.getResponses(), errors(path, feature, method));
         customizeSuccessResponse(path, feature, method, operation.getResponses());
@@ -97,6 +101,92 @@ public class OpenApiConfiguration {
                         value.addHeaderObject(REQUEST_ID, new Header().$ref("#/components/headers/RequestId")));
         customizeRequestBody(operation.getRequestBody());
         customizePathParameters(operation.getParameters());
+    }
+
+    private static void customizeImageOperation(String path, PathItem.HttpMethod method, Operation operation) {
+        var codes = new ArrayList<>(
+                List.of(INVALID_RESOURCE_ID, PRODUCT_NOT_FOUND, INTERNAL_SERVER_ERROR, SERVICE_UNAVAILABLE));
+        ApiResponses responses = new ApiResponses();
+        if (method == PathItem.HttpMethod.GET) {
+            codes.addAll(List.of(PRODUCT_IMAGE_NOT_FOUND, NOT_ACCEPTABLE));
+            Content content = new Content().addMediaType("image/png", binaryMedia());
+            if (!path.endsWith("/thumbnail")) content.addMediaType("image/jpeg", binaryMedia());
+            responses.addApiResponse(
+                    "200",
+                    new ApiResponse()
+                            .description(
+                                    path.endsWith("/thumbnail")
+                                            ? "Generated PNG thumbnail; fits 320x320 without upscaling"
+                                            : "Original JPEG or PNG bytes, unchanged from upload")
+                            .content(content)
+                            .addHeaderObject(
+                                    "X-Content-Type-Options",
+                                    new Header().schema(new StringSchema().example("nosniff")))
+                            .addHeaderObject(
+                                    "Cache-Control", new Header().schema(new StringSchema().example("no-store"))));
+        } else {
+            codes.add(PRODUCT_IMAGE_WRITES_DISABLED);
+            responses.addApiResponse(
+                    "204",
+                    new ApiResponse()
+                            .description(
+                                    method == PathItem.HttpMethod.PUT
+                                            ? "Original and thumbnail association committed; no response body"
+                                            : "Image association removed or already absent; no response body. Obsolete-file cleanup may require reconciliation."));
+            operation.setDescription(
+                    operation.getDescription()
+                            + " Image writes are disabled by default. Enable app.product-images.writes-enabled only in the isolated demo or a trusted deployment with externally enforced access control. No authentication is provided by this service.");
+            if (method == PathItem.HttpMethod.PUT) {
+                codes.addAll(List.of(
+                        REQUIRED_FIELD_MISSING,
+                        INVALID_PRODUCT_IMAGE,
+                        PRODUCT_IMAGE_TOO_LARGE,
+                        UNSUPPORTED_MEDIA_TYPE,
+                        UNSUPPORTED_PRODUCT_IMAGE));
+                operation.setRequestBody(new RequestBody()
+                        .required(true)
+                        .description(
+                                "Required multipart file part named file; declared image/jpeg or image/png must match decoded content. Maximum 10 MiB, 40 million pixels and 16,384 pixels per edge. Original bytes are preserved.")
+                        .content(new Content()
+                                .addMediaType(
+                                        "multipart/form-data",
+                                        new MediaType()
+                                                .schema(new ObjectSchema()
+                                                        .addProperty(
+                                                                "file",
+                                                                new StringSchema()
+                                                                        .format("binary")
+                                                                        .description("JPEG or PNG image file"))
+                                                        .required(List.of("file"))))));
+            }
+        }
+        addErrorResponses(responses, codes);
+        responses.forEach((status, response) -> {
+            if (Integer.parseInt(status) >= 400)
+                response.setDescription(imageErrorDescription(Integer.parseInt(status)));
+            response.addHeaderObject(REQUEST_ID, new Header().$ref("#/components/headers/RequestId"));
+        });
+        operation.setResponses(responses);
+        customizePathParameters(operation.getParameters());
+    }
+
+    private static MediaType binaryMedia() {
+        return new MediaType().schema(new StringSchema().format("binary"));
+    }
+
+    private static String imageErrorDescription(int status) {
+        return switch (status) {
+            case 400 ->
+                "Invalid UUID, missing multipart file, or empty/corrupt/oversized-dimension image; exact templates shown";
+            case 403 -> "Image writes are disabled; explicit trusted-deployment opt-in is required";
+            case 404 -> "Product or image not found; exact templates identify the resource";
+            case 406 -> "Accept does not permit the actual image representation; errors still use JSON";
+            case 413 -> "Upload exceeds the configured multipart limit or 10 MiB image limit";
+            case 415 -> "Expected multipart/form-data containing JPEG or PNG matching the declared file media type";
+            case 503 -> "Clearly classified dependency-establishment unavailability; no blind replay";
+            default ->
+                "Unexpected technical or filesystem failure, including uncertain commit; rollback is not implied";
+        };
     }
 
     private static void addErrorResponses(ApiResponses responses, List<Code> codes) {

@@ -42,6 +42,9 @@ public abstract class ApiTestSupport {
     protected WebApplicationContext context;
 
     @MockitoBean
+    protected ProductImageApplicationService productImages;
+
+    @MockitoBean
     protected ProductApplicationService products;
 
     @MockitoBean

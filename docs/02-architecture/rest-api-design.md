@@ -262,3 +262,18 @@ Order success follows actual committed placement; read DTOs are fully materializ
 - [ ] Run the complete Java 21 Maven regression suite after implementation and record actual results; run SonarQube analysis and review findings. No Phase 2 gate is Passed by this Phase 1 record. Update current documentation and submit the code, tests, generated specification and evidence for human acceptance.
 
 The [interactive API guide](../06-operations/api-documentation.md#customer-delete-contract-transition--2026-10-18) describes the implemented runtime contract. The final verification item remains open: full regression failed on the obsolete catalog-size assertion, and fresh SonarQube analysis is Pending; see the review record. Past prompts, tests and execution evidence are preserved rather than retroactively rewritten.
+
+## Product Image REST Contract — CH-002
+
+This additive contract preserves existing Product JSON and supports inactive products. Authorization for implementation is scoped to CH-002; runtime evidence and Human Acceptance are recorded separately in [its review](../04-agentic-coding/change-requests/CH-002-product-images/03-review.md).
+
+| Endpoint | Request / successful response |
+| --- | --- |
+| `PUT /products/{id}/image` | `multipart/form-data`, required part `file` with `image/jpeg` or `image/png`; creates/replaces both variants; 204 without body after commit |
+| `GET /products/{id}/image` | Original bytes, 200 with validated original media type |
+| `GET /products/{id}/image/thumbnail` | Generated thumbnail bytes, 200 `image/png` |
+| `DELETE /products/{id}/image` | 204 without body after association deletion; also 204 for an existing imageless product |
+
+Binary responses use `Cache-Control: no-store` and `X-Content-Type-Options: nosniff`; the existing server-generated `X-Request-ID` contract remains. UUID validation and safe JSON errors follow existing conventions. Missing products use PRODUCT_NOT_FOUND/404; no association uses PRODUCT_IMAGE_NOT_FOUND/404 on reads. Upload limits and generated dimensions follow the [PRD](../01-requirements/product-requirements.md#product-images--ch-002). The configured multipart parser permits a 10 MiB file and an 11 MiB total request (multipart overhead included); oversized requests retain PRODUCT_IMAGE_TOO_LARGE/413. A missing required `file` part uses REQUIRED_FIELD_MISSING/400; malformed multipart or corrupt image content uses INVALID_PRODUCT_IMAGE/400. Caller filenames never become storage paths. Image part media type is validated against decoded content; the existing JSON-only rule applies to existing JSON endpoints, not this multipart upload.
+
+Writes require explicit `app.product-images.writes-enabled=true`; otherwise PRODUCT_IMAGE_WRITES_DISABLED/403. This introduces no authenticated administrator identity. Reads remain available when writes are disabled. Filesystem failures use the existing safe INTERNAL_SERVER_ERROR/500 envelope and do not prove rollback. Exact image-specific errors are in the [catalog](api-error-codes.md#product-image-errors--ch-002). Runtime OpenAPI generation and JSON/YAML/snapshot checks must verify this contract; hand-edited snapshots are not evidence.

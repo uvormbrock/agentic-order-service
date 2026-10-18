@@ -12,6 +12,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / "demo/.env.demo"
@@ -137,6 +138,66 @@ def request(method, path, body=None, expected=200):
         return json.loads(response.read()) if expected != 204 else None
 
 
+
+IMAGE_ASSETS = (
+    ("Demo Keyboard v2", "keyboard.jpg"), ("Demo Mouse", "mouse.jpg"),
+    ("Demo Notebook", "notebook.jpg"), ("Demo Monitor", "monitor.jpg"),
+    ("Demo Sticker", "sticker.jpg"), ("Demo Desk", "desk.jpg"),
+    ("Demo Pen", "pen.jpg"), ("Demo Legacy Item", "legacy-item.jpg"),
+)
+
+
+def upload_image(product_id, asset):
+    # Only server-generated IDs from the recorded seed, never paths from user input.
+    product_id = str(uuid.UUID(product_id))
+    boundary = "demo-image-" + uuid.uuid4().hex
+    original = asset.read_bytes()
+    body = (f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; "
+            f"filename=\"{asset.name}\"\r\nContent-Type: image/jpeg\r\n\r\n").encode()
+    body += original + f"\r\n--{boundary}--\r\n".encode()
+    req = urllib.request.Request(BASE + "/products/" + product_id + "/image", data=body, method="PUT",
+                                 headers={"Content-Type": "multipart/form-data; boundary=" + boundary})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            if response.status != 204 or not response.headers.get("X-Request-ID"):
+                raise RuntimeError("Image upload response validation failed; stopped without replay.")
+    except urllib.error.HTTPError as error:
+        code = error.code
+        error.close()
+        raise RuntimeError(f"Image upload HTTP {code}; stopped without replay.") from None
+    except urllib.error.URLError:
+        raise RuntimeError("Image upload connection failed; outcome unverified, no automatic replay.") from None
+
+
+def seed_images(config):
+    """Explicitly repeatable replacement of images for this demo's recorded product IDs."""
+    database(config)
+    app()
+    path = STATE / "seed.json"
+    if not path.is_file() or path.is_symlink():
+        raise RuntimeError("Missing safe demo seed record; run the initial demo seed first.")
+    products = json.loads(path.read_text()).get("products", [])
+    if len(products) != len(IMAGE_ASSETS):
+        raise RuntimeError("Unexpected demo seed product count; no images changed.")
+    assets = ROOT / "demo/assets/products"
+    ids = [str(uuid.UUID(product["id"])) for product in products]
+    if len(set(ids)) != len(ids):
+        raise RuntimeError("Duplicate demo product IDs; no images changed.")
+    # Preflight the complete set before any write; never recreate or reactivate products.
+    for ident, (name, filename) in zip(ids, IMAGE_ASSETS):
+        asset = assets / filename
+        if not asset.is_file() or asset.is_symlink():
+            raise RuntimeError("Required demo image missing: " + filename + "; no images changed.")
+        current = request("GET", "/products/" + ident)
+        if current.get("id") != ident or current.get("name") != name:
+            raise RuntimeError("Recorded demo product identity/name mismatch; no images changed.")
+        if name == "Demo Legacy Item" and current.get("active") is not False:
+            raise RuntimeError("Legacy demo product must remain inactive; no images changed.")
+    for ident, (_, filename) in zip(ids, IMAGE_ASSETS):
+        upload_image(ident, assets / filename)
+    print("Image seed completed: eight original/thumbnail associations replaced through the API.")
+
+
 def setup():
     java()
     run(["docker", "info"], True)
@@ -229,6 +290,7 @@ def seed(config):
         raise RuntimeError("Unexpected demo record counts.")
     STATE.mkdir(parents=True, exist_ok=True)
     (STATE / "seed.json").write_text(json.dumps({"customers": customers, "products": products, "orders": orders}, indent=2) + "\n")
+    seed_images(config)
     print("Seed verified: 5 customers, 8 products, 4 orders, 8 order items. IDs: target/local-demo/seed.json")
 
 
@@ -253,11 +315,13 @@ def main():
     if action == "setup":
         setup()
         return
-    config = configuration(require_fixed=action in ("run", "seed"))
+    config = configuration(require_fixed=action in ("run", "seed", "seed-images"))
     if action == "run":
         start(config)
     elif action == "seed":
         seed(config)
+    elif action == "seed-images":
+        seed_images(config)
     elif action == "status":
         containers(config)
         run(COMPOSE + ["ps"])
@@ -271,7 +335,7 @@ def main():
     elif action == "down":
         down(config)
     else:
-        raise RuntimeError("Use setup, run, seed, status, db or down.")
+        raise RuntimeError("Use setup, run, seed, seed-images, status, db or down.")
 
 
 if __name__ == "__main__":

@@ -11,6 +11,15 @@ public final class ExpectedApiErrors {
 
     private static final JsonMapper JSON = JsonMapper.builder().build();
     public static final Map<String, Expected> CATALOG = Map.ofEntries(
+            Map.entry(
+                    "INVALID_PRODUCT_IMAGE",
+                    new Expected(400, "The product image is empty, corrupt or exceeds the supported dimensions.")),
+            Map.entry("PRODUCT_IMAGE_TOO_LARGE", new Expected(413, "The product image must not exceed 10 MiB.")),
+            Map.entry(
+                    "UNSUPPORTED_PRODUCT_IMAGE",
+                    new Expected(415, "The product image must be JPEG or PNG and match its declared media type.")),
+            Map.entry("PRODUCT_IMAGE_NOT_FOUND", new Expected(404, "The product image was not found.")),
+            Map.entry("PRODUCT_IMAGE_WRITES_DISABLED", new Expected(403, "Product image writes are disabled.")),
             Map.entry("INVALID_ORDER_ITEMS", new Expected(400, "The order must contain at least one item.")),
             Map.entry(
                     "INVALID_ORDER_QUANTITY",

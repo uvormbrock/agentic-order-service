@@ -127,3 +127,15 @@ Offline tooling verification (no Maven, Keychain or Cloud access):
 ```sh
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tools -p 'test_sonar_findings.py' -v
 ```
+
+## Product Image Runtime Storage
+
+CH-002 uses `app.product-images.storage-directory` (default `./var/product-images`) for mutable image bytes. Environment aliases are `PRODUCT_IMAGE_STORAGE_DIRECTORY` and `PRODUCT_IMAGE_WRITES_ENABLED`. This Git-ignored directory is distinct from [version-controlled demo sources](../../demo/assets/products/README.md). PostgreSQL stores relative keys and metadata only; both resources must survive deployment. Configure an absolute persistent directory through Spring configuration for a trusted deployment; do not assume a container's writable layer is durable or shared.
+
+Image PUT/DELETE is disabled by default (`app.product-images.writes-enabled=false`). Only enable it explicitly in a trusted deployment whose external authentication/authorization and network controls protect writes. There is no built-in administrator identity. The isolated demo enables writes; enabling them on an exposed unauthenticated deployment is outside the approved boundary.
+
+Back up and restore PostgreSQL metadata and its matching image root together with writers stopped. Restoring only one side may leave missing referenced files or unreferenced generations. Preserve uncertain-outcome content until metadata has been checked; do not blindly replay a failed upload. Filesystem/database failure returns a safe technical error rather than storage paths.
+
+Replacement/deletion cleans retired generations only after confirmed database commit. Failed cleanup/crashes may leave orphans. In a maintenance window stop all image readers and writers across every instance, retain a backup, then use the explicit application method `ProductImageApplicationService.reconcileOrphans(true)` against the matching database/root. The boolean requires the caller's quiescence confirmation; it is not a global distributed lock. The storage implementation rejects symbolic links in the configured root and all its ancestors, so use a physical persistent path rather than a symlink alias. No public HTTP endpoint, scheduled sweep or packaged operator CLI is provided. Never manually delete a generation referenced by `product_images` or run reconciliation while image access or staged uploads may be active. Inspect failures before resuming writes.
+
+The additive V3 migration is authorized for CH-002's schema implementation; existing persistent-database backup, target validation and migration execution gates remain in force. See [storage architecture](../02-architecture/system-architecture.md#product-image-storage-and-lifecycle--ch-002), [REST contracts](../02-architecture/rest-api-design.md#product-image-rest-contract--ch-002) and [actual verification](../04-agentic-coding/change-requests/CH-002-product-images/03-review.md).
