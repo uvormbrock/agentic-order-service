@@ -30,7 +30,8 @@ make demo-seed
 
 This creates **5 customers, 8 products, 4 orders and 8 order items** through the REST APIs. It also demonstrates discounts and historical product-price snapshots. See the [dataset](../../demo/data/README.md) for the scenarios. The seed expects referenced Customer DELETE/409, followed by explicit PATCH deactivation. The [approved DELETE change](api-documentation.md#customer-delete-contract-transition--2026-10-18) is implemented in Phase 2; verification evidence and pending human acceptance are recorded in the API guide.
 
-Seeding requires an empty demo database. A second run refuses writes rather than duplicating records or overwriting changes. Do not run concurrent seeds or automatically retry a partial seed.
+Seeding requires an empty demo database. Run it once; do not execute it repeatedly.
+A second run refuses writes rather than duplicating records or overwriting changes. Do not run concurrent seeds or automatically retry a partial seed.
 
 The demo is separate from the persistent development database. Its data is **temporary and lost when PostgreSQL stops**; do not store valuable data here. Root `.env` and development volumes are not used.
 
@@ -84,14 +85,88 @@ SELECT id, subtotal, discount, total FROM orders ORDER BY subtotal;
 | --- | --- |
 | `make demo-setup` | Validate and start the owned demo PostgreSQL container without recreating it. |
 | `make demo-run` | Package and run Spring Boot in the foreground. |
+| `make demo-run-logged` | Same startup with console output and stdout/stderr appended to `logs/demo.log`; HTTP logger defaults to INFO. |
+| `make demo-run-logged LOG_LEVEL=DEBUG` | Include DEBUG HTTP request-completion events, including expected 409 responses. |
+| `make demo-logs` | Follow `logs/demo.log` in another terminal; fail with guidance if absent. |
 | `make demo-seed` | Create and verify the sample dataset in an empty database. |
 | `make demo-status` | Optional diagnostic: show container, JVM and public-table status. |
 | `make demo-db` | Open interactive psql on the demo database; exit with `\q`. |
 | `make demo-down` | Stop the owned application/container and discard temporary demo data. |
 
+## Application Logs
+
+As an alternative to the standard Quick Start above, use this three-terminal workflow.
+Run every block from the repository root and choose only one application startup.
+
+**Terminal 1 — Start database and application with HTTP completion DEBUG:**
+
+```sh
+make demo-setup
+make demo-run-logged LOG_LEVEL=DEBUG
+```
+
+**Terminal 2 — Follow logs:**
+
+```sh
+make demo-logs
+```
+
+Equivalent direct command: `tail -f logs/demo.log`. Ctrl-C here stops only the follower.
+
+**Terminal 3 — Seed once, after Spring Boot's `Started` message:**
+
+```sh
+make demo-seed
+```
+
+Seed only an empty database; do not repeat this command or automatically retry a partial seed.
+For default INFO logging, use `make demo-run-logged` in Terminal 1 instead of the DEBUG command.
+
+Only `INFO` (default) and `DEBUG` are supported; other values fail before startup.
+The launcher validates the dedicated `DEMO_HTTP_LOG_LEVEL` setting and passes it as
+the Spring Boot command-line property
+`logging.level.com.example.agenticorderservice.shared.api.RequestLoggingListener`.
+Its existing environment allowlist remains in place. Framework/global DEBUG is not enabled.
+Plain `make demo-run` retains its existing logging defaults when no override is supplied.
+
+Normal completed 2xx/3xx requests emit `HTTP_REQUEST_COMPLETED` at INFO. Expected 4xx
+rejections, including `CUSTOMER_HAS_ORDERS`/HTTP 409, emit completion at DEBUG; therefore
+an expected 409 can be absent at INFO without indicating a logging defect.
+`CUSTOMER_DELETED` records a confirmed physical deletion; a rejected DELETE does not
+produce that success event. Targeted DEBUG changes completion visibility, not business behavior.
+
+The logged command creates `logs/` automatically and appends both stdout and stderr
+(including build/startup output) to `logs/demo.log` while displaying them in the console.
+Existing output is retained across runs; the file is not rotated automatically.
+Startup failures remain failures. Ctrl-C stops the owned JVM through the existing launcher
+cleanup; the database stays running. Do not launch this alongside an existing demo JVM;
+stop the current foreground run with Ctrl-C before choosing a different logging level.
+Neither logging command resets or seeds the database.
+
+To search recorded events from Terminal 3 after seeding (requires `rg`/ripgrep):
+
+```sh
+rg 'CUSTOMER_DELETED|HTTP_REQUEST_COMPLETED' logs/demo.log
+rg 'HTTP_REQUEST_COMPLETED.*status=409' logs/demo.log
+curl -i http://127.0.0.1:18080/customers
+```
+
+Copy the server-generated `X-Request-ID` response header and search its value in the
+log's `requestId` field to correlate business and HTTP events for that request:
+
+```sh
+rg -F 'PASTE-X-REQUEST-ID-HERE' logs/demo.log
+```
+
+`logs/demo.log` is local runtime output, excluded by `/logs/` in `.gitignore`, and is
+not committed. Keep existing logs when investigating earlier requests.
+
 ## Stop the Demo
 
-Press **Ctrl-C** in Terminal 1, then run:
+Press **Ctrl-C** in Terminal 1 to stop only the foreground application; PostgreSQL
+and its data remain available while the container stays running. Ctrl-C in the log
+terminal stops only `tail`. To tear down the disposable demo infrastructure and
+discard its data, then run:
 
 ```sh
 make demo-down

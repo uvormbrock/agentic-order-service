@@ -120,3 +120,84 @@ Confirmed against `git ls-files --others --exclude-standard`; all seven untracke
 - `src/test/java/com/example/agenticorderservice/shared/api/OpenApiRuntimeIT.java`
 
 The inventory includes the new application exception, runtime integration test, four CH-001 records and the change-request convention/register. These files remain untracked for human review; inclusion in this inventory does not stage them. Existing tracked changes and all other file contents were preserved. `git diff --check` passed, and no staged changes or Git publication actions were made. Full synchronization evidence and final status are retained in `/tmp/ch001-evidence-sync/` (temporary local storage). Stop for human review; no acceptance or closure is inferred.
+
+## Demo Client Expected HTTP Error Correction — 2026-10-18
+
+**Authorization and scope:** The human explicitly authorized correcting the demo HTTP client and recording actual evidence. Only `demo/demo.py` and this review record were modified on `develop`. Existing untracked `logs/` files were preserved. No backend, API contract, dependency, database configuration, OpenAPI or unrelated demo behavior changed.
+
+**Cause:** `urllib.request.urlopen()` raises `urllib.error.HTTPError` for HTTP 409. The old helper unconditionally converted every HTTPError to a failure, so the explicit `expected=409` never reached status/header/body handling. The earlier mocked seed simulation replaced the request helper and therefore did not exercise this urllib behavior; its historical result remains scoped to seed sequencing.
+
+**Correction:** Catch HTTPError only around `urlopen`. If its status differs from `expected`, close the response and retain the existing immediate RuntimeError without replay. Otherwise pass the HTTPError response through the shared response context, status check, required `X-Request-ID` validation and JSON parsing. Normal responses use the same path. Expected 204 still returns None without reading/parsing a body. Network errors and malformed JSON continue to propagate as failures. The exact CUSTOMER_HAS_ORDERS body validation and subsequent explicit PATCH deactivation in `seed()` are unchanged; all code outside `request()` was compared before/after and is identical.
+
+| Verification | Actual result | Evidence |
+| --- | --- | --- |
+| Python syntax | Passed using `compile(source, filename, 'exec')` without writing bytecode | `demo/demo.py` |
+| Mocked urllib response tests | **Passed: 12 tests** covering expected 409 JSON/closure, unexpected 409/no replay, unexpected 500, missing/empty request-ID on expected 409, malformed JSON on expected 409, 204/no read, missing request-ID on 204, unexpected normal status, normal JSON success, missing request-ID/malformed JSON on normal success, and network failure/no replay | `/tmp/ch001-demo-http/test_request.py`, `/tmp/ch001-demo-http/tests.log` |
+| Diff self-review and hygiene | Passed `git diff --check`; only helper and this appended review entry changed; staged diff empty | `/tmp/ch001-demo-http/review.diff`, `/tmp/ch001-demo-http/final-status.txt` |
+| Live demo seed and existing database | **Pending; deliberately not run** because the previous seed may have partially populated existing data. No reset or data changes performed | No live HTTP/database calls made |
+| Maven / SonarQube | Not run, as explicitly instructed; no fresh verification claim | Earlier results retain their original scope |
+| Human acceptance | **Pending** | Stop for human review |
+
+No existing Python test mechanism was found in the repository. Verification used Python's standard-library `unittest` and mocks in a temporary external harness (`python3 -B /tmp/ch001-demo-http/test_request.py`), without adding dependencies or repository test files. All checks passed on the initial implementation; no correction retry was needed. Temporary evidence is not durable archival storage. No staging, commit, push, merge or deployment was performed.
+
+## Customer DELETE HTTP 409 Logging Investigation — 2026-10-18
+
+**Authorization and outcome:** The human authorized scoped investigation, reproduction and a minimal production correction only if a defect was confirmed. Investigation ran on `develop`. No production defect was reproduced, so no production code, logging configuration or observability contract was changed. Existing demo-client changes, earlier review entries and untracked `logs/` content were preserved.
+
+### Verified cause and lifecycle trace
+
+`RequestLoggingListener.completionLevel()` uses INFO for completed 2xx/3xx and DEBUG for completed 4xx. `application.yml` sets root/application levels to INFO; `application-demo.yml` does not override them. The human-approved L1/L3 policy explicitly selects default INFO with DEBUG for expected rejection (see the [observability decisions](../../prompts/07-application-logging-observability.md#final-human-architecture-decisions--2026-10-16)). Controlled INFO/DEBUG tests reproduced precisely this visibility difference: 200/204 events are visible at INFO; the 409 event becomes visible at DEBUG, retaining the correct status and correlation. A read-only aggregate check of existing `logs/demo.log` found INFO completion events for 200, 201, 204 and 304, consistent with this configuration. No raw request data or log contents were copied into this record.
+
+The CustomerHasOrdersException mapping returns CUSTOMER_HAS_ORDERS through ApiExceptionHandler and the shared response writer, setting the actual response status to 409. The handled exception returns through the normal correlation filter path; status and route are observed in its finally block. Terminal emission belongs exclusively to the listener's requestDestroyed callback and is deduplicated by request-owned state. ApiExceptionHandler intentionally emits no technical diagnostic for expected 4xx; it is not the HTTP completion owner. No advice-bypass, fabricated-success status, missing listener lifecycle or ERROR/ASYNC defect was demonstrated. Logging in the advice would introduce the wrong completion owner and is not required.
+
+**Manual-process limitation:** The original Swagger browser session, active JVM's runtime overrides, console filters and process identity were not independently inspected. INFO-level filtering is a verified explanation under the repository/demo defaults, not proof of every detail of that earlier session. If targeted DEBUG in the actual serving process still lacks the event, the response request ID, process/log destination and effective logger level require investigation. For visibility during troubleshooting, the relevant Spring property is `logging.level.com.example.agenticorderservice.shared.api.RequestLoggingListener=DEBUG` in the serving application's configuration (for a direct application launch, the corresponding `--logging.level.com.example.agenticorderservice.shared.api.RequestLoggingListener=DEBUG` argument). No such runtime change or application restart was performed here.
+
+### Files changed and test coverage
+
+- `src/test/java/com/example/agenticorderservice/shared/api/RequestLogStateTest.java`: six parameterized status/level cases (200/204/409 at DEBUG and INFO) verify exact method/route/status, level filtering, matching generated X-Request-ID/log MDC, cleanup after filter/listener, preservation of unrelated MDC, no early event and no duplicate after repeated requestDestroyed.
+- `src/test/java/com/example/agenticorderservice/shared/api/CustomerDeleteRequestLoggingIT.java` (new): real HTTP and disposable PostgreSQL comparison of GET /customers → 200, physical DELETE → 204 and referenced DELETE → exact CUSTOMER_HAS_ORDERS/409. At DEBUG, each response has exactly one completion with the correct method, route, status, level and response/header correlation. The rejection has no correlated CUSTOMER_DELETED or technical-failure event. The complete persisted customer row (including active/version), order row, item rows and historical order response remain unchanged; the unreferenced customer is physically absent.
+- This review record: appended investigation and actual results; historical evidence remains intact. Existing accepted observability documentation did not require changes because the contract is unchanged.
+
+### Actual verification
+
+Command-local Java 21 was used with Docker/JVM-attachment access for disposable tests only:
+
+```sh
+env JAVA_HOME=/Library/Java/JavaVirtualMachines/jdk-21.jdk/Contents/Home ./mvnw -B -ntp test failsafe:integration-test failsafe:verify -Dtest=RequestLogStateTest,HttpRequestLoggingTest -Dit.test=CustomerDeleteRequestLoggingIT,HttpRequestLifecycleIT,AsyncTransactionLoggingIT
+```
+
+| Gate | Actual result |
+| --- | --- |
+| Focused fast tests | **Passed: 40 executions** — RequestLogStateTest 25; HttpRequestLoggingTest 15 |
+| Focused real-container/PostgreSQL tests | **Passed: 20 executions** — CustomerDeleteRequestLoggingIT 1; HttpRequestLifecycleIT 12; AsyncTransactionLoggingIT 7 |
+| Status, correlation, exactly-once and cleanup | Passed for the new comparison/status-level cases; existing REQUEST/ERROR/ASYNC, status-provenance and worker/context restoration coverage retained and passed |
+| Rejected DELETE business outcome | Passed: exact 409, no false success/technical event, unchanged customer/order/items/history |
+| Full regression | Not rerun: no production changes; earlier full-regression evidence remains historical and is not asserted for these new test sources |
+| Original manual Swagger session / live demo | **Pending**; no live request, reset or reseed of the existing demo database |
+| SonarQube | No fresh analysis performed or claimed |
+| Diff hygiene / human acceptance | `git diff --check` passed; human acceptance **Pending** |
+
+The run exited 0 at `2026-10-18T13:46:42+02:00`, zero failures/errors/skips in all 60 executions. Spotless preparation and lifecycle checks passed. No failed-verification correction was needed. Verbose output, XML reports, the baseline/current diff and status are retained under `/tmp/ch001-http409-logging/` (temporary local evidence). No business/API behavior, dependencies or migrations changed. Nothing was staged, committed, pushed, merged or deployed. Stop for human review.
+
+## Demo Logging Commands — 2026-10-18
+
+**Authorization:** Explicitly approved Makefile/documentation increment plus separately approved minimal launcher propagation. Work remained on `develop`. Existing demo-client/test/review changes were preserved; no production Java, dependencies, schema or database changes were made.
+
+**Changes:** `make demo-run-logged` defaults `LOG_LEVEL` to INFO, validates INFO/DEBUG before startup, creates `logs/`, and runs the existing Python startup once through Bash `pipefail` and append-mode `tee`, combining stdout/stderr with console output. The tee process ignores SIGINT so the launcher's existing Ctrl-C/JVM termination and state cleanup can finish and flush output. Pipeline failures remain nonzero (GNU Make reports its usual recipe-failure status). `make demo-logs` checks for the file and follows it with `tail -f`. `/logs/` is ignored. README links to the expanded demo guide with commands, levels, expected 409 filtering, event searches and request correlation.
+
+**Configuration:** Only the dedicated `DEMO_HTTP_LOG_LEVEL` is read in `start()` and validated against INFO/DEBUG. When supplied, it becomes the exact Spring Boot CLI property `logging.level.com.example.agenticorderservice.shared.api.RequestLoggingListener`; no arbitrary environment forwarding or global DEBUG was added. The existing subprocess environment allowlist is unchanged. Without the dedicated override, `make demo-run` adds no logging property and retains its previous startup and logging behavior.
+
+| Verification | Actual result |
+| --- | --- |
+| Make syntax/targets and input validation | Passed dry runs and isolated execution of the real Makefile; unsupported levels fail before creating logs or starting the launcher |
+| Launcher propagation | Passed mocked startup for absent override, INFO, DEBUG and invalid/empty values; exact logger argument asserted, dedicated input not forwarded in child environment, existing new-session startup retained |
+| Console/file and failure propagation | Passed isolated stdout/stderr markers, INFO/DEBUG arguments, append preservation and stub JVM exit 7 producing nonzero Make status with the launcher's diagnostic |
+| Duplicate/startup/Ctrl-C lifecycle | Passed isolated real `start()` with build/database/port checks stubbed and a disposable subprocess replacing Java: existing state rejects a second launch, SIGINT terminates the child and removes its state record without orphaning it |
+| Follow/missing file | Passed actual `make demo-logs` missing-file guidance and following a newly appended marker in the isolated log |
+| HTTP 409 visibility | Passed existing `RequestLogStateTest#completionLevelsPreserveStatusCorrelationAndMdcCleanup`: six parameterized cases, zero failures/errors/skips; 409 completion visible at DEBUG and filtered at INFO, 200/204 visibility and correlation/MDC assertions retained |
+| Existing local logs | Passed SHA-256 comparison of `logs/demo.log`; contents unchanged; `git check-ignore` confirms exclusion |
+| Live demo/DB startup and real-terminal Ctrl-C | **Pending**; no live demo launch, restart, signal, HTTP request, reset or seed performed. Final sandbox `ps` access was unavailable and no listener/state record was visible at final inspection; continuous liveness of the earlier JVM is not claimed |
+| Full Maven regression | Not run as requested; no production Java changes |
+| Human review/acceptance | **Pending**; no acceptance or closure inferred |
+
+Evidence: `/tmp/ch001-demo-logging/check.py`, `check.log`, `http-level-test.log`, `baseline.diff`, `implementation.diff`, `existing-log.sha256` and final diff/status (temporary local files). The focused Java command used Java 21 and `./mvnw -B -ntp test '-Dtest=RequestLogStateTest#completionLevelsPreserveStatusCorrelationAndMdcCleanup'`. Isolated checks did not call Docker, Maven packaging or the real database. All verification passed on the first implementation; no failed-check correction was used. An incidental Python bytecode cache created by the isolated harness was removed. No runtime logs were staged, and no staging, commit, push, merge or deployment occurred. Stop for human review.

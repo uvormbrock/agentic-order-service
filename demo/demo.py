@@ -123,14 +123,18 @@ def request(method, path, body=None, expected=200):
     req = urllib.request.Request(BASE + path, data=data, method=method,
                                  headers={"Content-Type": "application/json", "Accept": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=15) as response:
-            if response.status != expected:
-                raise RuntimeError(f"Unexpected HTTP status for {method} {path}: {response.status}")
-            if not response.headers.get("X-Request-ID"):
-                raise RuntimeError("Missing X-Request-ID response header.")
-            return json.loads(response.read()) if expected != 204 else None
+        response = urllib.request.urlopen(req, timeout=15)
     except urllib.error.HTTPError as error:
-        raise RuntimeError(f"HTTP {error.code} for {method} {path}; seeding stopped without replay.") from error
+        if error.code != expected:
+            error.close()
+            raise RuntimeError(f"HTTP {error.code} for {method} {path}; seeding stopped without replay.") from error
+        response = error
+    with response:
+        if response.status != expected:
+            raise RuntimeError(f"Unexpected HTTP status for {method} {path}: {response.status}")
+        if not response.headers.get("X-Request-ID"):
+            raise RuntimeError("Missing X-Request-ID response header.")
+        return json.loads(response.read()) if expected != 204 else None
 
 
 def setup():
@@ -151,6 +155,9 @@ def setup():
 
 
 def start(config):
+    http_log_level = os.environ.get("DEMO_HTTP_LOG_LEVEL")
+    if http_log_level is not None and http_log_level not in ("INFO", "DEBUG"):
+        raise RuntimeError("Unsupported DEMO_HTTP_LOG_LEVEL; use INFO or DEBUG.")
     executable = java()
     database(config)
     if (STATE / "app.json").exists():
@@ -169,6 +176,9 @@ def start(config):
                "--spring.datasource.username=demo", "--spring.flyway.enabled=true",
                "--spring.flyway.validate-on-migrate=true", "--spring.flyway.baseline-on-migrate=false",
                "--spring.flyway.clean-disabled=true"]
+    if http_log_level is not None:
+        command.append("--logging.level.com.example.agenticorderservice.shared.api.RequestLoggingListener="
+                       + http_log_level)
     process = subprocess.Popen(command, cwd=ROOT, env=env, start_new_session=True)
     state = STATE / "app.json"
     state.write_text(json.dumps({"pid": process.pid, "owner": OWNER}))

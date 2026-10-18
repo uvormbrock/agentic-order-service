@@ -15,6 +15,7 @@ help:
 	  'Requires Python 3 (standard library) to validate Surefire XML results.' \
 	  'All scopes select the complete project-wide fast-test suite (*Test); *IT integration tests are excluded.' \
 	  'Local demo: make demo-setup, demo-run, demo-seed, demo-status, demo-db, demo-down' \
+	  'Demo logging: make demo-run-logged [LOG_LEVEL=INFO|DEBUG], make demo-logs' \
 	  'Demo uses ports 15432/18080 and temporary database storage; demo-down discards demo data.'
 
 mutation-test:
@@ -110,3 +111,17 @@ mutation-test:
 
 demo-setup demo-run demo-seed demo-status demo-db demo-down:
 	@python3 demo/demo.py $(@:demo-%=%)
+
+LOG_LEVEL ?= INFO
+.PHONY: demo-run-logged demo-logs
+
+demo-run-logged: export DEMO_HTTP_LOG_LEVEL = $(LOG_LEVEL)
+demo-run-logged:
+	@case "$$DEMO_HTTP_LOG_LEVEL" in INFO|DEBUG) ;; \
+	  *) printf '%s\n' 'Unsupported LOG_LEVEL; use INFO or DEBUG.' >&2; exit 2 ;; esac
+	@mkdir -p logs
+	@bash -o pipefail -c 'python3 demo/demo.py run 2>&1 | (trap "" INT; exec tee -a logs/demo.log)'
+
+demo-logs:
+	@test -f logs/demo.log || { printf '%s\n' 'No logs/demo.log found. Start make demo-run-logged first.' >&2; exit 1; }
+	@tail -f logs/demo.log

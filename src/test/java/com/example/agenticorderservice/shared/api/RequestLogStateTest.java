@@ -260,6 +260,70 @@ class RequestLogStateTest {
         }
     }
 
+    @ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource({
+        "200,DEBUG",
+        "204,DEBUG",
+        "409,DEBUG",
+        "200,INFO",
+        "204,INFO",
+        "409,INFO"
+    })
+    void completionLevelsPreserveStatusCorrelationAndMdcCleanup(int status, String configuredLevel) throws Exception {
+        String method = status == 200 ? "GET" : "DELETE";
+        String route = status == 200 ? "/customers" : "/customers/{id}";
+        var request = new MockHttpServletRequest(method, "/customers/fixture");
+        request.setAttribute(org.springframework.web.servlet.HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, route);
+        var response = new MockHttpServletResponse();
+        var listener = new RequestLoggingListener();
+        var event = new ServletRequestEvent(new MockServletContext(), request);
+        listener.requestInitialized(event);
+        String previousId = MDC.get("requestId");
+        String previousOther = MDC.get("unrelated");
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(RequestLoggingListener.class);
+        try (var capture =
+                new com.example.agenticorderservice.shared.logging.EventCapture(RequestLoggingListener.class)) {
+            logger.setLevel(ch.qos.logback.classic.Level.valueOf(configuredLevel));
+            MDC.remove("requestId");
+            MDC.put("unrelated", "preserved");
+            new RequestCorrelationFilter().doFilter(request, response, (input, output) -> {
+                assertThat(MDC.get("requestId")).isEqualTo(response.getHeader("X-Request-ID"));
+                response.setStatus(status);
+            });
+            assertThat(MDC.get("requestId")).isNull();
+            assertThat(capture.messages()).isEmpty();
+            listener.requestDestroyed(event);
+            listener.requestDestroyed(event);
+            if (status == 409 && configuredLevel.equals("INFO")) {
+                assertThat(logger.isDebugEnabled()).isFalse();
+                assertThat(capture.events).isEmpty();
+            } else {
+                assertThat(capture.events).singleElement().satisfies(entry -> {
+                    assertThat(entry.getFormattedMessage())
+                            .startsWith("event=HTTP_REQUEST_COMPLETED method=" + method + " route=" + route + " status="
+                                    + status + " outcome=COMPLETED ");
+                    assertThat(entry.getLevel())
+                            .isEqualTo(
+                                    status == 409
+                                            ? ch.qos.logback.classic.Level.DEBUG
+                                            : ch.qos.logback.classic.Level.INFO);
+                    assertThat(entry.getMDCPropertyMap())
+                            .containsEntry("requestId", response.getHeader("X-Request-ID"));
+                });
+            }
+            assertThat(response.getStatus()).isEqualTo(status);
+            assertThat(UUID.fromString(response.getHeader("X-Request-ID")))
+                    .hasToString(response.getHeader("X-Request-ID"));
+            assertThat(MDC.get("requestId")).isNull();
+            assertThat(MDC.get("unrelated")).isEqualTo("preserved");
+        } finally {
+            if (previousId == null) MDC.remove("requestId");
+            else MDC.put("requestId", previousId);
+            if (previousOther == null) MDC.remove("unrelated");
+            else MDC.put("unrelated", previousOther);
+        }
+    }
+
     @Test
     void nestedErrorAndCommittedOutputPreserveMdcAndNeverEmitEarly() throws Exception {
         var request = new MockHttpServletRequest("GET", "/private-canary");

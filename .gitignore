@@ -21,3 +21,6 @@ target/
 .env
 .env.*
 !.env.example
+
+# Local demo runtime output
+/logs/
