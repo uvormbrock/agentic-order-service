@@ -122,7 +122,7 @@ Expected **400** with `{"code":"UNKNOWN_FIELD","message":"The request contains a
 | `/orders` | POST, GET |
 | `/orders/{id}` | GET |
 
-Successful GET/PUT/PATCH return 200; creates return 201; Customer DELETE returns 204. DELETE removes an unreferenced customer or deactivates one referenced by orders. Missing IDs return the feature's documented 404; inactive entities cannot place/enter new orders. Activation is not supported. See the [PRD](../01-requirements/product-requirements.md) and [error catalog](../02-architecture/api-error-codes.md) for the complete contract.
+**Current implementation:** successful GET/PUT/PATCH return 200; creates return 201; Customer DELETE returns 204/no body only for physical removal. Referenced DELETE returns 409 CUSTOMER_HAS_ORDERS without changes, followed by explicit PATCH where the seed intends deactivation. Missing IDs retain 404; inactive records cannot enter new orders, and reactivation is unsupported. See the [API guide](api-documentation.md#customer-delete-contract-transition--2026-10-18).
 
 ## Inspecting PostgreSQL
 

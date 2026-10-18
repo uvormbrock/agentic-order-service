@@ -28,7 +28,7 @@ After the application has started:
 make demo-seed
 ```
 
-This creates **5 customers, 8 products, 4 orders and 8 order items** through the REST APIs. It also demonstrates discounts and historical product-price snapshots. See the [dataset](../../demo/data/README.md) for the scenarios.
+This creates **5 customers, 8 products, 4 orders and 8 order items** through the REST APIs. It also demonstrates discounts and historical product-price snapshots. See the [dataset](../../demo/data/README.md) for the scenarios. The seed expects referenced Customer DELETE/409, followed by explicit PATCH deactivation. The [approved DELETE change](api-documentation.md#customer-delete-contract-transition--2026-10-18) is implemented in Phase 2; verification evidence and pending human acceptance are recorded in the API guide.
 
 Seeding requires an empty demo database. A second run refuses writes rather than duplicating records or overwriting changes. Do not run concurrent seeds or automatically retry a partial seed.
 

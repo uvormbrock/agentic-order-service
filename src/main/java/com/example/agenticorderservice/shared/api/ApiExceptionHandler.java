@@ -96,6 +96,9 @@ public class ApiExceptionHandler {
         if (cause instanceof ProductNotFoundException) {
             return PRODUCT_NOT_FOUND;
         }
+        if (cause instanceof com.example.agenticorderservice.customer.application.CustomerHasOrdersException) {
+            return CUSTOMER_HAS_ORDERS;
+        }
         if (cause instanceof CustomerNotFoundException) {
             return CUSTOMER_NOT_FOUND;
         }

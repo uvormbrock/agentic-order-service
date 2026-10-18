@@ -66,7 +66,7 @@ The application runs on port 8080 and needs the configured PostgreSQL database. 
 | `/customers` | POST, GET; GET/PUT/PATCH/DELETE on `/customers/{id}` |
 | `/orders` | POST, GET; GET on `/orders/{id}` |
 
-Customer DELETE physically deletes an unreferenced customer or deactivates a referenced one. See the [PRD](../01-requirements/product-requirements.md) and [API error catalog](../02-architecture/api-error-codes.md) for request fields, status codes and fixed error templates.
+**Current implementation:** Customer DELETE physically removes only unreferenced customers (active or inactive); referenced DELETE returns 409 CUSTOMER_HAS_ORDERS without mutation. Use PATCH {"active":false} for explicit deactivation. See the [API guide](api-documentation.md#customer-delete-contract-transition--2026-10-18) and Phase 2 review evidence for verification and pending human acceptance.
 
 Stop Compose while retaining its named database volume:
 

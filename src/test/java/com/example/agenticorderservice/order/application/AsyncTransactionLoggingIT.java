@@ -194,23 +194,9 @@ class AsyncTransactionLoggingIT extends PostgreSqlApiTestSupport {
     }
 
     @ParameterizedTest
-    @CsvSource({
-        "physical,COMMIT",
-        "deactivate,COMMIT",
-        "noop,COMMIT",
-        "physical,ROLLBACK",
-        "deactivate,ROLLBACK",
-        "noop,ROLLBACK",
-        "physical,UNKNOWN",
-        "deactivate,UNKNOWN",
-        "noop,UNKNOWN"
-    })
-    void asyncCustomerDeleteReportsOnlyConfirmedCommit(String branch, String completion) throws Exception {
+    @CsvSource({"COMMIT", "ROLLBACK", "UNKNOWN"})
+    void asyncCustomerDeleteReportsOnlyConfirmedCommit(String completion) throws Exception {
         UUID c = customer(), p = product();
-        if (!branch.equals("physical")) {
-            placement.place(command(c, p));
-            if (branch.equals("noop")) customerService.deactivate(c);
-        }
         String key = UUID.randomUUID().toString();
         var probe = new Probe();
         try (var capture = new EventCapture("com.example.agenticorderservice")) {
@@ -233,20 +219,11 @@ class AsyncTransactionLoggingIT extends PostgreSqlApiTestSupport {
             if (completion.equals("COMMIT")) {
                 assertThat(deletion).hasSize(1);
                 assertThat(deletion.getFirst().getMDCPropertyMap()).containsEntry("requestId", probe.workerId);
-                assertThat(deletion.getFirst().getFormattedMessage())
-                        .isEqualTo("event="
-                                + (branch.equals("physical")
-                                        ? "CUSTOMER_DELETED"
-                                        : branch.equals("deactivate")
-                                                ? "CUSTOMER_DEACTIVATED_BY_DELETE"
-                                                : "CUSTOMER_DELETE_NOOP"));
+                assertThat(deletion.getFirst().getFormattedMessage()).isEqualTo("event=CUSTOMER_DELETED");
             } else assertThat(deletion).isEmpty();
             // UNKNOWN deliberately commits before losing confirmation; it is never claimed to roll back.
             int rows = jdbc.queryForObject("select count(*) from customers where id=?", Integer.class, c);
-            assertThat(rows).isEqualTo(branch.equals("physical") && !completion.equals("ROLLBACK") ? 0 : 1);
-            if (!branch.equals("physical"))
-                assertThat(jdbc.queryForObject("select active from customers where id=?", Boolean.class, c))
-                        .isEqualTo(branch.equals("deactivate") && completion.equals("ROLLBACK"));
+            assertThat(rows).isEqualTo(completion.equals("ROLLBACK") ? 1 : 0);
         } finally {
             probe.release.countDown();
             probes.values.remove(key);

@@ -14,8 +14,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 class ApiErrorContractTest {
     @Test
-    void catalogContainsExactlyTheTwentyFiveApprovedCodes() {
-        assertThat(ExpectedApiErrors.CATALOG).hasSize(25);
+    void catalogContainsExactlyTheTwentySixApprovedCodes() {
+        assertThat(ExpectedApiErrors.CATALOG).hasSize(26);
         assertThat(Arrays.stream(ApiError.Code.values()).map(Enum::name).toList())
                 .containsExactlyInAnyOrderElementsOf(ExpectedApiErrors.CATALOG.keySet());
     }

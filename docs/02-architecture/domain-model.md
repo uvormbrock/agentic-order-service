@@ -92,7 +92,7 @@ classDiagram
 - Represents a customer with a stable identity, name, email address, and active status. Customer names use String.strip() and 1–200 Unicode code points, preserving case and valid Unicode (PRD BR-011).
 - A new order may only be placed for an existing, active customer.
 - An inactive customer can remain referenced by historical orders.
-- Delete unreferenced customers physically; deactivate referenced customers instead (PRD BR-003). Deactivation is irreversible within the MVP.
+- **Approved target — 2026-10-18 (PRD BR-003):** physically delete unreferenced active or inactive customers; reject referenced DELETE with 409 CUSTOMER_HAS_ORDERS and no state changes. PATCH remains explicit irreversible deactivation. Phase 2 implements this behavior; see the [review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md) for actual verification and pending human acceptance.
 
 ### 3.2 Product aggregate
 

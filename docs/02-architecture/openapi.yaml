@@ -255,8 +255,9 @@ paths:
       - Customers
   /customers/{id}:
     delete:
-      description: "Customer-first locking: physically deletes an unreferenced customer\
-        \ or deactivates a referenced one. Returns 204 without a body."
+      description: Physically deletes an active or inactive unreferenced customer.
+        Referenced customers return 409 CUSTOMER_HAS_ORDERS without changes; use PATCH
+        to deactivate.
       operationId: delete
       parameters:
       - description: Canonical 36-character UUID text; upper/lowercase hex accepted
@@ -270,7 +271,7 @@ paths:
           pattern: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
       responses:
         "204":
-          description: Customer removed or deactivated; no response body
+          description: Customer physically removed; no response body
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
@@ -332,6 +333,12 @@ paths:
                     code: CONCURRENT_MODIFICATION
                     message: The resource was modified concurrently. Please reload
                       and retry.
+                CUSTOMER_HAS_ORDERS:
+                  summary: CUSTOMER_HAS_ORDERS
+                  value:
+                    code: CUSTOMER_HAS_ORDERS
+                    message: Customer cannot be deleted because existing orders reference
+                      this customer. Deactivate the customer instead.
               schema:
                 $ref: "#/components/schemas/ApiError"
           description: Business or confirmed optimistic concurrency conflict; no blind
@@ -371,7 +378,7 @@ paths:
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
-      summary: Delete or deactivate a customer
+      summary: Delete an unreferenced customer
       tags:
       - Customers
     get:

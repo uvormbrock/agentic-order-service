@@ -1,8 +1,10 @@
 # API Error Codes
 
-**Status:** Authoritative human-accepted catalog; Increment 4 implementation Reviewed – Accepted; Increment 5 contract accepted, implementation unauthorized
+**Precedence — 2026-10-18:** The [approved Customer DELETE target](#approved-customer-delete-target--2026-10-18) supersedes earlier DELETE/405 and delete-or-deactivate contract statements for future implementation only. Existing Increment 4/5 sections and their verification statements retain their historical scope; they are not evidence for the new contract. Current runtime DELETE still follows delete-or-deactivate/204.
 
-**Scope:** Product/Customer implemented catalog; Human Accepted Increment 5 Order extensions below, implementation pending
+**Status:** Authoritative human-accepted catalog; Increment 4/5 acceptance records preserved; Customer DELETE target approved 2026-10-18, Phase 2 implementation and verification pending
+
+**Scope:** Existing Product/Customer/Order catalog and historical contract decisions; the separately labeled Customer DELETE target below is not yet implemented
 
 **Authority:** [PRD](../01-requirements/product-requirements.md) · [REST design](rest-api-design.md) · [approved Increment 4 record](../04-agentic-coding/prompts/05-product-customer-api.md#approved-architecture-and-api-decisions--2026-10-14)
 
@@ -104,3 +106,18 @@ Deterministic ordering: customerId before items; productId before quantity withi
 Increment 5 includes DELETE /customers/{id}: existing unreferenced → physical deletion/204/no body; referenced → deactivation/204/no body, including already inactive without reactivation; absent → CUSTOMER_NOT_FOUND/404. The Increment 4 interim OPERATION_NOT_AVAILABLE/405 is replaced only by subsequently authorized implementation, not by this documentation. Product DELETE and Order PUT/PATCH/DELETE remain METHOD_NOT_ALLOWED/405 with accurate Allow. No unrelated endpoint behavior is changed.
 
 Extend literal error-contract tests to these five templates and all reused Order triggers, actual MVC malformed/forbidden/type/presence/value precedence and real PostgreSQL commit/race/rollback paths. All new runtime evidence remains Pending. No accepted Increment 4 historical response or test result is rewritten.
+
+## Approved Customer DELETE Target — 2026-10-18
+
+**Approved target contract:** DELETE /customers/{id} returns 409 when orders reference an active or inactive customer, without changing any customer field or order. The following is the exact shared `ApiError` response; the envelope remains only `code` and `message`:
+
+```json
+{
+  "code": "CUSTOMER_HAS_ORDERS",
+  "message": "Customer cannot be deleted because existing orders reference this customer. Deactivate the customer instead."
+}
+```
+
+The message is fixed and safe; do not include database diagnostics. An unreferenced active or inactive customer is physically deleted with 204/no body. An absent customer retains CUSTOMER_NOT_FOUND/404 and the existing message `The customer was not found.` PATCH {"active":false} remains separate; DELETE never implicitly deactivates.
+
+**Current implementation:** CUSTOMER_HAS_ORDERS is a specific application failure mapped to the exact 409 envelope above. Only a positive Order-owned reference query after locking the Customer produces this business failure; arbitrary integrity failures retain technical handling. Existing validation precedence, concurrent-modification and missing-resource responses remain unchanged. Phase 2 verification and human acceptance are tracked in the [Phase 2 review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md).

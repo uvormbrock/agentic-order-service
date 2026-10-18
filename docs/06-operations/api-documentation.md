@@ -21,6 +21,14 @@ The shared metadata derives exact error examples from the existing `ApiError.Cod
 
 Some accepted requirements cannot be fully expressed by JSON Schema: names are counted after Unicode stripping; email normalization precedes validation; prices reject exponent spelling and more than two source decimal places; quantities require integer tokens; duplicate items have a consolidated quantity limit. Descriptions explain these rules instead of adding inaccurate raw-string limits or changing validation. The [PRD](../01-requirements/product-requirements.md), [REST design](../02-architecture/rest-api-design.md) and [error catalog](../02-architecture/api-error-codes.md) remain authoritative. Older planning statements in those records do not override implemented, accepted behavior.
 
+## Customer DELETE Contract Transition — 2026-10-18
+
+**Approved target contract:** DELETE physically removes an unreferenced active or inactive customer and returns 204/no body. Referencing orders require 409 CUSTOMER_HAS_ORDERS, preserving all customer/order state; absence retains CUSTOMER_NOT_FOUND/404. PATCH {"active":false} remains explicit deactivation. See the [authoritative five-case matrix](../01-requirements/product-requirements.md#customer-delete--approved-target-contract-2026-10-18) and [exact code/message](../02-architecture/api-error-codes.md#approved-customer-delete-target--2026-10-18).
+
+**Current implementation:** referenced DELETE returns the exact CUSTOMER_HAS_ORDERS/409 envelope without changes. The shared OpenAPI metadata includes this example alongside CONCURRENT_MODIFICATION, retaining CUSTOMER_NOT_FOUND and the strict two-field ApiError schema. PATCH, demo-only exposure and six business paths/14 operations are preserved.
+
+**Phase 2 evidence:** the [review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md) records runtime HTTP generation, snapshot equivalence, reference checks, Swagger UI checks and any Pending gates. Historical Phase 1 and earlier execution records below retain their original scope. Human acceptance is pending.
+
 ## Exposure and Dependency Configuration
 
 The single added direct dependency is `org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1`. Its [official documentation](https://springdoc.org/) describes the Spring Boot 4 integration. Swagger metadata libraries and UI assets arrive transitively; no Maven lifecycle plugin or CI integration was added. The resolved Swagger integration uses Jackson 2 managed by Boot alongside the application's existing Jackson 3 override; existing versions were not changed.

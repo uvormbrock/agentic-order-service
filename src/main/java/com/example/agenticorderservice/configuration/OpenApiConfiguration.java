@@ -244,6 +244,7 @@ public class OpenApiConfiguration {
                 && (method == PathItem.HttpMethod.PUT
                         || method == PathItem.HttpMethod.PATCH
                         || method == PathItem.HttpMethod.DELETE)) codes.add(CONCURRENT_MODIFICATION);
+        if (feature.equals(CUSTOMERS) && method == PathItem.HttpMethod.DELETE) codes.add(CUSTOMER_HAS_ORDERS);
         return codes;
     }
 

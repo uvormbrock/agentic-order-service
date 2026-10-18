@@ -123,6 +123,19 @@ class CustomerApiIT extends PostgreSqlApiTestSupport {
         assertCustomer(member(json(response), inactiveId), inactiveId, "Inactive fixture", inactiveEmail, false);
     }
 
+    @Test
+    void physicallyDeletesActiveAndInactiveUnreferencedCustomersAndRetainsAbsentError() throws Exception {
+        for (boolean active : new boolean[] {true, false}) {
+            UUID id = persistCustomer("Delete fixture", UUID.randomUUID() + "@example.com", active);
+            var deleted = request("DELETE", "/customers/" + id, null);
+            assertThat(deleted.statusCode()).isEqualTo(204);
+            assertThat(deleted.body()).isEmpty();
+            assertThat(jdbc.queryForObject("select count(*) from customers where id=?", Integer.class, id))
+                    .isZero();
+            assertError(request("DELETE", "/customers/" + id, null), CUSTOMER_NOT_FOUND);
+        }
+    }
+
     private UUID persistCustomer(String name, String email, boolean active) {
         return com.example.agenticorderservice.PostgreSqlTestConfiguration.inTransaction(factory, em -> {
             var entity = new com.example.agenticorderservice.customer.domain.Customer(

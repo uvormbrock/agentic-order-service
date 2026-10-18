@@ -10,6 +10,9 @@ public record ApiError(String code, String message) {
         INVALID_ORDER_QUANTITY(
                 400,
                 "Order item quantities must be positive integers and the consolidated quantity must not exceed 10,000."),
+        CUSTOMER_HAS_ORDERS(
+                409,
+                "Customer cannot be deleted because existing orders reference this customer. Deactivate the customer instead."),
         CUSTOMER_INACTIVE(409, "The customer is inactive."),
         PRODUCT_INACTIVE(409, "The product is inactive."),
         ORDER_NOT_FOUND(404, "The order was not found."),

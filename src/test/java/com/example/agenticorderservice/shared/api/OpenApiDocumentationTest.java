@@ -43,6 +43,29 @@ class OpenApiDocumentationTest extends ApiTestSupport {
     }
 
     @Test
+    void customerDeleteDocumentsExactConflictAlongsideConcurrencyAndNotFound() throws Exception {
+        var response = mvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse();
+        var spec = Json.mapper().readTree(response.getContentAsByteArray());
+        var responses = spec.at("/paths/~1customers~1{id}/delete/responses");
+        var conflict = responses.at("/409/content/application~1json");
+        assertThat(conflict.at("/schema/$ref").asText()).isEqualTo("#/components/schemas/ApiError");
+        assertThat(conflict.at("/examples/CUSTOMER_HAS_ORDERS/value/code").asText())
+                .isEqualTo("CUSTOMER_HAS_ORDERS");
+        assertThat(conflict.at("/examples/CUSTOMER_HAS_ORDERS/value/message").asText())
+                .isEqualTo(
+                        "Customer cannot be deleted because existing orders reference this customer. Deactivate the customer instead.");
+        assertThat(conflict.at("/examples/CONCURRENT_MODIFICATION/value/code").asText())
+                .isEqualTo("CONCURRENT_MODIFICATION");
+        assertThat(responses
+                        .at("/404/content/application~1json/examples/CUSTOMER_NOT_FOUND/value/code")
+                        .asText())
+                .isEqualTo("CUSTOMER_NOT_FOUND");
+    }
+
+    @Test
     void schemasPreserveStrictJsonAndDocumentBusinessConstraintsWithoutAddingValidation() throws Exception {
         mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())

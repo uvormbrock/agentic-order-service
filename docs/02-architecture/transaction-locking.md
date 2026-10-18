@@ -1,5 +1,7 @@
 # Transaction and Locking Conventions
 
+**Scoped contract precedence — 2026-10-18:** The [approved Customer DELETE target](../01-requirements/product-requirements.md#customer-delete--approved-target-contract-2026-10-18) supersedes earlier referenced-customer deactivation outcomes for future DELETE behavior only. Placement-first requires DELETE/409 with unchanged customer/order state; delete-first must not leave dangling references. Earlier protocol and execution records retain their historical scope. Phase 2 implements referenced DELETE/409 without mutation using the existing lock/subsequent-query protocol; see the [Phase 2 review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md) for verification and pending human acceptance. Existing transaction directions and Proposed ADR statuses are unchanged; no new enforcement technique is selected here.
+
 **Status:** Accepted application conventions and scoped Increment 5 G1/G2/G4/G6 directions; scoped implementation Reviewed – Accepted — 2026-10-16; complete ADR-0002 remains Proposed
 
 ## Current Decision Precedence

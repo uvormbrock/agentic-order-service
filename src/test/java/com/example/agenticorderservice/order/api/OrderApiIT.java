@@ -58,14 +58,21 @@ class OrderApiIT extends PostgreSqlApiTestSupport {
                 mapper.writeValueAsString(
                         Map.of("name", "Changed customer", "email", UUID.randomUUID() + "@example.com")));
         assertThat(updated.statusCode()).isEqualTo(200);
-        var deleted = request("DELETE", "/customers/" + customer, null);
-        assertThat(deleted.statusCode()).isEqualTo(204);
-        assertThat(deleted.body()).isEmpty();
-        long version = jdbc.queryForObject("select version from customers where id=?", Long.class, customer);
-        assertThat(request("DELETE", "/customers/" + customer, null).statusCode())
-                .isEqualTo(204);
-        assertThat(jdbc.queryForObject("select version from customers where id=?", Long.class, customer))
-                .isEqualTo(version);
+        var before = jdbc.queryForMap("select * from customers where id=?", customer);
+        var historical = request("GET", "/orders/" + order, null).body();
+        assertError(request("DELETE", "/customers/" + customer, null), CUSTOMER_HAS_ORDERS);
+        assertThat(jdbc.queryForMap("select * from customers where id=?", customer))
+                .isEqualTo(before);
+        assertThat(request("GET", "/orders/" + order, null).body()).isEqualTo(historical);
+        assertThat(request("PATCH", "/customers/" + customer, "{\"active\":false}")
+                        .statusCode())
+                .isEqualTo(200);
+        before = jdbc.queryForMap("select * from customers where id=?", customer);
+        historical = request("GET", "/orders/" + order, null).body();
+        assertError(request("DELETE", "/customers/" + customer, null), CUSTOMER_HAS_ORDERS);
+        assertThat(jdbc.queryForMap("select * from customers where id=?", customer))
+                .isEqualTo(before);
+        assertThat(request("GET", "/orders/" + order, null).body()).isEqualTo(historical);
         var stats = factory.unwrap(org.hibernate.SessionFactory.class).getStatistics();
         stats.clear();
         var read = request("GET", "/orders/" + order, null);

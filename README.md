@@ -79,7 +79,7 @@ The runtime-generated [OpenAPI YAML specification](docs/02-architecture/openapi.
 
 ## Key Engineering Features
 
-- **Customer, Product and Order APIs:** create, query and update customers/products, deactivate products, delete or deactivate customers according to order references, and place/retrieve orders.
+- **Customer, Product and Order APIs:** create, query and update customers/products, deactivate products, explicitly deactivate customers and delete only unreferenced customers, and place/retrieve orders. CH-001 Phase 2 implements referenced DELETE/409 without mutation; see the [review evidence](docs/04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md). Human acceptance is pending.
 - **Strict HTTP contracts:** dedicated request/response DTOs, nested JSON validation, rejected caller-supplied prices and deterministic error codes with safe response messages.
 - **Domain invariants:** immutable monetary values, consolidated order quantities, historical product snapshots and a 10% discount at a subtotal of **EUR 100.00 or above**.
 - **Transactional consistency:** `TransactionTemplate`, READ COMMITTED, ambient-transaction rejection, Customer-first pessimistic locking and deterministically ordered Product locks. Product/Customer writes retain optimistic `@Version` checks.

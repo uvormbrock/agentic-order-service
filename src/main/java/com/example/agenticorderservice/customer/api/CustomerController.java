@@ -65,10 +65,10 @@ public class CustomerController {
 
     @DeleteMapping("/{id}")
     @Operation(
-            summary = "Delete or deactivate a customer",
+            summary = "Delete an unreferenced customer",
             description =
-                    "Customer-first locking: physically deletes an unreferenced customer or deactivates a referenced one. Returns 204 without a body.")
-    @ApiResponse(responseCode = "204", description = "Customer removed or deactivated; no response body")
+                    "Physically deletes an active or inactive unreferenced customer. Referenced customers return 409 CUSTOMER_HAS_ORDERS without changes; use PATCH to deactivate.")
+    @ApiResponse(responseCode = "204", description = "Customer physically removed; no response body")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);
         return ResponseEntity.noContent().build();

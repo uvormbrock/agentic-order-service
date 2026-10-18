@@ -205,7 +205,10 @@ def seed(config):
     request("PUT", "/products/" + products[0]["id"], {"name": "Demo Keyboard v2", "price": 60})
     request("PATCH", "/products/" + products[7]["id"], {"active": False})
     request("PATCH", "/customers/" + customers[4]["id"], {"active": False})
-    request("DELETE", "/customers/" + customers[3]["id"], expected=204)
+    rejected = request("DELETE", "/customers/" + customers[3]["id"], expected=409)
+    if rejected != {"code": "CUSTOMER_HAS_ORDERS", "message": "Customer cannot be deleted because existing orders reference this customer. Deactivate the customer instead."}:
+        raise RuntimeError("Unexpected referenced customer DELETE response.")
+    request("PATCH", "/customers/" + customers[3]["id"], {"active": False})
     snapshot = request("GET", "/orders/" + orders[0]["id"])
     keyboard = next(item for item in snapshot["items"] if item["productId"] == products[0]["id"])
     if keyboard["productName"] != "Demo Keyboard" or keyboard["unitPrice"] != 50:

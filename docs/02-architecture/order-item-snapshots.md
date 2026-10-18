@@ -51,7 +51,7 @@ The authoritative product name, price, and eligibility follow the consistent ope
 
 ## 5. Persistence Requirements
 
-- Preserve customer and product references. Referenced customers are deactivated instead of physically deleted; products have no physical deletion operation in the MVP.
+- Preserve customer and product references. Under the [approved Customer DELETE target — 2026-10-18](../01-requirements/product-requirements.md#customer-delete--approved-target-contract-2026-10-18), referenced DELETE returns 409 CUSTOMER_HAS_ORDERS without changing customer or order state; PATCH remains explicit deactivation. Phase 2 implements the target; verification and human acceptance are tracked in the [review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md). Products have no physical deletion operation in the MVP.
 - Never cascade customer or product deletion into historical orders or items.
 - Return original product names from snapshots and current customer details, including inactive customer records.
 - Ensure duplicate consolidation leaves one item per product within an order.

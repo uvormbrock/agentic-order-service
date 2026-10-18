@@ -48,6 +48,8 @@ class CustomerApiTest extends ApiTestSupport {
         verify(customers).delete(id);
         doThrow(new CustomerNotFoundException()).when(customers).delete(id);
         error(delete("/customers/" + id), CUSTOMER_NOT_FOUND);
+        doThrow(new CustomerHasOrdersException()).when(customers).delete(id);
+        error(delete("/customers/" + id), CUSTOMER_HAS_ORDERS);
         error(delete("/products/" + id), METHOD_NOT_ALLOWED);
         verify(customers, never()).deactivate(any());
     }
