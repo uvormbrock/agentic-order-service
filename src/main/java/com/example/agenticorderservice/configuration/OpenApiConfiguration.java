@@ -217,26 +217,7 @@ public class OpenApiConfiguration {
                 || method == PathItem.HttpMethod.PUT
                 || method == PathItem.HttpMethod.PATCH;
         if (body) {
-            codes.addAll(List.of(
-                    MALFORMED_JSON,
-                    UNKNOWN_FIELD,
-                    UNSUPPORTED_FIELD,
-                    INVALID_FIELD_TYPE,
-                    REQUIRED_FIELD_MISSING,
-                    UNSUPPORTED_MEDIA_TYPE));
-            if (feature.equals("orders"))
-                codes.addAll(List.of(
-                        INVALID_RESOURCE_ID,
-                        INVALID_ORDER_ITEMS,
-                        INVALID_ORDER_QUANTITY,
-                        CUSTOMER_NOT_FOUND,
-                        PRODUCT_NOT_FOUND,
-                        CUSTOMER_INACTIVE,
-                        PRODUCT_INACTIVE));
-            else if (method != PathItem.HttpMethod.PATCH) {
-                codes.add(INVALID_NAME);
-                codes.add(feature.equals(CUSTOMERS) ? INVALID_EMAIL : INVALID_PRODUCT_PRICE);
-            }
+            addBodyErrors(codes, feature, method);
         }
         if (feature.equals(CUSTOMERS) && (method == PathItem.HttpMethod.POST || method == PathItem.HttpMethod.PUT))
             codes.add(DUPLICATE_EMAIL);
@@ -246,6 +227,29 @@ public class OpenApiConfiguration {
                         || method == PathItem.HttpMethod.DELETE)) codes.add(CONCURRENT_MODIFICATION);
         if (feature.equals(CUSTOMERS) && method == PathItem.HttpMethod.DELETE) codes.add(CUSTOMER_HAS_ORDERS);
         return codes;
+    }
+
+    private static void addBodyErrors(List<Code> codes, String feature, PathItem.HttpMethod method) {
+        codes.addAll(List.of(
+                MALFORMED_JSON,
+                UNKNOWN_FIELD,
+                UNSUPPORTED_FIELD,
+                INVALID_FIELD_TYPE,
+                REQUIRED_FIELD_MISSING,
+                UNSUPPORTED_MEDIA_TYPE));
+        if (feature.equals("orders"))
+            codes.addAll(List.of(
+                    INVALID_RESOURCE_ID,
+                    INVALID_ORDER_ITEMS,
+                    INVALID_ORDER_QUANTITY,
+                    CUSTOMER_NOT_FOUND,
+                    PRODUCT_NOT_FOUND,
+                    CUSTOMER_INACTIVE,
+                    PRODUCT_INACTIVE));
+        else if (method != PathItem.HttpMethod.PATCH) {
+            codes.add(INVALID_NAME);
+            codes.add(feature.equals(CUSTOMERS) ? INVALID_EMAIL : INVALID_PRODUCT_PRICE);
+        }
     }
 
     private static String errorDescription(int status) {
