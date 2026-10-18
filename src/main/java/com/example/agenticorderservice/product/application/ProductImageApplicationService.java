@@ -1,6 +1,7 @@
 package com.example.agenticorderservice.product.application;
 
 import com.example.agenticorderservice.product.domain.ProductImage;
+import com.example.agenticorderservice.product.domain.ProductImageMetadata;
 import com.example.agenticorderservice.product.persistence.ProductImageRepository;
 import com.example.agenticorderservice.product.persistence.ProductRepository;
 import com.example.agenticorderservice.product.storage.ProductImageStorage;
@@ -51,28 +52,17 @@ public class ProductImageApplicationService {
             lockProduct(productId);
             var existing = images.findById(productId);
             String old = existing.map(ProductImage::getOriginalKey).orElse(null);
-            var image = existing.orElseGet(() -> new ProductImage(
-                    productId,
-                    candidate.originalKey(),
-                    candidate.thumbnailKey(),
+            var metadata = new ProductImageMetadata(
                     processed.mediaType(),
                     processed.original().length,
                     processed.thumbnail().length,
                     processed.width(),
                     processed.height(),
                     processed.thumbnailWidth(),
-                    processed.thumbnailHeight()));
-            if (existing.isPresent())
-                image.replace(
-                        candidate.originalKey(),
-                        candidate.thumbnailKey(),
-                        processed.mediaType(),
-                        processed.original().length,
-                        processed.thumbnail().length,
-                        processed.width(),
-                        processed.height(),
-                        processed.thumbnailWidth(),
-                        processed.thumbnailHeight());
+                    processed.thumbnailHeight());
+            var image = existing.orElseGet(
+                    () -> new ProductImage(productId, candidate.originalKey(), candidate.thumbnailKey(), metadata));
+            if (existing.isPresent()) image.replace(candidate.originalKey(), candidate.thumbnailKey(), metadata);
             images.save(image);
             return old;
         });

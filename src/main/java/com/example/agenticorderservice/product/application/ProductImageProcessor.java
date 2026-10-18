@@ -28,14 +28,23 @@ public class ProductImageProcessor {
         @Override
         public boolean equals(Object other) {
             return this == other
-                    || (other instanceof ProcessedImage that
-                            && Arrays.equals(original, that.original)
-                            && Arrays.equals(thumbnail, that.thumbnail)
-                            && Objects.equals(mediaType, that.mediaType)
-                            && width == that.width
-                            && height == that.height
-                            && thumbnailWidth == that.thumbnailWidth
-                            && thumbnailHeight == that.thumbnailHeight);
+                    || (other
+                                    instanceof
+                                    ProcessedImage(
+                                            byte[] otherOriginal,
+                                            byte[] otherThumbnail,
+                                            String otherMediaType,
+                                            int otherWidth,
+                                            int otherHeight,
+                                            int otherThumbnailWidth,
+                                            int otherThumbnailHeight)
+                            && Arrays.equals(original, otherOriginal)
+                            && Arrays.equals(thumbnail, otherThumbnail)
+                            && Objects.equals(mediaType, otherMediaType)
+                            && width == otherWidth
+                            && height == otherHeight
+                            && thumbnailWidth == otherThumbnailWidth
+                            && thumbnailHeight == otherThumbnailHeight);
         }
 
         @Override

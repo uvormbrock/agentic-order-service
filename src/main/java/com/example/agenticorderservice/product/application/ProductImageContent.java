@@ -11,9 +11,9 @@ public record ProductImageContent(byte[] bytes, String mediaType) {
     @Override
     public boolean equals(Object other) {
         return this == other
-                || (other instanceof ProductImageContent that
-                        && Arrays.equals(bytes, that.bytes)
-                        && Objects.equals(mediaType, that.mediaType));
+                || (other instanceof ProductImageContent(byte[] otherBytes, String otherMediaType)
+                        && Arrays.equals(bytes, otherBytes)
+                        && Objects.equals(mediaType, otherMediaType));
     }
 
     @Override

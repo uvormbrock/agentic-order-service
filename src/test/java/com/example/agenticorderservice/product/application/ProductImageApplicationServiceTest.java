@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 
 import com.example.agenticorderservice.product.domain.Product;
 import com.example.agenticorderservice.product.domain.ProductImage;
+import com.example.agenticorderservice.product.domain.ProductImageMetadata;
 import com.example.agenticorderservice.product.persistence.ProductImageRepository;
 import com.example.agenticorderservice.product.persistence.ProductRepository;
 import com.example.agenticorderservice.product.storage.ProductImageStorage;
@@ -40,13 +41,7 @@ class ProductImageApplicationServiceTest {
                 id,
                 previous,
                 previous.substring(0, 36) + "/thumbnail",
-                "image/png",
-                bytes.length,
-                4,
-                640,
-                320,
-                320,
-                160);
+                new ProductImageMetadata("image/png", bytes.length, 4, 640, 320, 320, 160));
     }
 
     @Test
@@ -180,7 +175,10 @@ class ProductImageApplicationServiceTest {
     void jpegOriginalAndPngThumbnailUseTheirOwnMediaTypesAndLengths() {
         var service = service(true);
         var image = new ProductImage(
-                id, previous, previous.substring(0, 36) + "/thumbnail", "image/jpeg", 7, 3, 640, 320, 320, 160);
+                id,
+                previous,
+                previous.substring(0, 36) + "/thumbnail",
+                new ProductImageMetadata("image/jpeg", 7, 3, 640, 320, 320, 160));
         when(images.findById(id)).thenReturn(Optional.of(image));
         when(storage.read(previous, 7)).thenReturn(new byte[] {1, 2, 3, 4, 5, 6, 7});
         when(storage.read(image.getThumbnailKey(), 3)).thenReturn(new byte[] {8, 9, 10});

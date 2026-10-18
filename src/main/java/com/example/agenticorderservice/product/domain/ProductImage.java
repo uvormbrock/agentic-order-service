@@ -40,67 +40,25 @@ public class ProductImage {
 
     protected ProductImage() {}
 
-    public ProductImage(
-            UUID productId,
-            String originalKey,
-            String thumbnailKey,
-            String mediaType,
-            long originalSize,
-            long thumbnailSize,
-            int width,
-            int height,
-            int thumbnailWidth,
-            int thumbnailHeight) {
+    public ProductImage(UUID productId, String originalKey, String thumbnailKey, ProductImageMetadata metadata) {
         this.productId = java.util.Objects.requireNonNull(productId);
-        replace(
-                originalKey,
-                thumbnailKey,
-                mediaType,
-                originalSize,
-                thumbnailSize,
-                width,
-                height,
-                thumbnailWidth,
-                thumbnailHeight);
+        replace(originalKey, thumbnailKey, metadata);
     }
 
-    public void replace(
-            String originalKey,
-            String thumbnailKey,
-            String mediaType,
-            long originalSize,
-            long thumbnailSize,
-            int width,
-            int height,
-            int thumbnailWidth,
-            int thumbnailHeight) {
-        if (!java.util.Set.of("image/jpeg", "image/png").contains(mediaType)
-                || originalSize <= 0
-                || originalSize > 10 * 1024 * 1024
-                || thumbnailSize <= 0
-                || width < 1
-                || height < 1
-                || width > 16384
-                || height > 16384
-                || (long) width * height > 40_000_000L
-                || thumbnailWidth < 1
-                || thumbnailHeight < 1
-                || thumbnailWidth > 320
-                || thumbnailHeight > 320
-                || thumbnailWidth > width
-                || thumbnailHeight > height) throw new IllegalArgumentException("Invalid image metadata");
+    public void replace(String originalKey, String thumbnailKey, ProductImageMetadata metadata) {
+        java.util.Objects.requireNonNull(metadata);
         if (!originalKey.matches("[0-9a-f-]{36}/original")
                 || !thumbnailKey.equals(originalKey.substring(0, 36) + "/thumbnail"))
             throw new IllegalArgumentException("Invalid image keys");
         this.originalKey = originalKey;
         this.thumbnailKey = thumbnailKey;
-        this.mediaType = mediaType;
-        this.originalSize = originalSize;
-        this.thumbnailSize = thumbnailSize;
-        this.width = width;
-        this.height = height;
-        this.thumbnailWidth = thumbnailWidth;
-        this.thumbnailHeight = thumbnailHeight;
+        this.mediaType = metadata.mediaType();
+        this.originalSize = metadata.originalSize();
+        this.thumbnailSize = metadata.thumbnailSize();
+        this.width = metadata.width();
+        this.height = metadata.height();
+        this.thumbnailWidth = metadata.thumbnailWidth();
+        this.thumbnailHeight = metadata.thumbnailHeight();
     }
 
     public UUID getProductId() {
