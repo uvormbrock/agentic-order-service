@@ -144,7 +144,7 @@ class ProductImageLifecycleIT {
                     .hasSize(1);
             Path generation = created.iterator().next();
             String generationId = generation.getFileName().toString();
-            assertThat(UUID.fromString(generationId).toString()).isEqualTo(generationId);
+            assertThat(UUID.fromString(generationId)).hasToString(generationId);
             String originalKey = generationId + "/original";
             String thumbnailKey = generationId + "/thumbnail";
             Path originalFile = generation.resolve("original");
@@ -328,7 +328,8 @@ class ProductImageLifecycleIT {
     @Test
     void databaseFailureLeavesOnlyIdentifiableOrphansForExplicitQuiescentRecovery() {
         UUID missing = UUID.randomUUID();
-        assertThatThrownBy(() -> images.upload(missing, image("png", 2, 2), "image/png"))
+        byte[] original = image("png", 2, 2);
+        assertThatThrownBy(() -> images.upload(missing, original, "image/png"))
                 .isInstanceOf(ProductNotFoundException.class);
         assertThatIllegalStateException().isThrownBy(() -> images.reconcileOrphans(false));
         assertThat(images.reconcileOrphans(true)).isGreaterThanOrEqualTo(1);

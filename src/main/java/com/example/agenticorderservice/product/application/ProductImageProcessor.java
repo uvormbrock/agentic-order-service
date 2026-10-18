@@ -3,6 +3,8 @@ package com.example.agenticorderservice.product.application;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.util.Arrays;
+import java.util.Objects;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.MemoryCacheImageInputStream;
@@ -22,7 +24,40 @@ public class ProductImageProcessor {
             int width,
             int height,
             int thumbnailWidth,
-            int thumbnailHeight) {}
+            int thumbnailHeight) {
+        @Override
+        public boolean equals(Object other) {
+            return this == other
+                    || (other instanceof ProcessedImage that
+                            && Arrays.equals(original, that.original)
+                            && Arrays.equals(thumbnail, that.thumbnail)
+                            && Objects.equals(mediaType, that.mediaType)
+                            && width == that.width
+                            && height == that.height
+                            && thumbnailWidth == that.thumbnailWidth
+                            && thumbnailHeight == that.thumbnailHeight);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(
+                    Arrays.hashCode(original),
+                    Arrays.hashCode(thumbnail),
+                    mediaType,
+                    width,
+                    height,
+                    thumbnailWidth,
+                    thumbnailHeight);
+        }
+
+        @Override
+        public String toString() {
+            return "ProcessedImage[originalLength=" + (original == null ? "null" : original.length)
+                    + ", thumbnailLength=" + (thumbnail == null ? "null" : thumbnail.length)
+                    + ", mediaType=" + mediaType + ", width=" + width + ", height=" + height
+                    + ", thumbnailWidth=" + thumbnailWidth + ", thumbnailHeight=" + thumbnailHeight + "]";
+        }
+    }
 
     public ProcessedImage process(byte[] bytes, String declaredType) {
         if (bytes.length > MAX_BYTES) throw new ProductImageFailure(ProductImageFailure.Reason.TOO_LARGE);
@@ -34,11 +69,16 @@ public class ProductImageProcessor {
             var readers = ImageIO.getImageReaders(input);
             if (!readers.hasNext()) throw new ProductImageFailure(ProductImageFailure.Reason.INVALID);
             ImageReader reader = readers.next();
-            try {
+            try (Closeable readerDisposal = reader::dispose) {
                 String format = reader.getFormatName();
-                String media = "JPEG".equalsIgnoreCase(format)
-                        ? "image/jpeg"
-                        : "PNG".equalsIgnoreCase(format) ? "image/png" : "";
+                String media;
+                if ("JPEG".equalsIgnoreCase(format)) {
+                    media = "image/jpeg";
+                } else if ("PNG".equalsIgnoreCase(format)) {
+                    media = "image/png";
+                } else {
+                    media = "";
+                }
                 if (media.isEmpty() || !media.equalsIgnoreCase(declaredType))
                     throw new ProductImageFailure(ProductImageFailure.Reason.UNSUPPORTED);
                 reader.setInput(input, true, true);
@@ -68,8 +108,6 @@ public class ProductImageProcessor {
                 if (!ImageIO.write(thumb, "png", output))
                     throw new ProductImageFailure(ProductImageFailure.Reason.INVALID);
                 return new ProcessedImage(bytes.clone(), output.toByteArray(), media, width, height, tw, th);
-            } finally {
-                reader.dispose();
             }
         } catch (IOException | IllegalArgumentException failure) {
             throw new ProductImageFailure(ProductImageFailure.Reason.INVALID, failure);

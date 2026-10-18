@@ -79,14 +79,18 @@ public class ProductImageController {
         return ResponseEntity.noContent().build();
     }
 
+    private int specificity(MediaType type) {
+        if (type.isWildcardType()) return 0;
+        if (type.isWildcardSubtype()) return 1;
+        return 2;
+    }
+
     private ResponseEntity<byte[]> response(ProductImageContent image, String accept) {
         MediaType actual = MediaType.parseMediaType(image.mediaType());
         if (accept != null) {
             var matches = MediaType.parseMediaTypes(accept).stream()
                     .filter(type -> type.isCompatibleWith(actual))
-                    .sorted(Comparator.comparingInt(
-                                    (MediaType type) -> type.isWildcardType() ? 0 : type.isWildcardSubtype() ? 1 : 2)
-                            .reversed())
+                    .sorted(Comparator.comparingInt(this::specificity).reversed())
                     .toList();
             if (matches.isEmpty() || matches.getFirst().getQualityValue() <= 0)
                 throw new ApiInputException(ApiError.Code.NOT_ACCEPTABLE);

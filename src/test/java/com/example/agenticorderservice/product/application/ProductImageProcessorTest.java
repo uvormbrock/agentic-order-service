@@ -40,6 +40,47 @@ class ProductImageProcessorTest {
     }
 
     @Test
+    void processedRecordUsesArrayContentsAndEveryMetadataComponentWithoutPrintingBytes() {
+        byte[] original = {11, 22, 33};
+        byte[] thumbnail = {44, 55};
+        var value = new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 40, 20, 20, 10);
+        var same = new ProductImageProcessor.ProcessedImage(
+                original.clone(), thumbnail.clone(), "image/png", 40, 20, 20, 10);
+        assertThat(value).isEqualTo(same).hasSameHashCodeAs(same);
+        assertThat(same).isEqualTo(value);
+        var alternatives = java.util.List.of(
+                new ProductImageProcessor.ProcessedImage(new byte[] {11}, thumbnail, "image/png", 40, 20, 20, 10),
+                new ProductImageProcessor.ProcessedImage(original, new byte[] {44}, "image/png", 40, 20, 20, 10),
+                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/jpeg", 40, 20, 20, 10),
+                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 41, 20, 20, 10),
+                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 40, 21, 20, 10),
+                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 40, 20, 21, 10),
+                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 40, 20, 20, 11));
+        for (var alternative : alternatives) assertThat(value).isNotEqualTo(alternative);
+        assertThat(value.toString())
+                .contains("originalLength=3", "thumbnailLength=2")
+                .doesNotContain(Arrays.toString(original), Arrays.toString(thumbnail));
+    }
+
+    @Test
+    void readerIsDisposedAfterSuccessfulProcessingAndRejectedFormat() {
+        byte[] bytes = image("png", 4, 4);
+        for (String declaredType : java.util.List.of("image/png", "image/jpeg")) {
+            var reader = spy(ImageIO.getImageReadersByFormatName("png").next());
+            try (var imageIo = mockStatic(ImageIO.class, CALLS_REAL_METHODS)) {
+                imageIo.when(() -> ImageIO.getImageReaders(any(Object.class)))
+                        .thenReturn(java.util.List.of(reader).iterator());
+                if (declaredType.equals("image/png")) {
+                    processor.process(bytes, declaredType);
+                } else {
+                    rejected(bytes, declaredType, ProductImageFailure.Reason.UNSUPPORTED);
+                }
+                verify(reader).dispose();
+            }
+        }
+    }
+
+    @Test
     void acceptsExactByteLimitWithoutRecompressingOriginal() {
         byte[] bytes = Arrays.copyOf(image("png", 2, 2), 10 * 1024 * 1024);
         assertThat(processor.process(bytes, "image/png").original()).containsExactly(bytes);

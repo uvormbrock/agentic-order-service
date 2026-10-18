@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ProductImageStorage {
+    private static final String ORIGINAL_SUFFIX = "/original";
     private final Path root;
 
     public record StagedImage(String originalKey, String thumbnailKey) {}
@@ -37,11 +38,11 @@ public class ProductImageStorage {
                     image.thumbnail(),
                     StandardOpenOption.CREATE_NEW,
                     StandardOpenOption.WRITE);
-            return new StagedImage(generation + "/original", generation + "/thumbnail");
+            return new StagedImage(generation + ORIGINAL_SUFFIX, generation + "/thumbnail");
         } catch (IOException | SecurityException failure) {
             if (created) {
                 try {
-                    deleteGeneration(generation + "/original");
+                    deleteGeneration(generation + ORIGINAL_SUFFIX);
                 } catch (ProductImageFailure cleanup) {
                     failure.addSuppressed(cleanup);
                 }
@@ -91,8 +92,8 @@ public class ProductImageStorage {
                 for (Path entry : entries) {
                     String generation = entry.getFileName().toString();
                     if (generation.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
-                            && !referencedOriginalKeys.contains(generation + "/original")) {
-                        deleteGeneration(generation + "/original");
+                            && !referencedOriginalKeys.contains(generation + ORIGINAL_SUFFIX)) {
+                        deleteGeneration(generation + ORIGINAL_SUFFIX);
                         removed++;
                     }
                 }

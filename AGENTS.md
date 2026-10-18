@@ -56,3 +56,6 @@ Read `AGENTS.md` and identify relevant files using targeted searches before load
 
 ## Language
 All project Markdown, code, identifiers, comments, tests, diagrams, Git messages, plans, and agent reports use **English**, unless explicitly overridden. Preserve established technical terms and API identifiers.
+
+## Scoped maintenance tasks: 
+Bug fixes, static-analysis findings, test corrections and documentation adjustments must not automatically invoke the Multi-Agent Change Request workflow. Use direct, single-agent execution unless the human explicitly requests delegation. Do not introduce new classes, abstractions, dependencies or architectural changes solely to resolve static-analysis findings without explicit approval. When the smallest viable fix exceeds the authorized scope, stop and request approval.
