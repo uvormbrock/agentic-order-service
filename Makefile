@@ -5,16 +5,19 @@ PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 MUTATION_EVIDENCE_ROOT ?= $(abspath $(PROJECT_ROOT)/../agentic-order-service-mutation-evidence)
 export SCOPE MUTATION_EVIDENCE_ROOT JAVA_HOME
 
-.PHONY: help mutation-test
+.PHONY: help mutation-test sonar-local sonar-findings
 
 help:
 	@printf '%s\n' \
 	  'make mutation-test SCOPE=order|product|customer|shared|all (default: all)' \
+	  'make sonar-local (clean verify + SonarQube Cloud upload and Quality Gate; main/develop only)' \
+	  'make sonar-findings (retrieve current branch findings only; no Maven or analysis submission)' \
 	  'Set JAVA_HOME to a Java 21 installation.' \
 	  'Override MUTATION_EVIDENCE_ROOT to change the external evidence location.' \
 	  'Requires Python 3 (standard library) to validate Surefire XML results.' \
 	  'All scopes select the complete project-wide fast-test suite (*Test); *IT integration tests are excluded.' \
 	  'Local demo: make demo-setup, demo-run, demo-seed, demo-status, demo-db, demo-down' \
+	  'Demo logging: make demo-run-logged [LOG_LEVEL=INFO|DEBUG], make demo-logs' \
 	  'Demo uses ports 15432/18080 and temporary database storage; demo-down discards demo data.'
 
 mutation-test:
@@ -110,3 +113,77 @@ mutation-test:
 
 demo-setup demo-run demo-seed demo-status demo-db demo-down:
 	@python3 demo/demo.py $(@:demo-%=%)
+
+LOG_LEVEL ?= INFO
+.PHONY: demo-run-logged demo-logs
+
+demo-run-logged: export DEMO_HTTP_LOG_LEVEL = $(LOG_LEVEL)
+demo-run-logged:
+	@case "$$DEMO_HTTP_LOG_LEVEL" in INFO|DEBUG) ;; \
+	  *) printf '%s\n' 'Unsupported LOG_LEVEL; use INFO or DEBUG.' >&2; exit 2 ;; esac
+	@mkdir -p logs
+	@bash -o pipefail -c 'python3 demo/demo.py run 2>&1 | (trap "" INT; exec tee -a logs/demo.log)'
+
+demo-logs:
+	@test -f logs/demo.log || { printf '%s\n' 'No logs/demo.log found. Start make demo-run-logged first.' >&2; exit 1; }
+	@tail -f logs/demo.log
+
+# Local branch analysis only; authentication is never passed as a Maven argument.
+sonar-local:
+	@set +x; set +a; set -eu; \
+	sonar_token=$${SONAR_TOKEN-}; unset SONAR_TOKEN; \
+	cd "$(PROJECT_ROOT)"; \
+	case "$${GITHUB_EVENT_NAME-}" in pull_request*) \
+	  printf '%s\n' 'sonar-local supports branch analysis only; PR context is unsupported.' >&2; exit 2 ;; esac; \
+	if [ -n "$${CHANGE_ID-}" ] || [ -n "$${CI_MERGE_REQUEST_IID-}" ] || [ -n "$${SONAR_PULL_REQUEST_KEY-}" ]; then \
+	  printf '%s\n' 'sonar-local supports branch analysis only; PR context is unsupported.' >&2; exit 2; fi; \
+	if ! sonar_branch=$$(git symbolic-ref --quiet --short HEAD); then \
+	  printf '%s\n' 'sonar-local requires an attached main or develop branch.' >&2; exit 2; fi; \
+	case "$$sonar_branch" in main|develop) ;; *) \
+	  printf '%s\n' 'sonar-local supports only main and develop branch analysis.' >&2; exit 2 ;; esac; \
+	if [ -z "$$sonar_token" ]; then \
+	  if [ "$$(uname -s)" != Darwin ]; then \
+	    printf '%s\n' 'Missing SONAR_TOKEN; Keychain fallback is available only on macOS.' >&2; exit 2; fi; \
+	  sonar_account=$${USER:-$$(id -un)}; \
+	  if ! sonar_token=$$(security find-generic-password -a "$$sonar_account" -s agentic-order-service-sonar -w 2>/dev/null); then \
+	    printf '%s\n' 'Sonar credential unavailable: Keychain access denied, approval required, or item missing. Resolve access in macOS or supply SONAR_TOKEN securely.' >&2; exit 2; fi; \
+	  if [ -z "$$sonar_token" ]; then \
+	    printf '%s\n' 'Sonar credential unavailable: Keychain returned an empty value.' >&2; exit 2; fi; \
+	fi; \
+	printf 'SonarQube Cloud: verifying local working tree and analyzing branch %s; upload requires authorization.\n' "$$sonar_branch"; \
+	sonar_run=$$(python3 tools/sonar_findings.py prepare --branch "$$sonar_branch"); \
+	if SONAR_TOKEN="$$sonar_token" ./mvnw -B -ntp clean verify \
+	  org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
+	  -Dsonar.projectKey=uvormbrock_agentic-order-service \
+	  -Dsonar.branch.name="$$sonar_branch" \
+	  -Dsonar.qualitygate.wait=true \
+	  -Dsonar.qualitygate.timeout=300; then sonar_rc=0; else sonar_rc=$$?; fi; \
+	if SONAR_TOKEN="$$sonar_token" python3 tools/sonar_findings.py collect \
+	  --branch "$$sonar_branch" --run "$$sonar_run" --maven-exit "$$sonar_rc"; \
+	  then sonar_findings_rc=0; else sonar_findings_rc=$$?; fi; \
+	if [ "$$sonar_rc" -ne 0 ]; then exit "$$sonar_rc"; fi; \
+	exit "$$sonar_findings_rc"
+
+# Read-only retrieval; no scanner task or analysis identity is inferred.
+sonar-findings:
+	@set +x; set +a; set -eu; \
+	sonar_token=$${SONAR_TOKEN-}; unset SONAR_TOKEN; \
+	cd "$(PROJECT_ROOT)"; \
+	case "$${GITHUB_EVENT_NAME-}" in pull_request*) \
+	  printf '%s\n' 'sonar-findings supports branch analysis only; PR context is unsupported.' >&2; exit 2 ;; esac; \
+	if [ -n "$${CHANGE_ID-}" ] || [ -n "$${CI_MERGE_REQUEST_IID-}" ] || [ -n "$${SONAR_PULL_REQUEST_KEY-}" ]; then \
+	  printf '%s\n' 'sonar-findings supports branch analysis only; PR context is unsupported.' >&2; exit 2; fi; \
+	if ! sonar_branch=$$(git symbolic-ref --quiet --short HEAD); then \
+	  printf '%s\n' 'sonar-findings requires an attached main or develop branch.' >&2; exit 2; fi; \
+	case "$$sonar_branch" in main|develop) ;; *) \
+	  printf '%s\n' 'sonar-findings supports only main and develop branch analysis.' >&2; exit 2 ;; esac; \
+	if [ -z "$$sonar_token" ]; then \
+	  if [ "$$(uname -s)" != Darwin ]; then \
+	    printf '%s\n' 'Missing SONAR_TOKEN; Keychain fallback is available only on macOS.' >&2; exit 2; fi; \
+	  sonar_account=$${USER:-$$(id -un)}; \
+	  if ! sonar_token=$$(security find-generic-password -a "$$sonar_account" -s agentic-order-service-sonar -w 2>/dev/null); then \
+	    printf '%s\n' 'Sonar credential unavailable: Keychain access denied, approval required, or item missing. Resolve access in macOS or supply SONAR_TOKEN securely.' >&2; exit 2; fi; \
+	  if [ -z "$$sonar_token" ]; then \
+	    printf '%s\n' 'Sonar credential unavailable: Keychain returned an empty value.' >&2; exit 2; fi; \
+	fi; \
+	SONAR_TOKEN="$$sonar_token" python3 tools/sonar_findings.py findings --branch "$$sonar_branch"

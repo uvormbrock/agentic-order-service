@@ -122,3 +122,9 @@ The four approved endpoints, protected provider contracts, compatible Product/Cu
 ### Increment 6 Acceptance Gap Closure — 2026-10-16
 
 The separately authorized C1–C6 follow-up remains **Blocked — Human Decision Required** after three correction rounds. State/generation and Order metadata corrections plus independent Customer tests are implemented. Targeted fast runs passed; 13 async PostgreSQL and 27 existing concurrency cases passed. The 11-case lifecycle fixture has one failing native error-recovery status assertion (UNKNOWN versus expected recovered 502). Full regression and fresh coverage were not rerun because that targeted exit gate failed. See the [gap-closure execution record](../04-agentic-coding/prompts/07-application-logging-observability.md#acceptance-gap-closure-execution--2026-10-16). Historical 506/123 results remain historical; implementation acceptance is Pending. L1–L6 remain approved; Increment 5/ADR statuses are unchanged.
+
+## Customer DELETE Contract Change — 2026-10-18
+
+**Approved target contract:** [PRD](../01-requirements/product-requirements.md#customer-delete--approved-target-contract-2026-10-18). Phase 2 explicitly authorized on 2026-10-18 and implemented; human acceptance is pending. See the [review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md) for checklist evidence and limitations.
+
+Current code returns 204 only for physical removal and 409 CUSTOMER_HAS_ORDERS for referenced customers without mutation; PATCH remains separate. Historical increment prompts, results and human acceptance above remain unchanged.

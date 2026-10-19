@@ -1,83 +1,61 @@
-# Agent Instructions
+# Agent Instructions — Agentic Order Service
 
-## Project
-Agentic Order Service
+## Project and Engineering Baseline
+- Java 21, Spring Boot 4.1.1, Maven, PostgreSQL; one-module, feature-oriented modular monolith.
+- Preserve documented feature dependencies and public application contracts. Controllers delegate to application operations, never directly to repositories or another feature's persistence internals.
+- Protect aggregate invariants and transaction boundaries; prefer simple, maintainable, narrowly scoped changes. Avoid unnecessary abstractions.
+- No new dependencies, architecture changes, or database migrations without explicit approval. Never modify unrelated files.
+- Accepted baseline includes direct JPA aggregates, immutable value objects, Hibernate/Spring Data JPA, Flyway, application-owned transactions, and JUnit 6 using Boot-managed versions.
 
-## Technology
-- Java 21
-- Spring Boot 4.1.1
-- Maven
-- PostgreSQL
+## Authorization and Review Workflow
+1. Inspect the task, repository state, and **only the authoritative sources relevant to its scope**. Identify blocking Open/Proposed decisions before implementation.
+2. Treat a specific, explicit human request as approval **only for its stated scope**. If scope or a blocking decision is unresolved, propose a concise plan and obtain approval before editing. Do not seek duplicate approval for already authorized work.
+3. Implement only the approved increment, preserving unrelated changes and established contracts. Do not silently broaden scope.
+4. Run proportional verification: focused checks first, full regression and external gates when required by scope or acceptance criteria. Unrun/unavailable checks are **Pending**, never **Passed**.
+5. Self-review and report the actual diff (staged, unstaged, untracked), test evidence, limitations, and outstanding decisions. Retain verbose logs in files; summarize relevant failures rather than pasting full output.
+6. Human acceptance is required to close an implementation increment; agent self-review is not independent human review. Never stage, commit, push, merge, or deploy without separate explicit authorization for that action.
 
-## Engineering Principles
-- Prefer simple and maintainable solutions.
-- Follow established domain boundaries.
-- Comply with documented package dependency directions and feature-owned public contracts; do not access foreign feature persistence internals.
-- Keep controllers separate from persistence: delegate to application operations rather than repositories.
-- Protect aggregate invariants through controlled domain operations; do not bypass aggregate ownership or expose mutable internals.
-- Avoid unnecessary abstractions.
-- Do not introduce new dependencies without approval.
-- Keep changes small and reviewable.
+## Change Request Records
+- For tasks explicitly initiated or classified as Change Requests against the existing application, the Multi-Agent Orchestrator must follow the [mandatory Change Request convention](docs/04-agentic-coding/change-requests/README.md) and [record ownership workflow](docs/04-agentic-coding/multi-agent/workflow.md#standard-record-ownership). Create exactly the four standard Markdown files initially, maintain them throughout execution, coordinate one writer per file, and preserve historical CH-001 records.
+- Do not automatically classify independent projects, research, questions, standalone documentation discussions or unauthorized tasks as Change Requests. New application features may qualify. Clarify genuinely unclear classification only when it materially changes the workflow.
 
-## Agent Workflow
-1. Analyze the task and read the authoritative documents.
-2. Present the implementation plan and obtain explicit human approval before coding. Existing approval applies only to its exact scope.
-3. Implement only the approved increment, preserving unrelated changes.
-4. Run applicable automated verification; report future or unavailable gates as Pending, never Passed.
-5. Self-review and present the actual Git diff, including staged, unstaged, and new files, with verification results for human review.
-6. Obtain explicit human acceptance before considering the implementation increment complete. Agent self-review does not replace human review.
-7. Create no Git commit without explicit authorization; acceptance alone is not commit authorization.
+## Multi-Agent Orchestrator Control
+- The main Codex session is the Orchestrator; specialists do not sequence phases or delegate. The Orchestrator owns phase sequencing, assignments and structured handoffs, approval boundaries, nonfatal external-tool recovery, Quality Gate consolidation and the final human-review report. Follow the [workflow](docs/04-agentic-coding/multi-agent/workflow.md), [approval policy](docs/04-agentic-coding/multi-agent/approval-policy.md) and [handoff contract](docs/04-agentic-coding/multi-agent/handoff-contract.md).
+- Enforce at most three implementation correction iterations; a retrieval failure alone consumes none. Technical SonarQube failures do not abort independent authorized development, verification, review or documentation. Preserve actual Failed/Pending statuses, Unknown findings counts when retrieval is incomplete and mandatory safety/approval restrictions. Apply the [bounded recovery policy](docs/04-agentic-coding/multi-agent/workflow.md#findings-retrieval-failure-and-workflow-completion); never automatically repeat a full scan because retrieval failed.
+- Consolidate all remaining risks in the final report with Human Acceptance Pending. Completed — Human Review Required does not mean every gate passed. No specialist or Orchestrator may stage, commit, push, merge or deploy without separate explicit human authorization.
 
-## Restrictions
-- No autonomous database migrations.
-- No architecture changes without approval.
-- Do not modify unrelated files.
-- Do not silently resolve Open decisions or treat Proposed architecture choices as Accepted, including subdecisions within Accepted baseline ADRs.
-- Obtain explicit human approval for any Open or Proposed decision that blocks the implementation increment before implementing the affected work. Scope approval does not implicitly resolve an unspecified blocking decision.
+## Decision and Documentation Authority
+- `docs/` is authoritative; business rules belong in the [PRD](docs/01-requirements/product-requirements.md), architectural decisions in uniquely numbered ADRs. Preserve statuses and history; do not treat proposals, passing tests, or scope approval as ADR acceptance.
+- Accepted ADR-0001/0003 remain authoritative; ADR-0002 is **Proposed** (transaction/locking protocol not fully approved or verified). ADR-0004/0005 contain Accepted baselines with Open/Proposed subdecisions. Seek approval for blocking decisions.
+- Selected transaction direction (TransactionTemplate, READ COMMITTED, deterministic pessimistic locks) does **not** approve ADR-0002's unresolved details. Preserve transaction integrity and never claim committed success before completion.
+- Specialized [Java/Spring guidance](docs/04-agentic-coding/java-spring-guidelines.md) and [persistence guidance](docs/04-agentic-coding/persistence-guidelines.md) are Accepted but subordinate to PRD, accepted ADRs, architecture, and approved scope.
+- Use relative Markdown links and the existing numbered `docs/00-overview/`–`docs/07-implementation/` structure; do not create parallel documentation hierarchies or a separate Obsidian copy.
 
-## Language Conventions
-- All project documentation must be written in English.
-- All Markdown files, including README files, architecture documentation, ADRs, and technical specifications, must be written in English.
-- Source code, identifiers, comments, docstrings, and test names must be in English.
-- Git commit messages must be written in English.
-- Technical diagrams, including Mermaid diagrams, must use English labels.
-- Agent-generated plans, implementation summaries, and review reports must be written in English.
-- Shell commands and configuration examples must use English descriptions and comments.
-- Do not translate established technical terms or API identifiers.
-- These conventions apply to all future changes unless explicitly overridden.
+## Task-Specific Context Routing
+Read `AGENTS.md` and identify relevant files using targeted searches before loading lengthy documents. **The following are pointers, not a mandatory reading list.**
+- Business behavior: [PRD](docs/01-requirements/product-requirements.md), [domain model](docs/02-architecture/domain-model.md), relevant feature code/tests.
+- REST/OpenAPI: [REST design](docs/02-architecture/rest-api-design.md), [error catalog](docs/02-architecture/api-error-codes.md), relevant controllers/DTOs and API documentation.
+- Transactions/JPA/migrations: [transaction conventions](docs/02-architecture/transaction-locking.md), [architecture](docs/02-architecture/system-architecture.md), relevant ADRs and persistence guidelines.
+- Java changes: [coding guidelines](docs/04-agentic-coding/coding-guidelines.md), Java/Spring guidelines, relevant code/tests.
+- Testing/quality: [testing strategy](docs/05-testing/testing-strategy.md), affected tests and current [quality report](docs/05-testing/quality-report.md) when reporting evidence.
+- Dependencies: `pom.xml`, [technology stack](docs/02-architecture/technology-stack.md), relevant dependency tree.
+- Workflow/decisions: [AI workflow](docs/04-agentic-coding/ai-development-workflow.md), [implementation plan](docs/07-implementation/implementation-plan.md), [open items](docs/00-overview/open-items.md) **only when relevant**.
+- Logging/HTTP lifecycle: [observability playbook](docs/04-agentic-coding/prompts/07-application-logging-observability.md) and affected implementation/tests.
 
-## Authoritative Engineering Documents
+## Logging, Security and Correctness
+- Use existing SLF4J/Logback, parameterized meaningful events; avoid noisy entry/exit or duplicate exception logs. Never add a logging framework without approval or print from application code to stdout/stderr.
+- Respect recorded log levels, retry/outcome semantics, and status provenance. No reported Order success before transaction commit; distinguish confirmed rollback from uncertain outcome, and never replay an uncertain commit.
+- Log only safe, minimal metadata. Never log secrets, authorization/cookie headers, request/response bodies, customer emails, other unnecessary PII, confidential SQL parameters, or unchecked exception contents.
+- Preserve the approved server-generated `X-Request-ID`, scoped MDC `requestId`, async/ERROR lifecycle semantics, and cleanup on completion/error. Consult the observability playbook for detailed constraints and pending acceptance limits; do not infer executor propagation.
 
-Repository `docs/` is the single source of truth. Read these documents before proposing or implementing changes:
+## Context and Output Economy
+- Use a fresh session for each independent change request. A new task should not require prior chat history when source files and approved documents contain the needed facts.
+- Search filenames/symbols first; inspect narrow ranges and only expand on demonstrated need. Avoid repository-wide dumps and repeatedly rereading unchanged documents.
+- Keep plans, command output, and final reports brief but auditable. Save full logs/diffs as artifacts where needed; report precise paths, relevant failures, and actual verification status.
+- Do not omit necessary safety checks or contractual context merely to reduce tokens.
 
-1. [Product requirements](docs/01-requirements/product-requirements.md) and relevant acceptance criteria.
-2. [System architecture](docs/02-architecture/system-architecture.md), [technology stack reference](docs/02-architecture/technology-stack.md), [domain model](docs/02-architecture/domain-model.md), and [transaction conventions](docs/02-architecture/transaction-locking.md).
-3. Relevant ADRs linked in system architecture, especially Accepted ADR-0001/0003, Proposed ADR-0002, and ADR-0004/0005 with Accepted baselines and explicitly Proposed/Open subdecisions.
-4. [Coding guidelines](docs/04-agentic-coding/coding-guidelines.md), [testing strategy](docs/05-testing/testing-strategy.md), and [AI workflow](docs/04-agentic-coding/ai-development-workflow.md).
-5. [Implementation plan](docs/07-implementation/implementation-plan.md), [open items](docs/00-overview/open-items.md), and [REST design](docs/02-architecture/rest-api-design.md).
+## Language
+All project Markdown, code, identifiers, comments, tests, diagrams, Git messages, plans, and agent reports use **English**, unless explicitly overridden. Preserve established technical terms and API identifiers.
 
-For relevant Java/Spring implementation planning, also read the [Java and Spring guidelines](docs/04-agentic-coding/java-spring-guidelines.md); for JPA mappings, PostgreSQL schemas, and migrations, read the [persistence guidelines](docs/04-agentic-coding/persistence-guidelines.md). Both specialized guidelines are **Accepted implementation guidance** subordinate to the PRD, Accepted ADRs, architecture, and approved coding/workflow rules. Their acceptance does not approve a new implementation increment, introduce dependencies, authorize schema changes or migrations, or resolve Open/Proposed decisions (including the ADR-0002 protocol). Obtain explicit approval for blocking decisions and the relevant implementation scope before coding.
-
-Accepted technology and architecture decisions: Java 21, Spring Boot 4.1.1, one Maven module, feature-oriented modular monolith, direct JPA aggregates, immutable value objects, Hibernate/Spring Data JPA, PostgreSQL, Flyway, and application-owned transaction boundaries. JUnit 6 is Accepted and replaces the earlier JUnit 5 selection; use Spring Boot 4.1.1-managed Jupiter and Platform versions without overrides to retain JUnit 5. Explicitly Proposed/Open subdecisions in ADR-0004 and ADR-0005 remain unresolved.
-
-Selected technical direction for transaction management and locking: TransactionTemplate, READ COMMITTED, and deterministic pessimistic locking. This selection does not accept the complete protocol or its unresolved configuration. ADR-0002 remains Proposed and implementation-unverified; its detailed locking/retry implementation and blocking Open decisions require explicit approval before the affected implementation. Accepted transaction-boundary conventions remain governed by ADR-0003 and the transaction documentation.
-
-Do not equate a recorded proposal, documentation approval, passing tests, or package sketch with approval to implement or accept an ADR. New implementation increments require explicit scope approval. Proposed subdecisions remain proposals even inside an Accepted baseline ADR.
-
-Keep business rules authoritative in the PRD and decisions authoritative in their uniquely numbered ADRs. Preserve ADR history; do not reuse identifiers or maintain duplicate specifications. Use relative Markdown links and English Mermaid labels. No separate Obsidian copy is maintained.
-
-Before requesting human acceptance, check document references and statuses and report applicable quality-gate evidence and limitations with the actual diff. No autonomous migrations, dependency additions, architecture changes, or Git commits are authorized by this documentation baseline.
-
-## Logging and Observability
-
-- Consider significant events, failures and retry decisions in every implementation plan; follow the accepted logging design. Do not require a logger in every class or emit noisy entry/exit or duplicate exception logs. Prefer meaningful structured events. The [Increment 6 playbook](docs/04-agentic-coding/prompts/07-application-logging-observability.md) records Human Approved L1–L6 and separate implementation authorization; follow its final lifecycle qualifications and current execution limitations. Implementation acceptance remains separate.
-- Use the existing Spring Boot SLF4J/Logback infrastructure and parameterized logging. No new logging framework without an explicit architecture decision; no application `System.out.println`, `System.err.println` or stack-trace printing.
-- TRACE is normally disabled; DEBUG supports troubleshooting; INFO records significant completed events; WARN records recoverable abnormal conditions and approved scheduled transient retries; ERROR records unexpected technical failures or operations that cannot complete. Levels reflect actual outcomes; ordinary validation 400s and business 404s are not automatically ERROR.
-- Preserve transaction/locking/retry behavior. Never report committed Order success after save/flush alone: require successful transaction completion. Distinguish confirmed rollback, scheduled retry, exhaustion and unknown/potentially committed outcome. Never label uncertainty as confirmed failure/rollback or replay because of logging. Logging failures must not compromise business outcomes or mask original failures.
-- Allowlist safe, minimal metadata. Never log secrets, credentials/tokens/keys, Authorization/Cookie headers, complete request/response bodies, customer email or unnecessary PII, confidential SQL parameters, arbitrary sensitive paths or unreviewed exception contents. No generic request-body logging; minimize identifiers and correlation data.
-- HTTP correlation requires an explicit documented strategy. Increment 6 approves one server-generated UUID, response header X-Request-ID, owned MDC key requestId and explicit REQUEST/ASYNC/ERROR and request-worker scoping; inbound IDs are ignored. Follow the playbook for status provenance and lifecycle limits. Remove owned context at completion and on exception paths to prevent reused-thread leakage; do not assume executor propagation.
-- Test relevant levels, safe fields, correlation creation/cleanup, post-commit success, retry/unknown-outcome accuracy and diagnostic deduplication where practical. Exact prose is not a project-wide API without approval. Keep logging proportionate and preserve privacy/transaction guarantees; do not silently resolve Open observability decisions.
-
-## Documentation Structure
-
-The numbered `docs/00-overview/` through `docs/07-implementation/` structure is authoritative. Inspect it before creating or relocating documentation. Do not create parallel `docs/adr/`, `docs/architecture/`, `docs/standards/`, or `docs/implementation/` hierarchies.
+## Scoped maintenance tasks: 
+Bug fixes, static-analysis findings, test corrections and documentation adjustments must not automatically invoke the Multi-Agent Change Request workflow. Use direct, single-agent execution unless the human explicitly requests delegation. Do not introduce new classes, abstractions, dependencies or architectural changes solely to resolve static-analysis findings without explicit approval. When the smallest viable fix exceeds the authorized scope, stop and request approval.

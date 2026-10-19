@@ -18,3 +18,7 @@ springdoc:
     - /orders/**
   override-with-generic-response: false
   writer-with-order-by-keys: true
+
+app:
+  product-images:
+    writes-enabled: true

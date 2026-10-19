@@ -64,6 +64,7 @@ class VersionMigrationIT {
                     Integer.class,
                     schema);
             var v2 = Flyway.configure()
+                    .target("2")
                     .dataSource(source)
                     .schemas(schema)
                     .defaultSchema(schema)
@@ -123,7 +124,7 @@ class VersionMigrationIT {
             assertThat(jdbc.queryForObject(
                             "select version from " + schema + ".products where id=?", Long.class, product))
                     .isEqualTo(9);
-            assertThat(current.info().applied()).hasSize(2); // Fresh context already validated V1+V2 mappings.
+            assertThat(current.info().applied()).hasSize(3); // Fresh context validates the current V1+V2+V3 mappings.
         } finally {
             // Only this test-generated schema in the disposable @ServiceConnection database.
             jdbc.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");

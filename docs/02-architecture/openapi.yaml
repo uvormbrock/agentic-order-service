@@ -255,9 +255,10 @@ paths:
       - Customers
   /customers/{id}:
     delete:
-      description: "Customer-first locking: physically deletes an unreferenced customer\
-        \ or deactivates a referenced one. Returns 204 without a body."
-      operationId: delete
+      description: Physically deletes an active or inactive unreferenced customer.
+        Referenced customers return 409 CUSTOMER_HAS_ORDERS without changes; use PATCH
+        to deactivate.
+      operationId: delete_1
       parameters:
       - description: Canonical 36-character UUID text; upper/lowercase hex accepted
         example: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
@@ -270,7 +271,7 @@ paths:
           pattern: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
       responses:
         "204":
-          description: Customer removed or deactivated; no response body
+          description: Customer physically removed; no response body
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
@@ -332,6 +333,12 @@ paths:
                     code: CONCURRENT_MODIFICATION
                     message: The resource was modified concurrently. Please reload
                       and retry.
+                CUSTOMER_HAS_ORDERS:
+                  summary: CUSTOMER_HAS_ORDERS
+                  value:
+                    code: CUSTOMER_HAS_ORDERS
+                    message: Customer cannot be deleted because existing orders reference
+                      this customer. Deactivate the customer instead.
               schema:
                 $ref: "#/components/schemas/ApiError"
           description: Business or confirmed optimistic concurrency conflict; no blind
@@ -371,7 +378,7 @@ paths:
           headers:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
-      summary: Delete or deactivate a customer
+      summary: Delete an unreferenced customer
       tags:
       - Customers
     get:
@@ -1979,6 +1986,541 @@ paths:
             X-Request-ID:
               $ref: "#/components/headers/RequestId"
       summary: Update product details
+      tags:
+      - Products
+  /products/{id}/image:
+    delete:
+      description: Idempotent when product exists without an image. Requires image-write
+        opt-in; obsolete generation cleanup is recoverable maintenance. Image writes
+        are disabled by default. Enable app.product-images.writes-enabled only in
+        the isolated demo or a trusted deployment with externally enforced access
+        control. No authentication is provided by this service.
+      operationId: delete
+      parameters:
+      - description: Canonical 36-character UUID text; upper/lowercase hex accepted
+        example: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+      responses:
+        "204":
+          description: Image association removed or already absent; no response body.
+            Obsolete-file cleanup may require reconciliation.
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "400":
+          content:
+            application/json:
+              examples:
+                INVALID_RESOURCE_ID:
+                  summary: INVALID_RESOURCE_ID
+                  value:
+                    code: INVALID_RESOURCE_ID
+                    message: The resource identifier must use canonical UUID text
+                      representation.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: "Invalid UUID, missing multipart file, or empty/corrupt/oversized-dimension\
+            \ image; exact templates shown"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "403":
+          content:
+            application/json:
+              examples:
+                PRODUCT_IMAGE_WRITES_DISABLED:
+                  summary: PRODUCT_IMAGE_WRITES_DISABLED
+                  value:
+                    code: PRODUCT_IMAGE_WRITES_DISABLED
+                    message: Product image writes are disabled.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Image writes are disabled; explicit trusted-deployment opt-in
+            is required
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "404":
+          content:
+            application/json:
+              examples:
+                PRODUCT_NOT_FOUND:
+                  summary: PRODUCT_NOT_FOUND
+                  value:
+                    code: PRODUCT_NOT_FOUND
+                    message: The product was not found.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Product or image not found; exact templates identify the resource
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "500":
+          content:
+            application/json:
+              examples:
+                INTERNAL_SERVER_ERROR:
+                  summary: INTERNAL_SERVER_ERROR
+                  value:
+                    code: INTERNAL_SERVER_ERROR
+                    message: An unexpected server error occurred.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: "Unexpected technical or filesystem failure, including uncertain\
+            \ commit; rollback is not implied"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "503":
+          content:
+            application/json:
+              examples:
+                SERVICE_UNAVAILABLE:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    code: SERVICE_UNAVAILABLE
+                    message: A required service is temporarily unavailable.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Clearly classified dependency-establishment unavailability;
+            no blind replay
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+      summary: Delete product image
+      tags:
+      - Products
+    get:
+      description: Returns original JPEG/PNG bytes; inactive products remain readable.
+      operationId: original
+      parameters:
+      - description: Canonical 36-character UUID text; upper/lowercase hex accepted
+        example: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+      - in: header
+        name: Accept
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: "Original JPEG or PNG bytes, unchanged from upload"
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+            X-Content-Type-Options:
+              schema:
+                type: string
+                example: nosniff
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "400":
+          content:
+            application/json:
+              examples:
+                INVALID_RESOURCE_ID:
+                  summary: INVALID_RESOURCE_ID
+                  value:
+                    code: INVALID_RESOURCE_ID
+                    message: The resource identifier must use canonical UUID text
+                      representation.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: "Invalid UUID, missing multipart file, or empty/corrupt/oversized-dimension\
+            \ image; exact templates shown"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "404":
+          content:
+            application/json:
+              examples:
+                PRODUCT_IMAGE_NOT_FOUND:
+                  summary: PRODUCT_IMAGE_NOT_FOUND
+                  value:
+                    code: PRODUCT_IMAGE_NOT_FOUND
+                    message: The product image was not found.
+                PRODUCT_NOT_FOUND:
+                  summary: PRODUCT_NOT_FOUND
+                  value:
+                    code: PRODUCT_NOT_FOUND
+                    message: The product was not found.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Product or image not found; exact templates identify the resource
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "406":
+          content:
+            application/json:
+              examples:
+                NOT_ACCEPTABLE:
+                  summary: NOT_ACCEPTABLE
+                  value:
+                    code: NOT_ACCEPTABLE
+                    message: The requested response representation is not supported.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Accept does not permit the actual image representation; errors
+            still use JSON
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "500":
+          content:
+            application/json:
+              examples:
+                INTERNAL_SERVER_ERROR:
+                  summary: INTERNAL_SERVER_ERROR
+                  value:
+                    code: INTERNAL_SERVER_ERROR
+                    message: An unexpected server error occurred.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: "Unexpected technical or filesystem failure, including uncertain\
+            \ commit; rollback is not implied"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "503":
+          content:
+            application/json:
+              examples:
+                SERVICE_UNAVAILABLE:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    code: SERVICE_UNAVAILABLE
+                    message: A required service is temporarily unavailable.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Clearly classified dependency-establishment unavailability;
+            no blind replay
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+      summary: Retrieve original product image
+      tags:
+      - Products
+    put:
+      description: "JPEG/PNG file, at most 10 MiB and 40 million pixels. Original\
+        \ bytes preserved; PNG thumbnail fits 320x320 without upscaling. Writes require\
+        \ explicit trusted-deployment opt-in. Image writes are disabled by default.\
+        \ Enable app.product-images.writes-enabled only in the isolated demo or a\
+        \ trusted deployment with externally enforced access control. No authentication\
+        \ is provided by this service."
+      operationId: upload
+      parameters:
+      - description: Canonical 36-character UUID text; upper/lowercase hex accepted
+        example: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: JPEG or PNG image file
+              required:
+              - file
+        description: "Required multipart file part named file; declared image/jpeg\
+          \ or image/png must match decoded content. Maximum 10 MiB, 40 million pixels\
+          \ and 16,384 pixels per edge. Original bytes are preserved."
+        required: true
+      responses:
+        "204":
+          description: Original and thumbnail association committed; no response body
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "400":
+          content:
+            application/json:
+              examples:
+                INVALID_PRODUCT_IMAGE:
+                  summary: INVALID_PRODUCT_IMAGE
+                  value:
+                    code: INVALID_PRODUCT_IMAGE
+                    message: "The product image is empty, corrupt or exceeds the supported\
+                      \ dimensions."
+                INVALID_RESOURCE_ID:
+                  summary: INVALID_RESOURCE_ID
+                  value:
+                    code: INVALID_RESOURCE_ID
+                    message: The resource identifier must use canonical UUID text
+                      representation.
+                REQUIRED_FIELD_MISSING:
+                  summary: REQUIRED_FIELD_MISSING
+                  value:
+                    code: REQUIRED_FIELD_MISSING
+                    message: A required request field is missing or null.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: "Invalid UUID, missing multipart file, or empty/corrupt/oversized-dimension\
+            \ image; exact templates shown"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "403":
+          content:
+            application/json:
+              examples:
+                PRODUCT_IMAGE_WRITES_DISABLED:
+                  summary: PRODUCT_IMAGE_WRITES_DISABLED
+                  value:
+                    code: PRODUCT_IMAGE_WRITES_DISABLED
+                    message: Product image writes are disabled.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Image writes are disabled; explicit trusted-deployment opt-in
+            is required
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "404":
+          content:
+            application/json:
+              examples:
+                PRODUCT_NOT_FOUND:
+                  summary: PRODUCT_NOT_FOUND
+                  value:
+                    code: PRODUCT_NOT_FOUND
+                    message: The product was not found.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Product or image not found; exact templates identify the resource
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "413":
+          content:
+            application/json:
+              examples:
+                PRODUCT_IMAGE_TOO_LARGE:
+                  summary: PRODUCT_IMAGE_TOO_LARGE
+                  value:
+                    code: PRODUCT_IMAGE_TOO_LARGE
+                    message: The product image must not exceed 10 MiB.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Upload exceeds the configured multipart limit or 10 MiB image
+            limit
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "415":
+          content:
+            application/json:
+              examples:
+                UNSUPPORTED_MEDIA_TYPE:
+                  summary: UNSUPPORTED_MEDIA_TYPE
+                  value:
+                    code: UNSUPPORTED_MEDIA_TYPE
+                    message: The request media type is not supported.
+                UNSUPPORTED_PRODUCT_IMAGE:
+                  summary: UNSUPPORTED_PRODUCT_IMAGE
+                  value:
+                    code: UNSUPPORTED_PRODUCT_IMAGE
+                    message: The product image must be JPEG or PNG and match its declared
+                      media type.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Expected multipart/form-data containing JPEG or PNG matching
+            the declared file media type
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "500":
+          content:
+            application/json:
+              examples:
+                INTERNAL_SERVER_ERROR:
+                  summary: INTERNAL_SERVER_ERROR
+                  value:
+                    code: INTERNAL_SERVER_ERROR
+                    message: An unexpected server error occurred.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: "Unexpected technical or filesystem failure, including uncertain\
+            \ commit; rollback is not implied"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "503":
+          content:
+            application/json:
+              examples:
+                SERVICE_UNAVAILABLE:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    code: SERVICE_UNAVAILABLE
+                    message: A required service is temporarily unavailable.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Clearly classified dependency-establishment unavailability;
+            no blind replay
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+      summary: Upload or replace a product image
+      tags:
+      - Products
+  /products/{id}/image/thumbnail:
+    get:
+      description: Returns generated aspect-ratio-preserving PNG thumbnail.
+      operationId: thumbnail
+      parameters:
+      - description: Canonical 36-character UUID text; upper/lowercase hex accepted
+        example: aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee
+        in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+          pattern: "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+      - in: header
+        name: Accept
+        required: false
+        schema:
+          type: string
+      responses:
+        "200":
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+          description: Generated PNG thumbnail; fits 320x320 without upscaling
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: no-store
+            X-Content-Type-Options:
+              schema:
+                type: string
+                example: nosniff
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "400":
+          content:
+            application/json:
+              examples:
+                INVALID_RESOURCE_ID:
+                  summary: INVALID_RESOURCE_ID
+                  value:
+                    code: INVALID_RESOURCE_ID
+                    message: The resource identifier must use canonical UUID text
+                      representation.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: "Invalid UUID, missing multipart file, or empty/corrupt/oversized-dimension\
+            \ image; exact templates shown"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "404":
+          content:
+            application/json:
+              examples:
+                PRODUCT_IMAGE_NOT_FOUND:
+                  summary: PRODUCT_IMAGE_NOT_FOUND
+                  value:
+                    code: PRODUCT_IMAGE_NOT_FOUND
+                    message: The product image was not found.
+                PRODUCT_NOT_FOUND:
+                  summary: PRODUCT_NOT_FOUND
+                  value:
+                    code: PRODUCT_NOT_FOUND
+                    message: The product was not found.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Product or image not found; exact templates identify the resource
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "406":
+          content:
+            application/json:
+              examples:
+                NOT_ACCEPTABLE:
+                  summary: NOT_ACCEPTABLE
+                  value:
+                    code: NOT_ACCEPTABLE
+                    message: The requested response representation is not supported.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Accept does not permit the actual image representation; errors
+            still use JSON
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "500":
+          content:
+            application/json:
+              examples:
+                INTERNAL_SERVER_ERROR:
+                  summary: INTERNAL_SERVER_ERROR
+                  value:
+                    code: INTERNAL_SERVER_ERROR
+                    message: An unexpected server error occurred.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: "Unexpected technical or filesystem failure, including uncertain\
+            \ commit; rollback is not implied"
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+        "503":
+          content:
+            application/json:
+              examples:
+                SERVICE_UNAVAILABLE:
+                  summary: SERVICE_UNAVAILABLE
+                  value:
+                    code: SERVICE_UNAVAILABLE
+                    message: A required service is temporarily unavailable.
+              schema:
+                $ref: "#/components/schemas/ApiError"
+          description: Clearly classified dependency-establishment unavailability;
+            no blind replay
+          headers:
+            X-Request-ID:
+              $ref: "#/components/headers/RequestId"
+      summary: Retrieve product image thumbnail
       tags:
       - Products
 components:

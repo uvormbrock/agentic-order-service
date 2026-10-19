@@ -31,3 +31,7 @@ For each increment report changed files, why, gates run/results, remaining risks
 ## Version-Controlled Prompts
 
 The [prompt playbook](prompts/00-index.md) records agreed prompts and real execution evidence. Prompt storage does not authorize execution or replace requirements/ADRs. Keep unexecuted prompts Planned and do not fabricate results or lessons learned.
+
+## Multi-Agent Change Requests
+
+For an explicitly authorized Change Request, use the [Multi-Agent Framework](multi-agent/README.md), its bounded correction workflow and handoff/report templates. The main session coordinates actual specialist delegation. Existing authority, approval and final human acceptance rules remain unchanged. Setup does not authorize any business Change Request.

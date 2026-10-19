@@ -82,6 +82,21 @@ public class ApiExceptionHandler {
                 case TECHNICAL -> INTERNAL_SERVER_ERROR;
             };
         }
+        if (cause instanceof com.example.agenticorderservice.product.application.ProductImageFailure image) {
+            return switch (image.reason()) {
+                case INVALID -> INVALID_PRODUCT_IMAGE;
+                case TOO_LARGE -> PRODUCT_IMAGE_TOO_LARGE;
+                case UNSUPPORTED -> UNSUPPORTED_PRODUCT_IMAGE;
+                case NOT_FOUND -> PRODUCT_IMAGE_NOT_FOUND;
+                case WRITES_DISABLED -> PRODUCT_IMAGE_WRITES_DISABLED;
+                case STORAGE -> INTERNAL_SERVER_ERROR;
+            };
+        }
+        if (cause instanceof org.springframework.web.multipart.MaxUploadSizeExceededException)
+            return PRODUCT_IMAGE_TOO_LARGE;
+        if (cause instanceof org.springframework.web.multipart.support.MissingServletRequestPartException)
+            return REQUIRED_FIELD_MISSING;
+        if (cause instanceof org.springframework.web.multipart.MultipartException) return INVALID_PRODUCT_IMAGE;
         if (cause instanceof ApiInputException input) {
             return input.code();
         }
@@ -95,6 +110,9 @@ public class ApiExceptionHandler {
         }
         if (cause instanceof ProductNotFoundException) {
             return PRODUCT_NOT_FOUND;
+        }
+        if (cause instanceof com.example.agenticorderservice.customer.application.CustomerHasOrdersException) {
+            return CUSTOMER_HAS_ORDERS;
         }
         if (cause instanceof CustomerNotFoundException) {
             return CUSTOMER_NOT_FOUND;

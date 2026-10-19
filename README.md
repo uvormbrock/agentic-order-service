@@ -24,24 +24,57 @@ You do **not** need to install PostgreSQL or Maven separately: PostgreSQL runs i
 
 ### Step 1 — Start Database and Application
 
-From the repository root, in Terminal 1:
+From the repository root, choose **one** startup option in **Terminal 1**.
+
+**Standard startup:**
 
 ```sh
 make demo-setup
 make demo-run
 ```
 
-`demo-run` runs in the **foreground**; keep this terminal open and wait for Spring Boot's `Started` message.
+**Logging-enabled startup:**
+
+```sh
+make demo-setup
+make demo-run-logged LOG_LEVEL=DEBUG
+```
+
+Both options run in the **foreground**; keep Terminal 1 open and wait for Spring Boot's
+`Started` message. The logged startup sends output to both the console and `logs/demo.log`.
+Without `LOG_LEVEL=DEBUG`, `demo-run-logged` defaults to INFO. DEBUG targets only
+`RequestLoggingListener`, making expected HTTP 409 completion events visible;
+global/framework DEBUG stays disabled. `logs/demo.log` is local runtime output and is not committed.
+
+**Optional Terminal 2 — Follow logs after logging-enabled startup:**
+
+```sh
+make demo-logs
+```
+
+The equivalent direct command is `tail -f logs/demo.log`.
 
 ### Step 2 — Load Sample Data
 
-After successful startup, open Terminal 2 in the repository root:
+After either startup option succeeds, use another available terminal at the repository
+root (Terminal 3 if Terminal 2 is following logs):
 
 ```sh
 make demo-seed
 ```
 
-This creates **5 customers, 8 products, 4 orders and 8 order items** through the REST APIs. The [dataset description](demo/data/README.md) explains the discount and historical-price scenarios. Seeding requires an empty database; a second run refuses writes rather than duplicating or overwriting data.
+This creates **5 customers, 8 products, 4 orders and 8 order items** through the REST APIs. The [dataset description](demo/data/README.md) explains the discount and historical-price scenarios. Seed only an empty database; do not execute it repeatedly or retry a partial seed automatically. A second run refuses writes rather than duplicating or overwriting data.
+
+After logging-enabled startup, search recorded events from this terminal:
+
+```sh
+grep -E 'CUSTOMER_DELETED|HTTP_REQUEST_COMPLETED' logs/demo.log
+grep -E 'HTTP_REQUEST_COMPLETED.*status=409' logs/demo.log
+```
+
+Match a response's server-generated `X-Request-ID` to the log's `requestId` to correlate
+HTTP and application events. See the [demo logging guide](docs/06-operations/local-demo.md#application-logs)
+for details; rejected deletes have no `CUSTOMER_DELETED` success event.
 
 ### Step 3 — Inspect Data with DBeaver
 
@@ -63,6 +96,10 @@ Use `127.0.0.1` if `localhost` resolves only to IPv6. See the [detailed REST exa
 
 ### Step 5 — Stop the Demo
 
+Press **Ctrl-C in Terminal 1** to stop the foreground application while leaving the
+database running. Ctrl-C in Terminal 2 stops only the log follower. To tear down the
+disposable demo infrastructure and discard its data, run:
+
 ```sh
 make demo-down
 ```
@@ -79,7 +116,7 @@ The runtime-generated [OpenAPI YAML specification](docs/02-architecture/openapi.
 
 ## Key Engineering Features
 
-- **Customer, Product and Order APIs:** create, query and update customers/products, deactivate products, delete or deactivate customers according to order references, and place/retrieve orders.
+- **Customer, Product and Order APIs:** create, query and update customers/products, deactivate products, explicitly deactivate customers and delete only unreferenced customers, and place/retrieve orders. CH-001 Phase 2 implements referenced DELETE/409 without mutation; see the [review evidence](docs/04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md). Human acceptance is pending.
 - **Strict HTTP contracts:** dedicated request/response DTOs, nested JSON validation, rejected caller-supplied prices and deterministic error codes with safe response messages.
 - **Domain invariants:** immutable monetary values, consolidated order quantities, historical product snapshots and a 10% discount at a subtotal of **EUR 100.00 or above**.
 - **Transactional consistency:** `TransactionTemplate`, READ COMMITTED, ambient-transaction rejection, Customer-first pessimistic locking and deterministically ordered Product locks. Product/Customer writes retain optimistic `@Version` checks.

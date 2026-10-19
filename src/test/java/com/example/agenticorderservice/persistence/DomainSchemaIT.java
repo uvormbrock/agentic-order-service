@@ -29,13 +29,13 @@ class DomainSchemaIT {
 
     @Test
     void usesUnconstrainedNumericsAndRepeatableValidatedMigrationHistory() {
-        assertThat(factory.getMetamodel().getEntities()).hasSize(4);
+        assertThat(factory.getMetamodel().getEntities()).hasSize(5);
         assertThat(jdbc.queryForObject(
                         "select count(*) from information_schema.columns where table_schema='public' and data_type='numeric' and numeric_precision is null and numeric_scale is null",
                         Long.class))
                 .isEqualTo(6);
         assertThat(flyway.validateWithResult().validationSuccessful).isTrue();
-        assertThat(flyway.info().applied()).hasSize(2);
+        assertThat(flyway.info().applied()).hasSize(3);
         assertThat(flyway.migrate().migrationsExecuted).isZero();
         assertThat(jdbc.queryForObject("select checksum from flyway_schema_history where version='1'", Integer.class))
                 .isNotNull();

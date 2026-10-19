@@ -19,10 +19,49 @@ public final class ApiRequestInterceptor implements HandlerInterceptor {
         if (!isFeatureHandler(handler)) {
             return true;
         }
-        validateContentType(request);
-        validateAccept(request.getHeader(HttpHeaders.ACCEPT));
+        if (handler instanceof HandlerMethod method
+                && method.getBeanType() == com.example.agenticorderservice.product.api.ProductImageController.class) {
+            validateImageHeaders(request);
+        } else {
+            validateContentType(request);
+            validateAccept(request.getHeader(HttpHeaders.ACCEPT));
+        }
         validatePath(request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE));
         return true;
+    }
+
+    private void validateImageHeaders(HttpServletRequest request) {
+        if (request.getMethod().equals("PUT")) {
+            validateMultipartType(request.getContentType());
+        }
+        if (request.getMethod().equals("GET") || request.getMethod().equals("HEAD")) {
+            validateImageAccept(request.getHeader(HttpHeaders.ACCEPT));
+        }
+    }
+
+    private void validateMultipartType(String contentType) {
+        try {
+            if (contentType == null
+                    || !MediaType.MULTIPART_FORM_DATA.isCompatibleWith(MediaType.parseMediaType(contentType))) {
+                throw new ApiInputException(UNSUPPORTED_MEDIA_TYPE);
+            }
+        } catch (IllegalArgumentException failure) {
+            throw new ApiInputException(UNSUPPORTED_MEDIA_TYPE);
+        }
+    }
+
+    private void validateImageAccept(String accept) {
+        if (accept == null) return;
+        try {
+            var types = MediaType.parseMediaTypes(accept);
+            boolean accepted = types.stream()
+                    .anyMatch(type -> type.getQualityValue() > 0
+                            && (type.isCompatibleWith(MediaType.IMAGE_JPEG)
+                                    || type.isCompatibleWith(MediaType.IMAGE_PNG)));
+            if (!accepted) throw new ApiInputException(NOT_ACCEPTABLE);
+        } catch (IllegalArgumentException failure) {
+            throw new ApiInputException(NOT_ACCEPTABLE);
+        }
     }
 
     private boolean isFeatureHandler(Object handler) {

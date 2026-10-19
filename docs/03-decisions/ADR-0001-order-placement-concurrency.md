@@ -1,5 +1,7 @@
 # ADR-0001: Consistent Ordering of Order Placement and Related Changes
 
+**Scoped contract precedence — 2026-10-18:** The [approved Customer DELETE target](../01-requirements/product-requirements.md#customer-delete--approved-target-contract-2026-10-18) supersedes the earlier referenced-customer deactivation outcome below for future DELETE behavior only. Placement-first requires DELETE/409 with unchanged customer/order state; delete-first must not leave dangling references. Existing text and execution evidence preserve the historical contract; Phase 2 now implements referenced DELETE/409 without mutation; see the [Phase 2 review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md) for verification and pending human acceptance; no new enforcement technique or change to this ADR's status is implied.
+
 **Status:** Accepted business consistency policy; technical enforcement pending
 **Related:** [Product Requirements](../01-requirements/product-requirements.md) · [Domain Model](../02-architecture/domain-model.md) · [Order Item Snapshots](../02-architecture/order-item-snapshots.md)
 

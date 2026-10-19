@@ -229,9 +229,14 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
                     blocked("customers");
                     release.countDown();
                     assertThat(order.get(15, TimeUnit.SECONDS).customerId()).isEqualTo(c);
-                    deletion.get(15, TimeUnit.SECONDS);
+                    assertThatThrownBy(() -> deletion.get(15, TimeUnit.SECONDS))
+                            .hasCauseInstanceOf(
+                                    com.example.agenticorderservice.customer.application.CustomerHasOrdersException
+                                            .class);
+                    assertThat(jdbc.queryForObject("select version from customers where id=?", Long.class, c))
+                            .isZero();
                     assertThat(jdbc.queryForObject("select active from customers where id=?", Boolean.class, c))
-                            .isFalse();
+                            .isTrue();
                     assertThat(jdbc.queryForObject("select count(*) from orders where customer_id=?", Integer.class, c))
                             .isEqualTo(1);
                 } else {
@@ -645,32 +650,19 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
                 .isEqualTo(1);
         try (var events =
                 new com.example.agenticorderservice.shared.logging.EventCapture(CustomerApplicationService.class)) {
-            tx(() -> {
-                customerService.delete(c);
-                assertThat(events.messages()).isEmpty();
-                return null;
-            });
-            assertThat(events.messages()).containsExactly("event=CUSTOMER_DEACTIVATED_BY_DELETE");
+            assertThatThrownBy(() -> customerService.delete(c))
+                    .isInstanceOf(
+                            com.example.agenticorderservice.customer.application.CustomerHasOrdersException.class);
+            assertThat(events.messages()).isEmpty();
             assertThat(jdbc.queryForObject("select active from customers where id=?", Boolean.class, c))
-                    .isFalse();
-            tx(() -> {
-                customerService.delete(c);
-                assertThat(events.messages()).hasSize(1);
-                return null;
-            });
-            assertThat(events.messages())
-                    .containsExactly("event=CUSTOMER_DEACTIVATED_BY_DELETE", "event=CUSTOMER_DELETE_NOOP");
+                    .isTrue();
             UUID unreferenced = customer();
             tx(() -> {
                 customerService.delete(unreferenced);
-                assertThat(events.messages()).hasSize(2);
+                assertThat(events.messages()).isEmpty();
                 return null;
             });
-            assertThat(events.messages())
-                    .containsExactly(
-                            "event=CUSTOMER_DEACTIVATED_BY_DELETE",
-                            "event=CUSTOMER_DELETE_NOOP",
-                            "event=CUSTOMER_DELETED");
+            assertThat(events.messages()).containsExactly("event=CUSTOMER_DELETED");
             assertThat(jdbc.queryForObject("select count(*) from customers where id=?", Integer.class, unreferenced))
                     .isZero();
             UUID rollback = customer();
@@ -679,7 +671,7 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
                 status.setRollbackOnly();
                 return null;
             });
-            assertThat(events.messages()).hasSize(3);
+            assertThat(events.messages()).hasSize(1);
             assertThat(jdbc.queryForObject("select count(*) from customers where id=?", Integer.class, rollback))
                     .isEqualTo(1);
         }
