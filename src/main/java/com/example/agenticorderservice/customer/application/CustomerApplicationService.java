@@ -93,6 +93,10 @@ public class CustomerApplicationService {
         }
     }
 
+    public static String normalizeEmail(String value) {
+        return validateEmail(value).value();
+    }
+
     private Customer findLocked(UUID id) {
         return repository.findLockedById(id).orElseThrow(CustomerNotFoundException::new);
     }

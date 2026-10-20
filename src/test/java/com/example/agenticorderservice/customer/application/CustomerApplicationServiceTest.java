@@ -16,6 +16,27 @@ class CustomerApplicationServiceTest {
     private final UUID id = UUID.randomUUID();
 
     @Test
+    void normalizesEmailWithoutChangingValidationFailuresOrBoundaries() {
+        assertThat(CustomerApplicationService.normalizeEmail("\u2003 Alice.Tag+Orders@Example.COM \t"))
+                .isEqualTo("alice.tag+orders@example.com");
+        String boundary = "A".repeat(242) + "@EXAMPLE.COM";
+        assertThat(CustomerApplicationService.normalizeEmail(" " + boundary + " "))
+                .isEqualTo("a".repeat(242) + "@example.com");
+        for (String invalid :
+                new String[] {"invalid", "a..b@example.com", "á@example.com", "a".repeat(243) + "@example.com"}) {
+            assertThatExceptionOfType(InputValidationException.class)
+                    .isThrownBy(() -> CustomerApplicationService.normalizeEmail(invalid))
+                    .satisfies(exception ->
+                            assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.EMAIL));
+        }
+        assertThatExceptionOfType(InputValidationException.class)
+                .isThrownBy(() -> CustomerApplicationService.normalizeEmail(null))
+                .satisfies(exception ->
+                        assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
     void createsNormalizedActiveResource() {
         when(repository.save(any())).thenAnswer(call -> call.getArgument(0));
         var result = service.create("  Älice😀  ", "user@example.com");
