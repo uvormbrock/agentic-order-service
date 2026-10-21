@@ -1,7 +1,10 @@
 package com.example.agenticorderservice.customer.application;
 
+import com.example.agenticorderservice.customer.application.port.in.CustomerOperations;
+import com.example.agenticorderservice.customer.application.port.out.CustomerOrderReferences;
+import com.example.agenticorderservice.customer.application.port.out.CustomerReadStore;
+import com.example.agenticorderservice.customer.application.port.out.CustomerWriteStore;
 import com.example.agenticorderservice.customer.domain.Customer;
-import com.example.agenticorderservice.customer.persistence.CustomerRepository;
 import com.example.agenticorderservice.shared.application.InputValidationException;
 import java.util.List;
 import java.util.UUID;
@@ -9,34 +12,39 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CustomerApplicationService {
-    private final CustomerRepository repository;
-    private final com.example.agenticorderservice.order.application.OrderReferenceQuery orders;
+public class CustomerApplicationService implements CustomerOperations {
+    private final CustomerReadStore reads;
+    private final CustomerWriteStore writes;
+    private final CustomerOrderReferences orders;
 
     public CustomerApplicationService(
-            CustomerRepository repository,
-            com.example.agenticorderservice.order.application.OrderReferenceQuery orders) {
-        this.repository = repository;
+            CustomerReadStore reads, CustomerWriteStore writes, CustomerOrderReferences orders) {
+        this.reads = reads;
+        this.writes = writes;
         this.orders = orders;
     }
 
+    @Override
     @Transactional
     public CustomerResult create(String name, String email) {
         String normalized = InputValidationException.name(name);
         var validated = validateEmail(email);
-        return CustomerResult.from(repository.save(new Customer(normalized, validated)));
+        return CustomerResult.from(writes.save(new Customer(normalized, validated)));
     }
 
+    @Override
     @Transactional(readOnly = true)
     public CustomerResult get(UUID id) {
-        return CustomerResult.from(find(id));
+        return reads.findById(id).orElseThrow(CustomerNotFoundException::new);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<CustomerResult> list() {
-        return repository.findAll().stream().map(CustomerResult::from).toList();
+        return reads.findAll();
     }
 
+    @Override
     @Transactional
     public CustomerResult update(UUID id, String name, String email) {
         String normalized = InputValidationException.name(name);
@@ -46,6 +54,7 @@ public class CustomerApplicationService {
         return CustomerResult.from(entity);
     }
 
+    @Override
     @Transactional
     public CustomerResult deactivate(UUID id) {
         var entity = findLocked(id);
@@ -55,6 +64,7 @@ public class CustomerApplicationService {
         return CustomerResult.from(entity);
     }
 
+    @Override
     @Transactional(isolation = org.springframework.transaction.annotation.Isolation.READ_COMMITTED)
     public void delete(UUID id) {
         var entity = findLocked(id);
@@ -62,7 +72,7 @@ public class CustomerApplicationService {
         if (orders.references(id)) {
             throw new CustomerHasOrdersException();
         }
-        repository.delete(entity);
+        writes.delete(entity);
         observeDeleteCommit("CUSTOMER_DELETED", org.slf4j.event.Level.INFO);
     }
 
@@ -98,10 +108,6 @@ public class CustomerApplicationService {
     }
 
     private Customer findLocked(UUID id) {
-        return repository.findLockedById(id).orElseThrow(CustomerNotFoundException::new);
-    }
-
-    private Customer find(UUID id) {
-        return repository.findById(id).orElseThrow(CustomerNotFoundException::new);
+        return writes.findLockedById(id).orElseThrow(CustomerNotFoundException::new);
     }
 }

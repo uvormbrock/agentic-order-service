@@ -4,8 +4,8 @@ import static com.example.agenticorderservice.product.image.ProductImageFixtures
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.example.agenticorderservice.product.application.ProcessedImage;
 import com.example.agenticorderservice.product.application.ProductImageFailure;
-import com.example.agenticorderservice.product.application.ProductImageProcessor;
 import java.nio.file.*;
 import java.util.Set;
 import java.util.UUID;
@@ -22,7 +22,7 @@ class ProductImageStorageTest {
         return new ProductImageStorage(temporary.toRealPath().resolve("managed").toString());
     }
 
-    ProductImageProcessor.ProcessedImage processed() {
+    ProcessedImage processed() {
         return new ProductImageProcessor().process(image("png", 640, 320), "image/png");
     }
 

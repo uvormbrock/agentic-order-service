@@ -3,82 +3,50 @@ package com.example.agenticorderservice.product.application;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.example.agenticorderservice.product.application.port.out.ProductCatalogReads;
 import com.example.agenticorderservice.product.domain.*;
-import com.example.agenticorderservice.product.persistence.ProductRepository;
-import com.example.agenticorderservice.shared.application.InputValidationException;
 import com.example.agenticorderservice.shared.domain.Money;
 import java.math.BigDecimal;
 import java.util.*;
 import org.junit.jupiter.api.*;
 
 class ProductApplicationServiceTest {
-    private final ProductRepository repository = mock(ProductRepository.class);
-    private final ProductApplicationService service = new ProductApplicationService(repository);
+    private final ProductCatalogReads repository = mock(ProductCatalogReads.class);
+    private final com.example.agenticorderservice.product.application.port.in.GetProductQuery query =
+            mock(com.example.agenticorderservice.product.application.port.in.GetProductQuery.class);
+    private final com.example.agenticorderservice.product.application.port.in.ProductWriteOperations writes =
+            mock(com.example.agenticorderservice.product.application.port.in.ProductWriteOperations.class);
+    private final ProductApplicationService service = new ProductApplicationService(repository, query, writes);
     private final UUID id = UUID.randomUUID();
 
     @Test
-    void createsNormalizedActiveResource() {
-        when(repository.save(any())).thenAnswer(call -> call.getArgument(0));
-        var result = service.create("  Älice😀  ", new BigDecimal("12.34"));
-        assertThat(result.name()).isEqualTo("Älice😀");
-        assertThat(result.active()).isTrue();
-        verify(repository).save(any());
+    void priceValidatorCompatibilityMethodReturnsValidatedMoney() {
+        assertThat(ProductApplicationService.validatePrice(new BigDecimal("12.3")))
+                .isEqualTo(Money.of("12.30"));
     }
 
     @Test
-    void invalidInputNeverReadsOrWritesRepository() {
-        var validPrice = new BigDecimal("12.34");
-        var invalidPrice = new BigDecimal("12.345");
-        assertThatThrownBy(() -> service.create("", validPrice)).isInstanceOf(InputValidationException.class);
-        assertThatThrownBy(() -> service.update(id, "Valid", invalidPrice))
-                .isInstanceOf(InputValidationException.class);
-        assertThatExceptionOfType(InputValidationException.class)
-                .isThrownBy(() -> service.create("Valid", null))
-                .satisfies(exception ->
-                        assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
-        assertThatExceptionOfType(InputValidationException.class)
-                .isThrownBy(() -> service.update(id, "Valid", null))
-                .satisfies(exception ->
-                        assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
-        verifyNoInteractions(repository);
+    void writeCompatibilityMethodsDelegateWithoutRepositoryAccess() {
+        var result = new ProductResult(id, "Name", new BigDecimal("12.34"), false);
+        when(writes.create("Name", new BigDecimal("12.34"))).thenReturn(result);
+        when(writes.update(id, "Name", new BigDecimal("12.34"))).thenReturn(result);
+        when(writes.deactivate(id)).thenReturn(result);
+        assertThat(service.create("Name", new BigDecimal("12.34"))).isSameAs(result);
+        assertThat(service.update(id, "Name", new BigDecimal("12.34"))).isSameAs(result);
+        assertThat(service.deactivate(id)).isSameAs(result);
+        verify(writes).create("Name", new BigDecimal("12.34"));
+        verify(writes).update(id, "Name", new BigDecimal("12.34"));
+        verify(writes).deactivate(id);
+        verifyNoMoreInteractions(writes);
+        verifyNoInteractions(repository, query);
     }
 
     @Test
-    void missingResourceRaisesFeatureFailure() {
-        when(repository.findById(id)).thenReturn(Optional.empty());
+    void missingReadResourceRetainsFeatureFailureThroughCompatibilityDelegate() {
+        when(query.get(id)).thenThrow(new ProductNotFoundException());
         assertThatThrownBy(() -> service.get(id)).isInstanceOf(ProductNotFoundException.class);
-        var validPrice = new BigDecimal("12.34");
-        assertThatThrownBy(() -> service.update(id, "Valid", validPrice)).isInstanceOf(ProductNotFoundException.class);
-        assertThatThrownBy(() -> service.deactivate(id)).isInstanceOf(ProductNotFoundException.class);
-    }
-
-    @Test
-    void updatesInactiveResourceAndPreservesActivity() {
-        var entity = new Product("Original", Money.of("12.34"));
-        entity.deactivate();
-        when(repository.findLockedById(id)).thenReturn(Optional.of(entity));
-        var originalId = entity.getId();
-        var result = service.update(id, "Changed", new BigDecimal("45.67"));
-        assertThat(result.price()).isEqualByComparingTo("45.67");
-        assertThat(entity.getPrice()).isEqualTo(Money.of("45.67"));
-        assertThat(result.id()).isEqualTo(originalId);
-        assertThat(entity.getId()).isEqualTo(originalId);
-        assertThat(entity.getName()).isEqualTo("Changed");
-        assertThat(entity.isActive()).isFalse();
-        assertThat(result.name()).isEqualTo("Changed");
-        assertThat(result.active()).isFalse();
-        verify(repository, never()).save(any());
-    }
-
-    @Test
-    void repeatedDeactivationIsUnchangedAndDoesNotSave() {
-        var entity = new Product("Original", Money.of("12.34"));
-        when(repository.findLockedById(id)).thenReturn(Optional.of(entity));
-        var first = service.deactivate(id);
-        var second = service.deactivate(id);
-        assertThat(second).isEqualTo(first);
-        assertThat(second.active()).isFalse();
-        verify(repository, never()).save(any());
+        verify(query).get(id);
+        verifyNoInteractions(repository, writes);
     }
 
     @Test
@@ -86,7 +54,7 @@ class ProductApplicationServiceTest {
         var active = new Product("First", Money.of("12.34"));
         var inactive = new Product("Second", Money.of("12.34"));
         inactive.deactivate();
-        when(repository.findAll()).thenReturn(List.of(active, inactive));
+        when(repository.findAll()).thenReturn(List.of(ProductResult.from(active), ProductResult.from(inactive)));
         var results = service.list();
         assertThat(results).hasSize(2);
         assertThat(results).extracting(ProductResult::active).containsExactly(true, false);
@@ -98,11 +66,13 @@ class ProductApplicationServiceTest {
     @Test
     void resultIsSnapshotIndependentOfLaterMutation() {
         var entity = new Product("Original", Money.of("12.34"));
-        when(repository.findById(id)).thenReturn(Optional.of(entity));
+        when(query.get(id)).thenReturn(ProductResult.from(entity));
         var result = service.get(id);
         entity.update("Changed", Money.of("12.34"));
         entity.deactivate();
         assertThat(result.name()).isEqualTo("Original");
         assertThat(result.active()).isTrue();
+        verify(query).get(id);
+        verifyNoInteractions(repository);
     }
 }

@@ -2,6 +2,8 @@ package com.example.agenticorderservice.architecture;
 
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -67,11 +69,82 @@ class ArchitectureComplianceTest {
         noClasses()
                 .that()
                 .resideInAPackage(ROOT + "..persistence..")
+                .and()
+                .doNotHaveFullyQualifiedName(ROOT + ".product.persistence.ProductReadAdapter")
+                .and()
+                .doNotHaveFullyQualifiedName(ROOT + ".product.persistence.ProductWriteAdapter")
+                .and()
+                .doNotHaveFullyQualifiedName(ROOT + ".product.persistence.ProductImageMetadataAdapter")
+                .and()
+                .doNotHaveFullyQualifiedName(ROOT + ".customer.persistence.CustomerReadAdapter")
+                .and()
+                .doNotHaveFullyQualifiedName(ROOT + ".customer.persistence.CustomerWriteAdapter")
+                .and()
+                .doNotHaveFullyQualifiedName(ROOT + ".customer.persistence.CustomerOrderReferenceAdapter")
+                .and()
+                .doNotHaveFullyQualifiedName(ROOT + ".order.persistence.OrderReadAdapter")
+                .and()
+                .doNotHaveFullyQualifiedName(ROOT + ".order.persistence.OrderWriteAdapter")
                 .should()
                 .dependOnClassesThat()
                 .resideInAnyPackage(ROOT + "..api..", ROOT + "..application..")
+                .check(PRODUCTION);
+        noClasses()
+                .that()
+                .haveFullyQualifiedName(ROOT + ".product.persistence.ProductReadAdapter")
+                .should()
+                .dependOnClassesThat(new DescribedPredicate<JavaClass>("forbidden transport or application types") {
+                    @Override
+                    public boolean test(JavaClass target) {
+                        return (target.getPackageName().endsWith(".api")
+                                        || target.getPackageName().contains(".api."))
+                                || (target.getPackageName().contains(".application")
+                                        && !target.getName().equals(ROOT + ".product.application.ProductResult")
+                                        && !target.getName()
+                                                .equals(ROOT + ".product.application.ProductNotFoundException")
+                                        && !target.getName()
+                                                .equals(ROOT + ".product.application.port.out.ProductCatalogReads")
+                                        && !target.getName()
+                                                .equals(ROOT + ".product.application.port.out.FindProductById"));
+                    }
+                })
                 .because("persistence must not orchestrate use cases or depend on transport adapters")
                 .check(PRODUCTION);
+    }
+
+    @Test
+    void productWriteAdapterDependsOnlyOnItsExactApplicationOutputPort() {
+        noClasses()
+                .that()
+                .haveFullyQualifiedName(ROOT + ".product.persistence.ProductWriteAdapter")
+                .should()
+                .dependOnClassesThat(new DescribedPredicate<JavaClass>("forbidden transport or application types") {
+                    @Override
+                    public boolean test(JavaClass target) {
+                        return target.getPackageName().contains(".api")
+                                || (target.getPackageName().contains(".application")
+                                        && !target.getName()
+                                                .equals(ROOT + ".product.application.port.out.ProductWriteStore"));
+                    }
+                })
+                .check(PRODUCTION);
+    }
+
+    @Test
+    void imageMetadataAdapterDependsOnlyOnItsExactApplicationContract() {
+        var allowed = java.util.Set.of(
+                ROOT + ".product.application.port.out.ProductImageMetadataStore",
+                ROOT + ".product.application.ProductImageSnapshot",
+                ROOT + ".product.application.ProductNotFoundException");
+        for (var dependency : PRODUCTION
+                .get(ROOT + ".product.persistence.ProductImageMetadataAdapter")
+                .getDirectDependenciesFromSelf()) {
+            var target = dependency.getTargetClass();
+            if (target.getPackageName().contains(".application")) {
+                org.assertj.core.api.Assertions.assertThat(allowed).contains(target.getName());
+            }
+            org.assertj.core.api.Assertions.assertThat(target.getPackageName()).doesNotContain(".api");
+        }
     }
 
     @ParameterizedTest

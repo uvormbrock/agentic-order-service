@@ -1,6 +1,8 @@
 package com.example.agenticorderservice.order.api;
 
 import com.example.agenticorderservice.order.application.*;
+import com.example.agenticorderservice.order.application.port.in.OrderPlacementOperations;
+import com.example.agenticorderservice.order.application.port.in.OrderQueries;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -13,10 +15,10 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/orders")
 public class OrderController {
-    private final OrderPlacementCoordinator placement;
-    private final OrderQueryService queries;
+    private final OrderPlacementOperations placement;
+    private final OrderQueries queries;
 
-    public OrderController(OrderPlacementCoordinator placement, OrderQueryService queries) {
+    public OrderController(OrderPlacementOperations placement, OrderQueries queries) {
         this.placement = placement;
         this.queries = queries;
     }

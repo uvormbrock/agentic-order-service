@@ -128,3 +128,13 @@ The separately authorized C1–C6 follow-up remains **Blocked — Human Decision
 **Approved target contract:** [PRD](../01-requirements/product-requirements.md#customer-delete--approved-target-contract-2026-10-18). Phase 2 explicitly authorized on 2026-10-18 and implemented; human acceptance is pending. See the [review record](../04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md) for checklist evidence and limitations.
 
 Current code returns 204 only for physical removal and 409 CUSTOMER_HAS_ORDERS for referenced customers without mutation; PATCH remains separate. Historical increment prompts, results and human acceptance above remain unchanged.
+## CH-003 Increment 0 — architecture/team/hooks only
+
+Authorized 2026-10-21: documentation of [ADR-0007](../03-decisions/ADR-0007-hexagonal-architecture-migration.md), a three-specialist native team and minimal hook preparation/validation. [CH-003 records](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/README.md) hold actual evidence. Option B is subsequently human Accepted; production migration remains unapproved. Follow the [increment proposal](../02-architecture/hexagonal-migration.md); do not begin Increment 1 before frozen port/transaction contracts and specific implementation authorization. Git hook activation is a separate human decision.
+
+
+## CH-003 Increment 3 — Customer migration
+
+Explicitly authorized2026-10-21 after completed Product increments; earlier Increment0 authorization limits above remain historical. The human approved exact CustomerWriteStore managed-aggregate capabilities and a prospective per-increment three-cycle correction budget, retaining Increment2's historical3/3. Increment3 starts0/3. Follow the frozen [Customer contract](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/01-documentation.md#increment-3-frozen-implementation-contract) and [ADR-0007 exception](../03-decisions/ADR-0007-hexagonal-architecture-migration.md#increment-3-scoped-output-contract--accepted-2026-10-21).
+
+Migrate Customer input/output/provider/reference boundaries only, preserving existing mappings, transactions, HTTP and Order behavior. Required focused/fast and complete non-PIT Maven/PostgreSQL/coverage/OpenAPI plus fresh independent review are recorded in CH-003. PIT remains deferred to final migration acceptance; Cloud human-controlled. No Increment4, publication or Human Acceptance follows.

@@ -7,16 +7,20 @@ Stop dependent work and present the exact decision, affected files/behavior and 
 - Architecture changes or blocking Open/Proposed ADR decisions, including unresolved subdecisions inside an otherwise Accepted baseline.
 - New dependencies, migrations or schema changes. A future request may explicitly authorize a defined already-approved migration; record that authorization and preserve applicable safety requirements.
 - Scope expansion, destructive actions or deletion of existing user data.
-- External publication/deployment; Git staging, committing, pushing or merging; pull request creation under this workflow.
+- External publication/deployment; Git staging, committing, pushing, merging, rebasing or resetting; pull request creation under this workflow.
 
-Never silently promote ADR status, suppress/accept security findings, invent credentials, or weaken tests. Maintain transaction integrity, commit/outcome provenance and safe logging as required by AGENTS.md. The architecture agent recommends decisions; only humans accept them. Available automated approval review grants tool access, not business/architecture acceptance.
+Never silently promote ADR status, suppress/accept security findings, invent credentials, or weaken tests. Maintain transaction integrity, commit/outcome provenance and safe logging as required by AGENTS.md. The read-only reviewer recommends decisions; only humans accept them. Available automated approval review grants tool access, not business/architecture acceptance.
 
 Final Change Request acceptance always requires an explicit human decision recorded with reviewer/date/revision. Automated gates and independent agent review cannot grant it. Finish at Pending human review. No agent may bypass a blocker by asking another agent to execute the action.
 
 Sandbox defaults are not an unattended-execution guarantee. Continue authorized permitted work; report approval/network/credential/tool failures as blockers or Pending gates. Never relax permissions, change global settings, install tooling or trigger remote workflows to avoid a blocker without explicit authorization. A framework setup does not authorize any future business change.
 
-`make sonar-local` uploads analysis of the local working tree to SonarQube Cloud and requires Change Request authorization covering that external analysis. It needs no Git publication. Existing environment or macOS Keychain credentials may be used only for an authorized run; never expose them or bypass denied/interactive Keychain access. Tooling setup and mock validation do not authorize a real scan or credential retrieval. Keep missing access/results Pending and preserve final human acceptance.
+`make sonar-local` uploads analysis of the local working tree to SonarQube Cloud and requires a separate explicit human request covering that external analysis; general Change Request/full-lifecycle authorization is insufficient. It needs no Git publication. Existing environment or macOS Keychain credentials may be used only for an authorized run; never expose them or bypass denied/interactive Keychain access. Tooling setup and mock validation do not authorize a real scan or credential retrieval. Keep missing access/results Pending and preserve final human acceptance.
 
 ## Read-only SonarQube findings
 
 `make sonar-findings` uses existing authentication only when Cloud retrieval is authorized. It does not authorize analysis submission, credential creation, project-setting changes or issue/hotspot acceptance. Setup and mocked verification must not retrieve credentials or call Cloud APIs. Failed retrieval does not authorize an automatic `make sonar-local` rerun.
+
+## Reserved human-controlled gates — 2026-10-21
+
+SonarQube Cloud analysis, findings access, quality-gate evaluation/modification and remote repository/branch settings are not automatic engineering steps. Preserve their quality requirements but require a separate explicit human request before agent-assisted Cloud actions. Local fast/full verification is authorized within the stated scope and never substitutes for the human's gate evaluation, Git decisions or acceptance. Do not trigger or modify the existing scanner/CI workflow under this authorization.

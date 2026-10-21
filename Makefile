@@ -5,10 +5,12 @@ PROJECT_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 MUTATION_EVIDENCE_ROOT ?= $(abspath $(PROJECT_ROOT)/../agentic-order-service-mutation-evidence)
 export SCOPE MUTATION_EVIDENCE_ROOT JAVA_HOME
 
-.PHONY: help mutation-test sonar-local sonar-findings
+.PHONY: help mutation-test sonar-local sonar-findings verify-fast verify-full
 
 help:
 	@printf '%s\n' \
+	  'make verify-fast (Java 21 formatting, complete fast tests and ArchUnit)' \
+	  'make verify-full SCOPE=order|product|customer|shared|all (default: all; clean verify + existing PIT workflow; no Sonar)' \
 	  'make mutation-test SCOPE=order|product|customer|shared|all (default: all)' \
 	  'make sonar-local (clean verify + SonarQube Cloud upload and Quality Gate; main/develop only)' \
 	  'make sonar-findings (retrieve current branch findings only; no Maven or analysis submission)' \
@@ -187,3 +189,10 @@ sonar-findings:
 	    printf '%s\n' 'Sonar credential unavailable: Keychain returned an empty value.' >&2; exit 2; fi; \
 	fi; \
 	SONAR_TOKEN="$$sonar_token" python3 tools/sonar_findings.py findings --branch "$$sonar_branch"
+
+# Explicit local quality workflows. No scanner, formatting or Git mutation.
+verify-fast:
+	@python3 tools/verify.py fast
+
+verify-full:
+	@python3 tools/verify.py full --scope "$(SCOPE)"

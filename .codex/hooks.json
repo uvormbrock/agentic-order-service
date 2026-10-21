@@ -1,0 +1,32 @@
+{
+  "description": "CH-003 lightweight architecture reminder and handoff shape check; human trust required.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/architecture_reminder.py\"",
+            "timeout": 5,
+            "statusMessage": "Consult architecture scope",
+            "additionalContextLimit": 500
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "^(implementer|tester|reviewer)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/handoff_check.py\"",
+            "timeout": 5,
+            "statusMessage": "Check handoff fields"
+          }
+        ]
+      }
+    ]
+  }
+}

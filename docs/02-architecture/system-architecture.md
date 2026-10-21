@@ -14,6 +14,7 @@ The [PRD](../01-requirements/product-requirements.md) owns business rules and RE
 | [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) | Direct aggregate mapping | Accepted Increment 3 mapping/schema selections | Increment 3 domain/persistence Reviewed – Accepted; Increment 4 version/V2 disposable verification passed; persistent local gate blocked |
 | [ADR-0005](../03-decisions/ADR-0005-technology-stack.md) | Java 21 / Spring Boot 4.1.1 and stack | Accepted baseline; scoped foundation choices approved, production details Open | Foundation verified; human review passed, implementation accepted |
 | [ADR-0006](../03-decisions/ADR-0006-product-customer-optimistic-locking.md) | Product/Customer optimistic locking | Proposed complete ADR; @Version direction Human Accepted | Exact mapping/schema choices Accepted; V2 SQL reviewed; scoped implementation/runtime verification passed; human accepted 2026-10-15 |
+| [ADR-0007](../03-decisions/ADR-0007-hexagonal-architecture-migration.md) | Incremental pragmatic hexagonal architecture, Option B | Accepted — human decision 2026-10-21; ADR-0004 retained | Product, Customer, images and Order migrated in Increments 1–6; Increment 7 consolidation authorized, verification in CH-003 |
 
 ## Technology Reference
 
@@ -51,7 +52,7 @@ One Spring Boot application, one Maven module, and one PostgreSQL database. Orga
 
 Directly mapped domain aggregates intentionally depend on JPA metadata. HTTP types remain outside the domain. Pricing methods perform no database access. Avoid pretending this is a fully framework-independent hexagonal model.
 
-The following diagram shows code dependencies, except the explicitly labeled database runtime edge. It does not prescribe additional interfaces.
+The following diagram shows the consolidated Option B dependency direction. Application owns the capability contracts; adapters implement them. The database edge denotes runtime access.
 
 ```mermaid
 flowchart TB
@@ -60,9 +61,13 @@ flowchart TB
     DOMAIN["Customer, Product, Order and OrderItem"]
     DATA["Spring Data JPA and Hibernate"]
     DB[("PostgreSQL")]
-    REST -->|code dependency| APP
     APP -->|code dependency| DOMAIN
-    APP -->|code dependency| DATA
+    PORT["Application output ports"]
+    INPUT["Application input ports"]
+    REST -->|delegates| INPUT
+    APP -. implements .-> INPUT
+    APP -->|code dependency| PORT
+    DATA -. implements .-> PORT
     DATA -->|code dependency| DOMAIN
     DATA -->|runtime database calls| DB
 ```
@@ -71,10 +76,10 @@ flowchart TB
 
 | Package | Permitted dependencies | Boundary |
 | --- | --- | --- |
-| `api` | Own feature application operations and API DTO/error-mapping types | Controllers do not call repositories, orchestrate aggregates, or calculate business amounts. |
-| `application` | Own domain/persistence components, shared value objects, narrow provider-owned cross-feature contracts | No dependency on controllers or API-specific DTOs; return transport-independent materialized results for API mapping. |
+| `api` | Own feature application input ports, immutable application data and API DTO/error-mapping types | Controllers do not call repositories, orchestrate aggregates, or calculate business amounts. |
+| `application` | Own domain, application input/output capabilities and shared value objects | No dependency on controllers or API-specific DTOs; return transport-independent materialized results for API mapping. |
 | `domain` | Domain types, shared immutable values, and JPA metadata required by accepted direct mapping | No API/application/persistence component dependency or database calls; JPA metadata is the explicit framework-coupling exception. |
-| `persistence` | Own domain types and JPA/Hibernate/Spring Data infrastructure | No API or use-case orchestration dependency; no foreign feature persistence access. |
+| `persistence` | Own output contracts, immutable application data, own domain types and JPA/Hibernate/Spring Data infrastructure; exact provider input for the Customer reference bridge | No API or use-case orchestration dependency; no foreign feature persistence access. |
 | `configuration` | Components/infrastructure needed to wire the application | The composition root may depend on these components; feature/domain behavior must not depend on the concrete configuration package. |
 
 Feature-owned public contracts are the narrowly exposed application operations and immutable request/result carriers intended for cross-feature use. Repositories, entity graphs, controller classes, and other implementation helpers remain internal. Public Java visibility needed for Spring/JPA is not permission for another feature to depend on an internal type. Do not add a contracts framework or an interface per class.
@@ -83,7 +88,7 @@ The Boot entry point and configuration wiring form the composition root. Constru
 
 ## Module Access
 
-Order placement coordinates narrow provider-owned Customer/Product access operations for locked lookup and immutable placement data. Customer deletion uses a narrow Order-reference query. These are small application components; do not require interfaces without a concrete need. Never expose another feature's managed entities or broad CRUD services as the integration contract.
+Order placement coordinates narrow provider-owned Customer/Product access operations for locked lookup and immutable placement data. Customer deletion uses a narrow Order-reference query. These are narrow capability contracts under ADR-0007; retain the supported provider implementations and their transaction participation. Never expose another feature's managed entities or broad CRUD services as the integration contract.
 
 Cross-feature workflows share the outer application's transaction. Helper operations must participate rather than independently commit. Dependencies in both directions are limited to narrow contracts; they do not permit recursive application-service calls or circular constructor dependencies. Order placement uses a Customer lookup component independent of customer-deletion orchestration. Customer deletion uses an Order-reference query component independent of order-placement orchestration. These responsibilities clarify the boundary without prescribing new class names or interfaces. Modules are code organization, not independently deployable services.
 
@@ -131,3 +136,70 @@ The explicit application reconciliation operation `reconcileOrphans(true)` is fo
 Deployment requires persistent filesystem storage with consistent access for the application and backups. Local container files are neither durable nor shared by assumption. This increment supports a controlled deployment with one writer and a coherent storage root; arbitrary multi-instance/shared-filesystem correctness is not established. Quiesce writers for a consistent database-plus-filesystem backup/restore pair.
 
 The service has no built-in authentication. `app.product-images.writes-enabled=false` is the default; the human approved explicit trusted-deployment opt-in and isolated demo enablement. Production access control must be supplied externally before opt-in. Public read policy is unchanged. This setting is a capability switch, not user authentication. Verification and Human Acceptance remain in the [CH-002 review](../04-agentic-coding/change-requests/CH-002-product-images/03-review.md).
+
+## Accepted Option B — incremental hexagonal migration
+
+[ADR-0007](../03-decisions/ADR-0007-hexagonal-architecture-migration.md) accepts human-selected Option B: introduce ports/adapters incrementally while retaining approved direct domain/JPA mapping. ADR-0004 is not superseded. The [target and increment plan](hexagonal-migration.md) distinguishes accepted dependency conventions from future implementation steps; existing package rules above govern unmigrated code. No production migration is authorized by Increment 0, and mapping/transaction/API invariants remain unchanged.
+
+## CH-003 Product migration — Increment 2 historical scope
+
+Product GET-by-ID retains the Increment 1 GetProductQuery/GetProductService/FindProductById/ProductReadAdapter path. Create, update and PATCH deactivation now use ProductWriteOperations/ProductWriteService and application-owned ProductWriteStore implemented by ProductWriteAdapter. The facade retains write compatibility delegates, collection listing and static price-validation compatibility; Order/image helpers remain legacy. The existing aggregate, mapping and repository lock query are unchanged.
+
+The [explicit ADR-0007 exception](../03-decisions/ADR-0007-hexagonal-architecture-migration.md#increment-2-scoped-output-contract--accepted-2026-10-21) permits Product on ProductWriteStore only within this feature's application transaction, preserving dirty checking without detached mappings. Input, GET and cross-feature contracts still expose immutable results. The earlier layered diagram/table describe unmigrated paths. Increment 3 is separately authorized; [CH-003 records](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/README.md) own actual verification and Human Acceptance remains Pending.
+
+
+## CH-003 Customer migration — Increment 3 historical scope
+
+The authorized Customer path is Controller → CustomerOperations → existing CustomerApplicationService → CustomerReadStore/CustomerWriteStore → CustomerReadAdapter/CustomerWriteAdapter → unchanged CustomerRepository and directly mapped Customer. Cohesive input operations preserve all existing endpoints and immutable CustomerResult responses. The [Customer-only ADR-0007 exception](../03-decisions/ADR-0007-hexagonal-architecture-migration.md#increment-3-scoped-output-contract--accepted-2026-10-21) permits exactly save, locked lookup and delete aggregate signatures within existing application transactions.
+
+CustomerOrderAccess remains an independent MANDATORY provider implementing CustomerFacts for immutable locked/batch-current facts; existing Order callers retain this compatibility class. Customer deletion uses CustomerOrderReferences and a narrow CustomerOrderReferenceAdapter calling the independent existing MANDATORY OrderReferenceQuery. This concrete Order provider remains migration debt, without changing Order orchestration or persistence. Application transactions, READ COMMITTED deletion, separate reference query after Customer locking, dirty checking, UUID/version mappings and static email-normalization compatibility remain unchanged. [CH-003 records](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/README.md) own measured evidence and Human Acceptance Pending; no later increment is authorized.
+
+
+## Product image hexagonal boundaries — CH-003 Increment 4
+
+The existing image controller invokes `ProductImageOperations`; the existing application service implements that input capability and retains orchestration. It depends on `ImageProcessing`, `ImageStorage`, `ProductImageMetadataStore` and `ProductImageTransactions`. Application-owned processed/staged values and flat metadata snapshots carry bytes, relative keys and scalar metadata without exposing managed entities or infrastructure types. No new managed-entity output exception is introduced.
+
+The ImageIO processor and existing filesystem implementation reside in `product.storage`; `ProductImageMetadataAdapter` maps snapshots through the unchanged domain constructor/replace and Spring Data repositories, retaining the existing managed instance on replacement. `SpringProductImageTransactions` supplies the original ambient-resource guard and READ COMMITTED TransactionTemplate execution. It returns only after successful transaction completion and propagates failures unchanged. Transaction scope, metadata construction and lifecycle policy remain application-owned.
+
+The [existing lifecycle](#product-image-storage-and-lifecycle--ch-002) is preserved: complete generation before metadata transaction; Product lock before metadata and byte reads; obsolete generation retirement after successful commit; retain candidates after every transaction failure; no retries, asynchronous cleanup, synchronization callbacks or extra finalization. Quiescent reconciliation remains maintenance-only. REST/OpenAPI, JPA/schema, keys, deployment restrictions and write opt-in remain unchanged. Increment 4 implementation evidence and Human Acceptance Pending are recorded in [CH-003](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/03-review.md).
+
+
+## Order reads through ports — CH-003 Increment 5
+
+Existing `GET /orders` and `GET /orders/{id}` delegate through `OrderQueries`, implemented by the existing `OrderQueryService`. `OrderReadStore` returns immutable `OrderReadSnapshot` values from `OrderReadAdapter`, which invokes unchanged distinct left fetch joins and copies persisted item snapshots and monetary amounts. No managed entity crosses the read port. No ordering, filters, pagination, recalculation or new query is introduced.
+
+Current Customer enrichment uses consumer-owned `OrderCustomerFacts` through `order.integration.OrderReadCustomerAdapter` and existing provider `CustomerFacts.current`. The service keeps one distinct-ID batch, including the empty batch call, and unchanged missing-order/missing-customer behavior. Customer implementation remains unchanged.
+
+The service retains class-level `@Transactional(readOnly=true)` and default REQUIRED participation. Snapshots, Customer facts and final immutable results materialize inside that transaction; existing MANDATORY provider joins it. Ambient read-write transactions retain their persistence context/settings. HTTP response mapping/serialization needs no OSIV. Stored names, quantities, unit prices, line totals, subtotal, discount and total are copied directly without consulting current Product data. Domain/JPA mappings, repository queries and placement/retry/reference operations remain unchanged; `OrderResult.from` remains the placement compatibility mapper. Local evidence and Human Acceptance Pending are recorded in [CH-003](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/README.md).
+
+
+## Order placement through ports — CH-003 Increment 6
+
+POST/orders invokes `OrderPlacementOperations`,implemented by existing `OrderPlacementCoordinator`. Application consumes `OrderWriteStore`,`OrderPlacementCustomerFacts`,`OrderPlacementProductFacts` and `OrderPlacementAttempts`. Only the exact human-approved OrderWriteStore.save(Order):Order signature carries the same-feature managed aggregate; flush remains inside the same attempt and is not commit. OrderWriteAdapter delegates existing repository save/flush with unchanged Order/OrderItem mappings/generated identity/ownership.
+
+Customer/Product bridges invoke provider inputs CustomerFacts/ProductFacts through their existing MANDATORY implementations. ProductOrderAccess adds interface implementation only; provider locking/validation/repository behavior stays unchanged. Order reads,reference lookup and Customer application behavior are untouched. No new transaction or commit between features.
+
+SpringOrderPlacementAttempts uses the unchanged qualified REQUIRED/READ COMMITTED template. Completion observation registers before local2s timeout SQL and application work; callback status maps to application attempt-local UNKNOWN/COMMITTED/ROLLED_BACK. Guard and retry classifier move unchanged to order.transaction. Original failure identity and lock-call provenance remain; no wrapping or exception-as-rollback inference. Normal template return after completion/resource cleanup precedes success logging. Exceptional non-rollback outcomes are never replayed.
+
+Application retains customer-first/canonical Product locking,active-state precedence,price/name snapshots,aggregate construction/save/flush/materialization,unbound checking before eligible rollback retry,3attempts/10s budget,25/50ms backoff,fresh facts and existing safe diagnostic events. No generic retry framework or independent commits. [ADR-0007](../03-decisions/ADR-0007-hexagonal-architecture-migration.md) records exact approved exceptions/contracts; full ADR-0002 remains Proposed. [CH-003](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/README.md) owns execution evidence and Human Acceptance Pending.
+
+
+## CH-003 consolidation — Increment 7
+
+The authorized consolidation closes the remaining Product collection/provider and Order reference repository paths. `ListProductsQuery` is implemented by retained `ProductApplicationService`; `ProductCatalogReads` is implemented by existing `ProductReadAdapter` for immutable list/locked facts. `ProductOrderAccess` retains MANDATORY participation and uses that output. Existing GET/write contracts and public facade methods remain. `OrderReferences` is implemented by retained MANDATORY `OrderReferenceQuery`, which uses `OrderReferenceStore` implemented by existing `OrderReadAdapter`; CustomerOrderReferenceAdapter consumes the provider input. The underlying findAll/findLockedById/existsByCustomerId queries and transaction annotations remain unchanged.
+
+| Flow | Input / implementation | Outputs / adapters |
+| --- | --- | --- |
+| Product get | GetProductQuery / GetProductService | FindProductById / ProductReadAdapter |
+| Product list | ListProductsQuery / ProductApplicationService | ProductCatalogReads / ProductReadAdapter |
+| Product write | ProductWriteOperations / ProductWriteService | ProductWriteStore / ProductWriteAdapter |
+| Product facts | ProductFacts / ProductOrderAccess | ProductCatalogReads / ProductReadAdapter |
+| Customer operations / facts | CustomerOperations / CustomerApplicationService; CustomerFacts / CustomerOrderAccess | CustomerReadStore, CustomerWriteStore / CustomerReadAdapter, CustomerWriteAdapter; CustomerOrderReferences / CustomerOrderReferenceAdapter → OrderReferences |
+| Images | ProductImageOperations / ProductImageApplicationService | Processing, storage, metadata and transaction capabilities / existing technical adapters |
+| Order read | OrderQueries / OrderQueryService | OrderReadStore / OrderReadAdapter; OrderCustomerFacts / OrderReadCustomerAdapter → CustomerFacts |
+| Order placement | OrderPlacementOperations / OrderPlacementCoordinator | OrderWriteStore / OrderWriteAdapter; OrderPlacementAttempts / SpringOrderPlacementAttempts; consumer Customer/Product facts / integration adapters → provider inputs |
+| Order reference | OrderReferences / OrderReferenceQuery | OrderReferenceStore / OrderReadAdapter |
+
+Supported compatibility facades/providers remain; none is removed. Existing static price/email validation calls remain narrow transport compatibility exceptions. Spring application annotations and Customer after-commit observation retain existing application-owned transaction behavior. Option B permits domain JPA metadata and the exact three ADR-0007 same-feature managed-write signatures; no input/read/cross-feature entity allowance. No generic repository framework or package rename. Approved provider directions may be bidirectional at feature level; constructor wiring must remain acyclic.
+
+Earlier increment sections record their historical scope and debt; this section supersedes the collection/provider/reference migration debt only. Image orphan reconciliation, historical mutation findings, unresolved ADR subdecisions and human-controlled Cloud evaluation remain. [CH-003 records](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/README.md) own actual implementation/verification status and exact manifest. Human Acceptance Pending; no Increment 8.

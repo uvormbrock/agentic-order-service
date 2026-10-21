@@ -29,8 +29,10 @@ architecture decision/dependency/migration and human authorization reference>
 I authorize requirements analysis, scoped target documentation,
 implementation, tests, independent review, documentation synchronization
 and available verification for this defined scope under AGENTS.md.
-Use no more than three correction iterations after initial implementation;
-preserve the counter across agents and restarts.
+Use no more than three correction iterations per explicitly authorized increment
+after its initial implementation; preserve each counter across agents and restarts.
+Preserve historical counters and escalate when an increment exhausts its budget.
+Never use a new increment to conceal repeated unresolved defects.
 Stop dependent work for any missing mandatory approval, unresolved blocking
 ADR decision, migration/dependency/architecture change outside the specific
 authorization, scope expansion, destructive action or external publication.

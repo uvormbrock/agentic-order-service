@@ -38,5 +38,6 @@ Follow [AGENTS.md](../../../AGENTS.md). PRD and accepted architecture decisions 
 | --- | --- |
 | [CH-001 — Customer DELETE Semantics](CH-001-customer-delete-semantics/README.md) | Business target approved; Phase 2 explicitly authorized and implemented; verification in the review record; human acceptance Pending |
 | [CH-002 — Product Images](CH-002-product-images/README.md) | Implemented; available verification and independent review complete; external/mutation limitations recorded; Human Review Required, acceptance Pending |
+| [CH-003 — Hexagonal Architecture Migration](CH-003-hexagonal-architecture-migration/README.md) | Increment 8 final verification/review completed; local full/PIT execution Passed, ADR-0007 OptionB compliant; targeted INC8-R1/R2 resolved with focused/fast/narrow PIT verification; recommendation BLOCKED pending required human-controlled Cloud gate and historical debt disposition; Human Acceptance Pending |
 
 SonarQube integration belongs to the Multi-Agent Framework setup, not the business Change Request sequence. Its mistakenly numbered records are preserved as [setup evidence](../multi-agent/sonar-setup-evidence/README.md). This classification correction releases CH-002 for Product Images and does not renumber CH-001 or reserve any other number.

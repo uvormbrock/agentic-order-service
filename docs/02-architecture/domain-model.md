@@ -247,12 +247,13 @@ reads the multipart `file` and passes the existing path `id`, bounded bytes and 
 content type to
 [`ProductImageApplicationService.upload()`](../../src/main/java/com/example/agenticorderservice/product/application/ProductImageApplicationService.java).
 The service checks write enablement, invokes
-[`ProductImageProcessor.process()`](../../src/main/java/com/example/agenticorderservice/product/application/ProductImageProcessor.java),
+[`ProductImageProcessor.process()`](../../src/main/java/com/example/agenticorderservice/product/storage/ProductImageProcessor.java),
 then stages both files with
 [`ProductImageStorage.stage()`](../../src/main/java/com/example/agenticorderservice/product/storage/ProductImageStorage.java).
 Inside its application-owned transaction it locks/verifies Product, loads any existing
-metadata and saves through
-[`ProductImageRepository`](../../src/main/java/com/example/agenticorderservice/product/persistence/ProductImageRepository.java).
+metadata through the application-owned `ProductImageMetadataStore`. The JPA
+`ProductImageMetadataAdapter` maps immutable snapshots to the unchanged entity and
+uses `ProductImageRepository` inside the same application-owned transaction.
 Transaction completion precedes success; file cleanup and uncertain-outcome handling
 follow the [storage recovery policy](system-architecture.md#product-image-storage-and-lifecycle--ch-002).
 
@@ -276,11 +277,14 @@ retaining `productId`. The processor clones and preserves the original bytes wit
 resizing or recompression; it decodes them for validation and draws a separate
 aspect-ratio-preserving thumbnail, without upscaling, encoded as PNG.
 
-For a first image, the service calls the public
+The service constructs validated metadata and selects an immutable snapshot. For a
+first image, the JPA metadata adapter calls the public
 [`ProductImage(...)` constructor](../../src/main/java/com/example/agenticorderservice/product/domain/ProductImage.java)
 with all ten values. The constructor requires a non-null `productId` and delegates the
 other nine attributes to `replace()`. Replacement calls `ProductImage.replace()` on
-the existing entity with those nine values; it validates before assignment. No factory
+the existing managed entity with those nine values; it validates before assignment.
+The adapter saves that same managed instance; snapshot reads copy scalar getters
+without reconstructing or revalidating persisted metadata. No factory
 method, individual setters or Product object association is used.
 
 Validation is layered: the REST boundary bounds file reads; the processor validates

@@ -1,8 +1,9 @@
 package com.example.agenticorderservice.product.application;
 
-import com.example.agenticorderservice.product.domain.Product;
-import com.example.agenticorderservice.product.persistence.ProductRepository;
-import com.example.agenticorderservice.shared.application.InputValidationException;
+import com.example.agenticorderservice.product.application.port.in.GetProductQuery;
+import com.example.agenticorderservice.product.application.port.in.ListProductsQuery;
+import com.example.agenticorderservice.product.application.port.in.ProductWriteOperations;
+import com.example.agenticorderservice.product.application.port.out.ProductCatalogReads;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -10,63 +11,45 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ProductApplicationService {
-    private final ProductRepository repository;
+public class ProductApplicationService implements ListProductsQuery {
+    private final ProductCatalogReads reads;
+    private final GetProductQuery getProductQuery;
+    private final ProductWriteOperations productWriteOperations;
 
-    public ProductApplicationService(ProductRepository repository) {
-        this.repository = repository;
+    public ProductApplicationService(
+            ProductCatalogReads reads, GetProductQuery getProductQuery, ProductWriteOperations productWriteOperations) {
+        this.reads = reads;
+        this.getProductQuery = getProductQuery;
+        this.productWriteOperations = productWriteOperations;
     }
 
     @Transactional
     public ProductResult create(String name, BigDecimal price) {
-        String normalized = InputValidationException.name(name);
-        var validated = validatePrice(price);
-        return ProductResult.from(repository.save(new Product(normalized, validated)));
+        return productWriteOperations.create(name, price);
     }
 
     @Transactional(readOnly = true)
     public ProductResult get(UUID id) {
-        return ProductResult.from(find(id));
+        return getProductQuery.get(id);
     }
 
+    @Override
     @Transactional(readOnly = true)
     public List<ProductResult> list() {
-        return repository.findAll().stream().map(ProductResult::from).toList();
+        return reads.findAll();
     }
 
     @Transactional
     public ProductResult update(UUID id, String name, BigDecimal price) {
-        String normalized = InputValidationException.name(name);
-        var validated = validatePrice(price);
-        var entity = findLocked(id);
-        entity.update(normalized, validated);
-        return ProductResult.from(entity);
+        return productWriteOperations.update(id, name, price);
     }
 
     @Transactional
     public ProductResult deactivate(UUID id) {
-        var entity = findLocked(id);
-        if (entity.isActive()) {
-            entity.deactivate();
-        }
-        return ProductResult.from(entity);
+        return productWriteOperations.deactivate(id);
     }
     /** Shared by transport validation and direct application callers; no persistence access. */
     public static com.example.agenticorderservice.shared.domain.Money validatePrice(BigDecimal value) {
-        if (value == null) {
-            throw new InputValidationException(InputValidationException.FieldFailure.REQUIRED);
-        }
-        if (value.scale() > 2 || value.signum() < 0 || value.compareTo(new BigDecimal("999999.99")) > 0) {
-            throw new InputValidationException(InputValidationException.FieldFailure.PRICE);
-        }
-        return new com.example.agenticorderservice.shared.domain.Money(value);
-    }
-
-    private Product findLocked(UUID id) {
-        return repository.findLockedById(id).orElseThrow(ProductNotFoundException::new);
-    }
-
-    private Product find(UUID id) {
-        return repository.findById(id).orElseThrow(ProductNotFoundException::new);
+        return ProductWriteService.validatePrice(value);
     }
 }

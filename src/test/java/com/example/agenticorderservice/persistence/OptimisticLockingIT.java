@@ -549,8 +549,7 @@ class OptimisticLockingIT extends PostgreSqlApiTestSupport {
                                         }));
                     }
                     if (bean instanceof Advised proxy
-                            && (name.equals("productApplicationService")
-                                    || name.equals("customerApplicationService"))) {
+                            && (name.equals("productWriteService") || name.equals("customerApplicationService"))) {
                         var advisor = new DefaultPointcutAdvisor(
                                 new StaticMethodMatcherPointcut() {
                                     @Override
