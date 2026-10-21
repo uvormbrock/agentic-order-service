@@ -119,7 +119,8 @@ class GetProductQueryIT {
 
     @Test
     void missingLookupEndsTransactionAndRetainsFeatureException() {
-        assertThatThrownBy(() -> query.get(UUID.randomUUID())).isInstanceOf(ProductNotFoundException.class);
+        var missingId = UUID.randomUUID();
+        assertThatThrownBy(() -> query.get(missingId)).isInstanceOf(ProductNotFoundException.class);
         assertThat(TransactionSynchronizationManager.isActualTransactionActive())
                 .isFalse();
     }

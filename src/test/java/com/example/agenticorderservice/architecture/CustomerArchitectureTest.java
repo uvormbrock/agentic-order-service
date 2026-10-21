@@ -62,9 +62,8 @@ class CustomerArchitectureTest {
                         CustomerReadStore.class,
                         CustomerOrderReferences.class);
         HexagonalArchitectureRules.portDependencies(FEATURE).check(ordinary);
-        assertThatThrownBy(() ->
-                        HexagonalArchitectureRules.portDependencies(FEATURE).check(slice))
-                .isInstanceOf(AssertionError.class);
+        var portRule = HexagonalArchitectureRules.portDependencies(FEATURE);
+        assertThatThrownBy(() -> portRule.check(slice)).isInstanceOf(AssertionError.class);
     }
 
     @Test
@@ -132,12 +131,11 @@ class CustomerArchitectureTest {
     @Test
     void customerRulesRejectApplicationRepositoryAccessAndUnapprovedEntityPort() {
         var application = new ClassFileImporter().importClasses(CustomerForbiddenDependencyFixture.class);
-        assertThatThrownBy(() -> HexagonalArchitectureRules.application(FEATURE).check(application))
-                .isInstanceOf(AssertionError.class);
+        var applicationRule = HexagonalArchitectureRules.application(FEATURE);
+        assertThatThrownBy(() -> applicationRule.check(application)).isInstanceOf(AssertionError.class);
         var port = new ClassFileImporter().importClasses(CustomerEntityLeakFixture.class);
-        assertThatThrownBy(() ->
-                        HexagonalArchitectureRules.portDependencies(FEATURE).check(port))
-                .isInstanceOf(AssertionError.class);
+        var portRule = HexagonalArchitectureRules.portDependencies(FEATURE);
+        assertThatThrownBy(() -> portRule.check(port)).isInstanceOf(AssertionError.class);
         var repository = new ClassFileImporter()
                 .importClasses(RepositoryController.class)
                 .get(RepositoryController.class);
@@ -157,7 +155,8 @@ class CustomerArchitectureTest {
         assertAdapter(CustomerWriteAdapter.class, Set.of(CustomerWriteStore.class));
         assertAdapter(
                 CustomerOrderReferenceAdapter.class, Set.of(CustomerOrderReferences.class, OrderReferences.class));
-        assertThatThrownBy(() -> assertAdapter(InvalidAdapter.class, Set.of(CustomerReadStore.class)))
+        Set<Class<?>> allowedDependencies = Set.of(CustomerReadStore.class);
+        assertThatThrownBy(() -> assertAdapter(InvalidAdapter.class, allowedDependencies))
                 .isInstanceOf(AssertionError.class);
     }
 

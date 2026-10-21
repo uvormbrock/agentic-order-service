@@ -221,20 +221,21 @@ class OrderPlacementArchitectureTest {
                         ProviderBypass.class,
                         AdapterBypass.class,
                         ConcreteProviderBypass.class);
-        assertThatThrownBy(() -> controller(invalid.get(ControllerBypass.class)))
+        var controller = invalid.get(ControllerBypass.class);
+        assertThatThrownBy(() -> controller(controller)).isInstanceOf(AssertionError.class);
+        var useCase = invalid.get(UseCaseBypass.class);
+        Set<String> noCapabilities = Set.of();
+        assertThatThrownBy(() -> boundary(useCase, noCapabilities, true)).isInstanceOf(AssertionError.class);
+        var provider = invalid.get(ProviderBypass.class);
+        var providerCapabilities = Set.of(CustomerFacts.class.getName());
+        assertThatThrownBy(() -> boundary(provider, providerCapabilities, false))
                 .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(() -> boundary(invalid.get(UseCaseBypass.class), Set.of(), true))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(
-                        () -> boundary(invalid.get(ProviderBypass.class), Set.of(CustomerFacts.class.getName()), false))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(() ->
-                        boundary(invalid.get(AdapterBypass.class), Set.of(OrderWriteStore.class.getName()), false))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(() -> boundary(
-                        invalid.get(ConcreteProviderBypass.class),
-                        Set.of(CustomerFacts.class.getName(), CustomerResult.class.getName()),
-                        false))
+        var adapter = invalid.get(AdapterBypass.class);
+        var adapterCapabilities = Set.of(OrderWriteStore.class.getName());
+        assertThatThrownBy(() -> boundary(adapter, adapterCapabilities, false)).isInstanceOf(AssertionError.class);
+        var concreteProvider = invalid.get(ConcreteProviderBypass.class);
+        var concreteProviderCapabilities = Set.of(CustomerFacts.class.getName(), CustomerResult.class.getName());
+        assertThatThrownBy(() -> boundary(concreteProvider, concreteProviderCapabilities, false))
                 .isInstanceOf(AssertionError.class);
     }
 

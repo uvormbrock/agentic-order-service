@@ -74,9 +74,8 @@ class ProductWriteArchitectureTest {
                     .isInstanceOf(AssertionError.class);
         }
         // The shared rule must continue rejecting entities for ordinary output ports.
-        assertThatThrownBy(() ->
-                        HexagonalArchitectureRules.portDependencies(FEATURE).check(SLICE))
-                .isInstanceOf(AssertionError.class);
+        var portRule = HexagonalArchitectureRules.portDependencies(FEATURE);
+        assertThatThrownBy(() -> portRule.check(SLICE)).isInstanceOf(AssertionError.class);
     }
 
     @Test
@@ -179,7 +178,8 @@ class ProductWriteArchitectureTest {
     void detectsConcreteLegacyAndRepositoryBypassesAlongsideValidPortCalls() {
         for (Class<?> invalid : List.of(LegacyBypass.class, ConcreteBypass.class, RepositoryBypass.class)) {
             var fixture = new ClassFileImporter().importClasses(invalid);
-            assertThatThrownBy(() -> assertWriteBoundary(fixture.get(invalid)))
+            var bypass = fixture.get(invalid);
+            assertThatThrownBy(() -> assertWriteBoundary(bypass))
                     .as(invalid.getName())
                     .isInstanceOf(AssertionError.class);
         }

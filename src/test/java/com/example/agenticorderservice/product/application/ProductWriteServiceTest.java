@@ -27,8 +27,9 @@ class ProductWriteServiceTest {
 
     @Test
     void invalidNamePrecedesInvalidPriceAndMissingResourceLookup() {
+        var invalidPrice = new BigDecimal("-1");
         assertThatExceptionOfType(InputValidationException.class)
-                .isThrownBy(() -> service.update(id, " ", new BigDecimal("-1")))
+                .isThrownBy(() -> service.update(id, " ", invalidPrice))
                 .satisfies(exception ->
                         assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.NAME));
         verifyNoInteractions(repository);

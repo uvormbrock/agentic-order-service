@@ -101,8 +101,8 @@ class ProductImageArchitectureTest {
     void everyHttpOperationInvokesOnlyTheApprovedInputPort() {
         assertController(SLICE.get(ProductImageController.class));
         var invalid = new ClassFileImporter().importClasses(ConcreteBypass.class);
-        assertThatThrownBy(() -> assertController(invalid.get(ConcreteBypass.class)))
-                .isInstanceOf(AssertionError.class);
+        var controller = invalid.get(ConcreteBypass.class);
+        assertThatThrownBy(() -> assertController(controller)).isInstanceOf(AssertionError.class);
     }
 
     static void assertController(JavaClass controller) {
@@ -136,37 +136,37 @@ class ProductImageArchitectureTest {
                 ProductImageForbiddenDependencies.FilesystemAccess.class,
                 ProductImageForbiddenDependencies.ImageIoAccess.class,
                 ProductImageForbiddenDependencies.StorageAccess.class)) {
-            assertThatThrownBy(() -> HexagonalArchitectureRules.application(FEATURE)
-                            .check(new ClassFileImporter().importClasses(invalid)))
+            var applicationRule = HexagonalArchitectureRules.application(FEATURE);
+            var forbiddenClasses = new ClassFileImporter().importClasses(invalid);
+            assertThatThrownBy(() -> applicationRule.check(forbiddenClasses))
                     .as(invalid.getName())
                     .isInstanceOf(AssertionError.class);
         }
-        assertThatThrownBy(() -> noClasses()
-                        .that()
-                        .resideInAPackage(FEATURE + ".application..")
-                        .should()
-                        .dependOnClassesThat()
-                        .resideInAnyPackage("org.springframework.transaction..", "java.awt..")
-                        .check(new ClassFileImporter()
-                                .importClasses(ProductImageForbiddenDependencies.TransactionAccess.class)))
-                .isInstanceOf(AssertionError.class);
+        var transactionRule = noClasses()
+                .that()
+                .resideInAPackage(FEATURE + ".application..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("org.springframework.transaction..", "java.awt..");
+        var transactionClasses =
+                new ClassFileImporter().importClasses(ProductImageForbiddenDependencies.TransactionAccess.class);
+        assertThatThrownBy(() -> transactionRule.check(transactionClasses)).isInstanceOf(AssertionError.class);
     }
 
     @Test
     void detectsOutboundAdapterCallingTheConcreteUseCase() {
-        assertThatThrownBy(() -> HexagonalArchitectureRules.outboundAdaptersDoNotAccessUseCase(
-                                FEATURE, ProductImageApplicationService.class)
-                        .check(new ClassFileImporter().importClasses(ProductImageUseCaseBypass.class)))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(() -> noClasses()
-                        .that()
-                        .resideInAPackage(FEATURE + ".application..")
-                        .should()
-                        .dependOnClassesThat()
-                        .resideInAnyPackage("org.springframework.transaction..", "java.awt..")
-                        .check(new ClassFileImporter()
-                                .importClasses(ProductImageForbiddenDependencies.AwtAccess.class)))
-                .isInstanceOf(AssertionError.class);
+        var adapterRule = HexagonalArchitectureRules.outboundAdaptersDoNotAccessUseCase(
+                FEATURE, ProductImageApplicationService.class);
+        var bypassClasses = new ClassFileImporter().importClasses(ProductImageUseCaseBypass.class);
+        assertThatThrownBy(() -> adapterRule.check(bypassClasses)).isInstanceOf(AssertionError.class);
+        var awtRule = noClasses()
+                .that()
+                .resideInAPackage(FEATURE + ".application..")
+                .should()
+                .dependOnClassesThat()
+                .resideInAnyPackage("org.springframework.transaction..", "java.awt..");
+        var awtClasses = new ClassFileImporter().importClasses(ProductImageForbiddenDependencies.AwtAccess.class);
+        assertThatThrownBy(() -> awtRule.check(awtClasses)).isInstanceOf(AssertionError.class);
     }
 
     static void assertContract(Class<?> port) {

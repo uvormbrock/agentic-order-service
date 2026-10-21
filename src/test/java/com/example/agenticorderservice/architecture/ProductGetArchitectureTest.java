@@ -139,7 +139,8 @@ class ProductGetArchitectureTest {
     void detectsLegacyRepositoryAndConcreteUseCaseBypassesEvenAlongsidePortCall() {
         for (Class<?> invalid : List.of(LegacyBypass.class, RepositoryBypass.class, UseCaseBypass.class)) {
             var imported = new ClassFileImporter().importClasses(invalid);
-            assertThatThrownBy(() -> assertGetBoundary(imported.get(invalid), GetProductQuery.class))
+            var bypass = imported.get(invalid);
+            assertThatThrownBy(() -> assertGetBoundary(bypass, GetProductQuery.class))
                     .isInstanceOf(AssertionError.class);
         }
     }
@@ -177,10 +178,9 @@ class ProductGetArchitectureTest {
     @Test
     void missingMigrationPackagesCannotPass() {
         var empty = new ClassFileImporter().importClasses(String.class);
-        assertThatThrownBy(() -> HexagonalArchitectureRules.application(FEATURE).check(empty))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(
-                        () -> HexagonalArchitectureRules.portInterfaces(FEATURE).check(empty))
-                .isInstanceOf(AssertionError.class);
+        var applicationRule = HexagonalArchitectureRules.application(FEATURE);
+        assertThatThrownBy(() -> applicationRule.check(empty)).isInstanceOf(AssertionError.class);
+        var portRule = HexagonalArchitectureRules.portInterfaces(FEATURE);
+        assertThatThrownBy(() -> portRule.check(empty)).isInstanceOf(AssertionError.class);
     }
 }

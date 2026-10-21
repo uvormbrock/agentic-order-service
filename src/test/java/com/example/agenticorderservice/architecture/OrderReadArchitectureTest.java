@@ -188,20 +188,22 @@ class OrderReadArchitectureTest {
                         ForeignProviderBypass.class,
                         AdapterBypass.class,
                         BridgePersistenceBypass.class);
-        assertThatThrownBy(() -> assertReadBoundary(invalid.get(ConcreteBypass.class)))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(() -> assertUseCaseBoundary(invalid.get(ForeignProviderBypass.class)))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(() ->
-                        assertAdapterBoundary(invalid.get(AdapterBypass.class), Set.of(OrderReadStore.class.getName())))
+        var concreteBypass = invalid.get(ConcreteBypass.class);
+        assertThatThrownBy(() -> assertReadBoundary(concreteBypass)).isInstanceOf(AssertionError.class);
+        var foreignProvider = invalid.get(ForeignProviderBypass.class);
+        assertThatThrownBy(() -> assertUseCaseBoundary(foreignProvider)).isInstanceOf(AssertionError.class);
+        var adapter = invalid.get(AdapterBypass.class);
+        var allowedCapabilities = Set.of(OrderReadStore.class.getName());
+        assertThatThrownBy(() -> assertAdapterBoundary(adapter, allowedCapabilities))
                 .isInstanceOf(AssertionError.class);
     }
 
     @Test
     void rejectsBridgeForeignPersistence() {
         var imported = new ClassFileImporter().importClasses(BridgePersistenceBypass.class);
-        assertThatThrownBy(() -> assertAdapterBoundary(imported.get(BridgePersistenceBypass.class), Set.of()))
-                .isInstanceOf(AssertionError.class);
+        var bridge = imported.get(BridgePersistenceBypass.class);
+        Set<String> noCapabilities = Set.of();
+        assertThatThrownBy(() -> assertAdapterBoundary(bridge, noCapabilities)).isInstanceOf(AssertionError.class);
     }
 
     @Test

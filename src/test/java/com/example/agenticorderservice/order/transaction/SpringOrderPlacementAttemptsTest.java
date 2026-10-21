@@ -128,7 +128,9 @@ class SpringOrderPlacementAttemptsTest {
             return new Object();
         }
 
-        protected void doBegin(Object transaction, TransactionDefinition definition) {}
+        protected void doBegin(Object transaction, TransactionDefinition definition) {
+            // This test double has no transactional resources to initialize.
+        }
 
         protected void doCommit(DefaultTransactionStatus status) {
             commits++;

@@ -330,7 +330,7 @@ class HexagonalConsolidationArchitectureTest {
                 .map(JavaClass::reflect)
                 .filter(HexagonalConsolidationArchitectureTest::component)
                 .toList();
-        assertThat(components.size()).isGreaterThan(20);
+        assertThat(components).hasSizeGreaterThan(20);
         noConstructorCycles(components);
     }
 
@@ -370,16 +370,16 @@ class HexagonalConsolidationArchitectureTest {
                         ConcreteController.class,
                         ConcreteAdapter.class,
                         com.example.agenticorderservice.order.integration.ForeignProviderBypassFixture.class);
-        assertThatThrownBy(() -> controllerBoundary(fixtures.get(ConcreteController.class)))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(() -> adapterBoundary(fixtures.get(ConcreteAdapter.class)))
-                .isInstanceOf(AssertionError.class);
-        assertThatThrownBy(() -> crossFeatureBoundary(fixtures.get(
-                        com.example.agenticorderservice.order.integration.ForeignProviderBypassFixture.class)))
-                .isInstanceOf(AssertionError.class);
+        var controller = fixtures.get(ConcreteController.class);
+        assertThatThrownBy(() -> controllerBoundary(controller)).isInstanceOf(AssertionError.class);
+        var adapter = fixtures.get(ConcreteAdapter.class);
+        assertThatThrownBy(() -> adapterBoundary(adapter)).isInstanceOf(AssertionError.class);
+        var provider =
+                fixtures.get(com.example.agenticorderservice.order.integration.ForeignProviderBypassFixture.class);
+        assertThatThrownBy(() -> crossFeatureBoundary(provider)).isInstanceOf(AssertionError.class);
         var transaction = new ClassFileImporter().importClasses(TransactionRuntimeBypass.class);
-        assertThatThrownBy(() -> transactionBoundary(transaction.get(TransactionRuntimeBypass.class)))
-                .isInstanceOf(AssertionError.class);
+        var transactionBypass = transaction.get(TransactionRuntimeBypass.class);
+        assertThatThrownBy(() -> transactionBoundary(transactionBypass)).isInstanceOf(AssertionError.class);
         for (Class<?> port :
                 List.of(NestedEntityLeak.class, HttpLeak.class, AggregateSaveLookalike.class, GenericArrayLeak.class))
             assertThatThrownBy(() -> contract(port)).isInstanceOf(AssertionError.class);
@@ -388,7 +388,8 @@ class HexagonalConsolidationArchitectureTest {
     @Test
     void detectsConstructorCyclesThroughCapabilitiesAndAcceptsAcyclicComponents() {
         noConstructorCycles(List.of(Acyclic.class));
-        assertThatThrownBy(() -> noConstructorCycles(List.of(CycleA.class, CycleB.class)))
+        List<Class<?>> cyclicComponents = List.of(CycleA.class, CycleB.class);
+        assertThatThrownBy(() -> noConstructorCycles(cyclicComponents))
                 .isInstanceOf(AssertionError.class)
                 .hasMessageContaining(CycleA.class.getName());
     }
