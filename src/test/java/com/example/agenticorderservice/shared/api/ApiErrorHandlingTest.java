@@ -18,7 +18,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         error(get("/products").accept("text/html"), NOT_ACCEPTABLE);
         error(get("/products").accept("application/json;q=0, */*;q=1"), NOT_ACCEPTABLE);
         error(get("/does-not-exist").accept("text/html"), ENDPOINT_NOT_FOUND);
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
         mvc.perform(get("/products").accept("application/json"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith("application/json"))
@@ -35,7 +35,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         error(post("/products").contentType("application/json").content(" "), MALFORMED_JSON);
         error(post("/products").contentType("application/json").content("null"), MALFORMED_JSON);
         error(post("/products").contentType("application/json").content("{\"name\":1,\"name\":2}"), MALFORMED_JSON);
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
     }
 
     @org.junit.jupiter.params.ParameterizedTest(name = "Spring exception={0}, wrapped={1}")
@@ -46,18 +46,19 @@ class ApiErrorHandlingTest extends ApiTestSupport {
                 ? new OptimisticLockingFailureException("private details")
                 : new OptimisticLockException("private details");
         RuntimeException failure = wrapped ? new TransactionSystemException("secret sql", conflict) : conflict;
-        when(products.deactivate(id)).thenThrow(failure);
+        when(productWrites.deactivate(id)).thenThrow(failure);
         error(
                 patch("/products/" + id).contentType("application/json").content("{\"active\":false}"),
                 CONCURRENT_MODIFICATION);
-        verify(products, times(1)).deactivate(id);
-        verifyNoMoreInteractions(products);
+        verify(productWrites, times(1)).deactivate(id);
+        verifyNoMoreInteractions(productWrites);
+        verifyNoInteractions(products);
         verifyNoInteractions(customers);
     }
 
     @Test
     void establishmentOutageAndAmbiguousCommitAreDifferent() throws Exception {
-        when(products.list())
+        when(listProducts.list())
                 .thenThrow(new CannotCreateTransactionException(
                         "offline", new SQLTransientConnectionException("pool unavailable")));
         error(get("/products"), SERVICE_UNAVAILABLE);
@@ -76,7 +77,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
             "com.example.agenticorderservice.shared.api.StrictJsonRequestDecoderTest#invalid")
     void verifiesAllInputCategoriesThroughActualMvc(String body, ApiError.Code code) throws Exception {
         error(post("/products").contentType("application/json").content(body), code);
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
     }
 
     @Test
@@ -111,7 +112,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
                             .content("{\"extra\":0}"),
                     UNKNOWN_FIELD);
         }
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
     }
 
     @Test
@@ -165,7 +166,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
         String body = "{" + (reverse ? emailField + "," + nameField : nameField + "," + emailField) + "}";
         var request = method.equals("POST") ? post("/customers") : put("/customers/" + id);
         error(request.contentType("application/json").content(body), expected);
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
     }
 
     @Test
@@ -177,7 +178,7 @@ class ApiErrorHandlingTest extends ApiTestSupport {
                         .accept("application")
                         .content("not json"),
                 METHOD_NOT_ALLOWED);
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
     }
 
     @Test
@@ -189,13 +190,13 @@ class ApiErrorHandlingTest extends ApiTestSupport {
                         .accept("application")
                         .content("not json"),
                 NOT_ACCEPTABLE);
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
     }
 
     @Test
     void nonemptyUntypedMvcBodyIsUnsupportedWhileAbsentBodyIsRequired() throws Exception {
         error(post("/products").content("{\"name\":\"A\",\"price\":1}"), UNSUPPORTED_MEDIA_TYPE);
         error(post("/products"), REQUIRED_FIELD_MISSING);
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
     }
 }

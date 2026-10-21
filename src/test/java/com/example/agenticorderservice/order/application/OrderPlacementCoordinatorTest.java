@@ -4,7 +4,8 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.agenticorderservice.customer.application.*;
-import com.example.agenticorderservice.order.persistence.OrderRepository;
+import com.example.agenticorderservice.order.application.port.out.*;
+import com.example.agenticorderservice.order.transaction.*;
 import com.example.agenticorderservice.product.application.*;
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -19,9 +20,9 @@ import org.springframework.transaction.*;
 import org.springframework.transaction.support.*;
 
 class OrderPlacementCoordinatorTest {
-    final CustomerOrderAccess customers = mock(CustomerOrderAccess.class);
-    final ProductOrderAccess products = mock(ProductOrderAccess.class);
-    final OrderRepository orders = mock(OrderRepository.class);
+    final OrderPlacementCustomerFacts customers = mock(OrderPlacementCustomerFacts.class);
+    final OrderPlacementProductFacts products = mock(OrderPlacementProductFacts.class);
+    final OrderWriteStore orders = mock(OrderWriteStore.class);
     final JdbcTemplate jdbc = mock(JdbcTemplate.class);
     final Manager manager = new Manager();
     final AtomicLong clock = new AtomicLong(100000000000L);
@@ -30,9 +31,7 @@ class OrderPlacementCoordinatorTest {
             first = UUID.fromString("00000000-0000-0000-0000-000000000001"),
             second = UUID.fromString("ffffffff-ffff-ffff-ffff-ffffffffffff");
     final OrderPlacementCoordinator coordinator = new OrderPlacementCoordinator(
-            new TransactionTemplate(manager),
-            jdbc,
-            new AmbientTransactionGuard(),
+            new SpringOrderPlacementAttempts(new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard()),
             customers,
             products,
             orders,
@@ -93,15 +92,22 @@ class OrderPlacementCoordinatorTest {
         assertThat(manager.begins).isEqualTo(3);
     }
 
-    @Test
-    void exhaustionReturnsUnavailableAndNeverSaves() {
-        when(products.lock(first))
-                .thenThrow(new RuntimeException(OrderRetryPolicyTest.serverFailure("55P03", "ProcessInterrupts")));
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void exhaustionReturnsUnavailableAndNeverSaves(boolean customerLock) {
+        var failure = new RuntimeException(OrderRetryPolicyTest.serverFailure("55P03", "ProcessInterrupts"));
+        if (customerLock) when(customers.lock(customer)).thenThrow(failure);
+        else when(products.lock(first)).thenThrow(failure);
         var input = command();
         assertThatExceptionOfType(OrderFailure.class)
                 .isThrownBy(() -> coordinator.place(input))
                 .satisfies(f -> assertThat(f.reason()).isEqualTo(OrderFailure.Reason.UNAVAILABLE));
         assertThat(manager.rollbacks).isEqualTo(3);
+        assertThat(manager.begins).isEqualTo(3);
+        assertThat(manager.commits).isZero();
+        assertThat(delays).containsExactly(25000000L, 50000000L);
+        verify(customers, times(3)).lock(customer);
+        if (customerLock) verifyNoInteractions(products);
         verifyNoInteractions(orders);
     }
 
@@ -146,12 +152,17 @@ class OrderPlacementCoordinatorTest {
     @ValueSource(strings = {"40P01", "40001", "55P03", "57014", "23505", "08006", "HY000"})
     void classifierRequiresKnownStateAndLockOrigin(String state) {
         var failure = new RuntimeException(new SQLException("private", state));
-        assertThat(OrderRetryPolicy.transientFailure(failure, false))
+        assertThat(new SpringOrderPlacementAttempts(
+                                new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard())
+                        .transientFailure(failure, false))
                 .isEqualTo(Set.of("40P01", "40001").contains(state));
-        assertThat(OrderRetryPolicy.transientFailure(failure, true))
+        assertThat(new SpringOrderPlacementAttempts(
+                                new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard())
+                        .transientFailure(failure, true))
                 .isEqualTo(Set.of("40P01", "40001").contains(state));
-        assertThat(OrderRetryPolicy.transientFailure(
-                        new jakarta.persistence.OptimisticLockException("conflict", failure), true))
+        assertThat(new SpringOrderPlacementAttempts(
+                                new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard())
+                        .transientFailure(new jakarta.persistence.OptimisticLockException("conflict", failure), true))
                 .isFalse();
     }
 
@@ -225,9 +236,7 @@ class OrderPlacementCoordinatorTest {
     void budgetIsCheckedAgainAfterBackoffWithoutBeginningAnotherAttempt() {
         when(products.lock(first)).thenThrow(new RuntimeException(new SQLException("deadlock", "40P01")));
         var slowPause = new OrderPlacementCoordinator(
-                new TransactionTemplate(manager),
-                jdbc,
-                new AmbientTransactionGuard(),
+                new SpringOrderPlacementAttempts(new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard()),
                 customers,
                 products,
                 orders,
@@ -245,7 +254,10 @@ class OrderPlacementCoordinatorTest {
     void interruptedRealBackoffPreservesInterruptAndNeverBeginsAnotherAttempt() {
         when(products.lock(first)).thenThrow(new RuntimeException(new SQLException("deadlock", "40P01")));
         var realPause = new OrderPlacementCoordinator(
-                new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard(), customers, products, orders);
+                new SpringOrderPlacementAttempts(new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard()),
+                customers,
+                products,
+                orders);
         Thread.currentThread().interrupt();
         try {
             var input = command();
@@ -404,9 +416,8 @@ class OrderPlacementCoordinatorTest {
         try (var capture =
                 new com.example.agenticorderservice.shared.logging.EventCapture(OrderPlacementCoordinator.class)) {
             var budget = new OrderPlacementCoordinator(
-                    new TransactionTemplate(manager),
-                    jdbc,
-                    new AmbientTransactionGuard(),
+                    new SpringOrderPlacementAttempts(
+                            new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard()),
                     customers,
                     products,
                     orders,
@@ -418,9 +429,8 @@ class OrderPlacementCoordinatorTest {
             var backoffFailure = new OrderFailure(OrderFailure.Reason.TECHNICAL, new InterruptedException("private"));
             backoffFailure.addSuppressed(new IllegalStateException("suppressed context"));
             var interrupted = new OrderPlacementCoordinator(
-                    new TransactionTemplate(manager),
-                    jdbc,
-                    new AmbientTransactionGuard(),
+                    new SpringOrderPlacementAttempts(
+                            new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard()),
                     customers,
                     products,
                     orders,
@@ -452,6 +462,31 @@ class OrderPlacementCoordinatorTest {
             assertThat(capture.messages()).containsExactly("event=ORDER_COMMITTED attempt=1 consolidatedItemCount=1");
             assertThat(capture.events.getFirst().getLevel()).isEqualTo(ch.qos.logback.classic.Level.INFO);
         }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void portOnlyOrchestrationPreservesExactLockVersusFlushFailureProvenance(boolean lockFailure) {
+        var attempts = mock(OrderPlacementAttempts.class);
+        var failure = new RuntimeException(new SQLException("private", "55P03"));
+        when(attempts.execute(any(), any())).thenAnswer(call -> {
+            PlacementAttempt attempt = call.getArgument(0);
+            java.util.function.Supplier<OrderResult> work = call.getArgument(1);
+            try {
+                return work.get();
+            } catch (RuntimeException original) {
+                attempt.complete(PlacementAttempt.Completion.ROLLED_BACK);
+                throw original;
+            }
+        });
+        if (lockFailure) when(products.lock(first)).thenThrow(failure);
+        else doThrow(failure).when(orders).flush();
+        var selected = new OrderPlacementCoordinator(attempts, customers, products, orders);
+        var input = command();
+        assertThatThrownBy(() -> selected.place(input)).isSameAs(failure);
+        verify(attempts, times(2)).checkUnbound();
+        verify(attempts).transientFailure(same(failure), eq(lockFailure));
+        verify(attempts).execute(any(), any());
     }
 
     static class Manager extends AbstractPlatformTransactionManager {

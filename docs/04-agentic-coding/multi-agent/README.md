@@ -1,34 +1,25 @@
-# Multi-Agent Change Request Framework
+# Multi-Agent Engineering Workflow
 
-**Status:** Setup verification recorded in [setup-verification.md](setup-verification.md); human acceptance Pending. No Change Request executed by setup.
+**Status:** Three-role configuration prepared under CH-003 Increment 0; resulting configuration Human Acceptance Pending. ADR-0007 Option B is subsequently human Accepted; production migration is not authorized.
 
-The main Codex session is the Orchestrator and single coordination authority. It selects context, assigns file ownership, tracks dependencies, approvals, findings, verification and a durable correction counter, consolidates actual agent results, and stops for human review. This is a repository workflow enforced through instructions and review, not an external orchestration service or a machine-enforced state engine.
+The main session is the Orchestrator: sole sequencing/delegation authority, requirements analyst, documentation writer, file-ownership coordinator and final gate/report owner. This is an instruction-and-review workflow, not an autonomous state engine. Use [AGENTS.md](../../../AGENTS.md), [workflow](workflow.md), [handoff](handoff-contract.md), [approval policy](approval-policy.md), [quality gates](quality-gates.md), [runtime operation](context-management.md), [hooks](hooks.md) and the [invocation template](change-request-template.md).
 
-Start with [AGENTS.md](../../../AGENTS.md) and the [existing AI workflow](../ai-development-workflow.md). Use the [invocation template](change-request-template.md) in a fresh chat for each independent request. This setup neither authorizes nor starts Product Images. CH-002 remains reserved for that future feature; the accidentally numbered Sonar records are preserved as [framework setup evidence](sonar-setup-evidence/README.md).
+## Native roles
 
-The [mandatory Change Request convention](../change-requests/README.md) governs classification, sequential identifiers, the exact four-file directory and record responsibilities. The Orchestrator maintains these records throughout execution using the [ownership mapping](workflow.md#standard-record-ownership); framework setup creates no Change Request.
-
-## Guide
-
-- [Workflow and role responsibilities](workflow.md)
-- [Handoff and durable records](handoff-contract.md)
-- [Quality gates](quality-gates.md)
-- [Approval policy](approval-policy.md)
-- [Context and runtime operation](context-management.md)
-- [Final report template](final-report-template.md)
-- [Setup evidence and limitations](setup-verification.md)
-
-## Runtime configuration
-
-[Project configuration](../../../.codex/config.toml) enables multi-agent tools and caps concurrently open delegated threads at three. Six role definitions do not mean six simultaneous agents. The Orchestrator remains the parent session; no extra orchestrator file is needed. Models and reasoning effort are deliberately not pinned.
-
-| Role | Configuration | Responsibility |
+| Role | Configuration | Ownership |
 | --- | --- | --- |
-| Requirements | [requirements.toml](../../../.codex/agents/requirements.toml) | Business rules, acceptance criteria and edge cases; scoped target requirements |
-| Architecture | [architect.toml](../../../.codex/agents/architect.toml) | Read-only impact and decision analysis; no ADR acceptance |
-| Implementation | [implementer.toml](../../../.codex/agents/implementer.toml) | Approved production changes and selected corrections |
-| Testing | [tester.toml](../../../.codex/agents/tester.toml) | Acceptance-derived tests, focused checks and regression evidence |
-| Review | [reviewer.toml](../../../.codex/agents/reviewer.toml) | Independent read-only defect, contract, security and coverage review |
-| Documentation | [documenter.toml](../../../.codex/agents/documenter.toml) | Assigned authoritative Markdown, OpenAPI workflow and consistency |
+| Implementer | [implementer.toml](../../../.codex/agents/implementer.toml) | Approved production/configuration files and bounded corrections |
+| Tester | [tester.toml](../../../.codex/agents/tester.toml) | Assigned tests/fixtures, independent verification and evidence |
+| Reviewer | [reviewer.toml](../../../.codex/agents/reviewer.toml) | Read-only architecture assessment and independent quality review |
 
-Official sources checked on 2026-10-18: [subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents), [configuration reference](https://learn.chatgpt.com/docs/config-file/config-reference), [configuration layers](https://learn.chatgpt.com/docs/config-file/config-basic). These document project configuration and custom agents. Actual client/tool support must still be checked at intake; see the setup evidence.
+Requirements/documentation responsibilities moved to the Orchestrator; architectural assessment moved to the reviewer. The three former project-role files are retired. Historical [setup evidence](setup-verification.md) records the previous six-role setup and is not rewritten as current execution evidence.
+
+[Project configuration](../../../.codex/config.toml) keeps three concurrently open spawned threads (primary excluded). Standalone native role files declare name, description and developer_instructions; models/effort inherit the parent. Prefer two specialists at a time and serialize builds. Check discovery in the actual runtime; configuration alone is not execution proof. Independent review is required; no agent grants human acceptance or Git publication approval.
+
+Use the [Change Request convention](../change-requests/README.md) and exactly its four initial records for authorized requests. CH-001/CH-002 are existing requests; this update neither closes nor accepts them. [CH-003](../change-requests/CH-003-hexagonal-architecture-migration/README.md) covers the approved Increment 0 only.
+
+Native configuration references checked 2026-10-21: [subagents](https://learn.chatgpt.com/docs/agent-configuration/subagents) and [hooks](https://learn.chatgpt.com/docs/hooks). Local CLI/runtime evidence and limitations belong to CH-003, not to those documentation pages.
+
+## Accepted Option B and local quality automation
+
+The human explicitly accepted Option B on 2026-10-21, retaining ADR-0004 mappings and the three-role team. Use [engineering verification](../../05-testing/engineering-verification.md); Orchestrator invokes final full local gates, tester verifies behavior, reviewer independently assesses architecture/code. Cloud gate evaluation and Git publication remain human-controlled, not automatic tasks. The current configuration result and future production increments still require human acceptance.

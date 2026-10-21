@@ -150,4 +150,29 @@ class StrictJsonRequestDecoderTest {
             }
         }
     }
+
+    @Test
+    void normalizesCustomerEmailBeforeCreatingRequest() {
+        byte[] body =
+                "{\"name\":\"Valid\",\"email\":\"  Alice.Tag+Orders@Example.COM  \"}".getBytes(StandardCharsets.UTF_8);
+        var result = (CustomerDetailsRequest) decoder.decode(body, CustomerDetailsRequest.class);
+        assertThat(result.email()).isEqualTo("alice.tag+orders@example.com");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "'{\"name\":\"\",\"email\":\"invalid\"}',INVALID_NAME",
+        "'{\"email\":\"invalid\",\"name\":\"\"}',INVALID_NAME",
+        "'{\"name\":\"\",\"email\":null}',REQUIRED_FIELD_MISSING",
+        "'{\"email\":null,\"name\":\"\"}',REQUIRED_FIELD_MISSING",
+        "'{\"name\":null,\"email\":42}',INVALID_FIELD_TYPE",
+        "'{\"email\":42,\"name\":null}',INVALID_FIELD_TYPE",
+        "'{\"name\":\"Valid\",\"email\":\"invalid\"}',INVALID_EMAIL",
+        "'{\"email\":\"invalid\",\"name\":\"Valid\"}',INVALID_EMAIL"
+    })
+    void preservesCustomerEmailErrorPrecedence(String body, ApiError.Code expected) {
+        assertThatThrownBy(() -> decoder.decode(body.getBytes(StandardCharsets.UTF_8), CustomerDetailsRequest.class))
+                .satisfies(failure ->
+                        assertThat(ApiExceptionHandler.classify(failure)).isEqualTo(expected));
+    }
 }

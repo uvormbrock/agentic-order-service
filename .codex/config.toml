@@ -1,30 +1,5 @@
-# Project defaults only; parent permissions and managed policies remain authoritative.
-[features]
-multi_agent = true
-
+# Project defaults; parent permissions and managed policies remain authoritative.
+# Custom roles are discovered from .codex/agents/*.toml by native Codex.
 [agents]
+enabled = true
 max_concurrent_threads_per_session = 3
-
-[agents.requirements]
-description = "Analyze business scope and acceptance criteria."
-config_file = "agents/requirements.toml"
-
-[agents.architect]
-description = "Assess architecture impact and decision blockers."
-config_file = "agents/architect.toml"
-
-[agents.implementer]
-description = "Implement approved changes and bounded corrections."
-config_file = "agents/implementer.toml"
-
-[agents.tester]
-description = "Derive and execute meaningful verification."
-config_file = "agents/tester.toml"
-
-[agents.reviewer]
-description = "Independently review the current diff and contracts."
-config_file = "agents/reviewer.toml"
-
-[agents.documenter]
-description = "Synchronize scoped authoritative documentation."
-config_file = "agents/documenter.toml"

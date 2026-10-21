@@ -3,9 +3,8 @@ package com.example.agenticorderservice.customer.application;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.example.agenticorderservice.customer.application.port.out.*;
 import com.example.agenticorderservice.customer.domain.*;
-import com.example.agenticorderservice.customer.persistence.CustomerRepository;
-import com.example.agenticorderservice.order.application.OrderReferenceQuery;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -15,9 +14,9 @@ class CustomerDeletionTest {
     @ParameterizedTest
     @CsvSource({"false,true", "false,false", "true,true", "true,false"})
     void locksBeforeReferenceQueryAndDeletesOrRejects(boolean referenced, boolean active) {
-        var repository = mock(CustomerRepository.class);
-        var orders = mock(OrderReferenceQuery.class);
-        var service = new CustomerApplicationService(repository, orders);
+        var repository = mock(CustomerWriteStore.class);
+        var orders = mock(CustomerOrderReferences.class);
+        var service = new CustomerApplicationService(mock(CustomerReadStore.class), repository, orders);
         var customer = new Customer("C", new EmailAddress("a@example.com"));
         if (!active) customer.deactivate();
         UUID id = UUID.randomUUID();
@@ -41,9 +40,9 @@ class CustomerDeletionTest {
 
     @Test
     void absentCustomerDoesNotQueryReferences() {
-        var repository = mock(CustomerRepository.class);
-        var orders = mock(OrderReferenceQuery.class);
-        var service = new CustomerApplicationService(repository, orders);
+        var repository = mock(CustomerWriteStore.class);
+        var orders = mock(CustomerOrderReferences.class);
+        var service = new CustomerApplicationService(mock(CustomerReadStore.class), repository, orders);
         UUID missingId = UUID.randomUUID();
         assertThatExceptionOfType(CustomerNotFoundException.class).isThrownBy(() -> service.delete(missingId));
         verifyNoInteractions(orders);
@@ -58,9 +57,9 @@ class CustomerDeletionTest {
     })
     void independentSpringCompletionSequencesEmitOnlyAfterCommit(
             boolean referenced, boolean active, String event, String completion) {
-        var repository = mock(CustomerRepository.class);
-        var orders = mock(OrderReferenceQuery.class);
-        var service = new CustomerApplicationService(repository, orders);
+        var repository = mock(CustomerWriteStore.class);
+        var orders = mock(CustomerOrderReferences.class);
+        var service = new CustomerApplicationService(mock(CustomerReadStore.class), repository, orders);
         UUID id = UUID.randomUUID();
         var customer = new Customer("C", new EmailAddress("secret@example.com"));
         if (!active) customer.deactivate();
@@ -99,9 +98,9 @@ class CustomerDeletionTest {
 
     @Test
     void failingPostCommitAppenderPreservesSuccessfulTransactionResult() {
-        var repository = mock(CustomerRepository.class);
-        var orders = mock(OrderReferenceQuery.class);
-        var service = new CustomerApplicationService(repository, orders);
+        var repository = mock(CustomerWriteStore.class);
+        var orders = mock(CustomerOrderReferences.class);
+        var service = new CustomerApplicationService(mock(CustomerReadStore.class), repository, orders);
         UUID id = UUID.randomUUID();
         when(repository.findLockedById(id))
                 .thenReturn(Optional.of(new Customer("C", new EmailAddress("a@example.com"))));

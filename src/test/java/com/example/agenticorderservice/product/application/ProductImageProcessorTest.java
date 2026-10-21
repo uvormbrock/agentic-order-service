@@ -4,6 +4,7 @@ import static com.example.agenticorderservice.product.image.ProductImageFixtures
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.example.agenticorderservice.product.storage.ProductImageProcessor;
 import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import javax.imageio.ImageIO;
@@ -43,19 +44,18 @@ class ProductImageProcessorTest {
     void processedRecordUsesArrayContentsAndEveryMetadataComponentWithoutPrintingBytes() {
         byte[] original = {11, 22, 33};
         byte[] thumbnail = {44, 55};
-        var value = new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 40, 20, 20, 10);
-        var same = new ProductImageProcessor.ProcessedImage(
-                original.clone(), thumbnail.clone(), "image/png", 40, 20, 20, 10);
+        var value = new ProcessedImage(original, thumbnail, "image/png", 40, 20, 20, 10);
+        var same = new ProcessedImage(original.clone(), thumbnail.clone(), "image/png", 40, 20, 20, 10);
         assertThat(value).isEqualTo(same).hasSameHashCodeAs(same);
         assertThat(same).isEqualTo(value);
         var alternatives = java.util.List.of(
-                new ProductImageProcessor.ProcessedImage(new byte[] {11}, thumbnail, "image/png", 40, 20, 20, 10),
-                new ProductImageProcessor.ProcessedImage(original, new byte[] {44}, "image/png", 40, 20, 20, 10),
-                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/jpeg", 40, 20, 20, 10),
-                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 41, 20, 20, 10),
-                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 40, 21, 20, 10),
-                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 40, 20, 21, 10),
-                new ProductImageProcessor.ProcessedImage(original, thumbnail, "image/png", 40, 20, 20, 11));
+                new ProcessedImage(new byte[] {11}, thumbnail, "image/png", 40, 20, 20, 10),
+                new ProcessedImage(original, new byte[] {44}, "image/png", 40, 20, 20, 10),
+                new ProcessedImage(original, thumbnail, "image/jpeg", 40, 20, 20, 10),
+                new ProcessedImage(original, thumbnail, "image/png", 41, 20, 20, 10),
+                new ProcessedImage(original, thumbnail, "image/png", 40, 21, 20, 10),
+                new ProcessedImage(original, thumbnail, "image/png", 40, 20, 21, 10),
+                new ProcessedImage(original, thumbnail, "image/png", 40, 20, 20, 11));
         for (var alternative : alternatives) assertThat(value).isNotEqualTo(alternative);
         assertThat(value.toString())
                 .contains("originalLength=3", "thumbnailLength=2")

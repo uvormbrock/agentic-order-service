@@ -10,6 +10,30 @@ The application manages customers, products and orders, with a focus on transact
 
 Developed with OpenAI Codex under explicit human review and acceptance controls, the project serves as a practical engineering demonstration rather than a commercial e-commerce platform. Production deployment readiness has not been established.
 
+## Architecture
+
+The service is a **feature-oriented modular monolith**: Customer, Product and Order run in one Spring Boot application with one PostgreSQL database. Domain-Driven Design (DDD) keeps business invariants in aggregate roots (`Customer`, `Product` and `Order`), Order-owned `OrderItem` entities, and immutable value objects such as `Money` and `EmailAddress`.
+
+Its **pragmatic hexagonal architecture (Ports & Adapters)** separates application capabilities from delivery and infrastructure. REST controllers are inbound adapters calling application input ports. Use cases implement those ports and depend on application-owned output ports; outbound adapters implement persistence, image processing/storage and transaction capabilities.
+
+```mermaid
+flowchart TB
+    REST["REST controllers"] --> IN["Input ports"]
+    IN ==>|dispatch| UC["Application use cases"]
+    UC -. implements .-> IN
+    UC --> DOMAIN["DDD aggregates and values<br/>JPA metadata retained"]
+    UC --> OUT["Output ports"]
+    OUT ==>|dispatch| ADAPTER["Outbound adapters"]
+    ADAPTER -. implements .-> OUT
+    ADAPTER ==>|I/O| INFRA["PostgreSQL<br/>files / ImageIO / Spring"]
+```
+
+Solid arrows show compile-time use of a contract or domain type; dotted arrows show implementation of an interface. Thick arrows show runtime dispatch or infrastructure access. At runtime, Spring injects adapter implementations behind output ports; an output port has no dependency on its adapter.
+
+[ADR-0007 Option B](docs/03-decisions/ADR-0007-hexagonal-architecture-migration.md) retains [ADR-0004's direct JPA mappings](docs/03-decisions/ADR-0004-persistence-mapping.md) on the DDD aggregates. This is a deliberate framework coupling, with narrowly approved aggregate-bearing write ports. Cross-feature integration uses capability contracts rather than foreign repositories. ArchUnit checks enforce these boundaries and their explicit exceptions.
+
+Start with the [implemented architecture and class paths](docs/02-architecture/system-architecture.md#implemented-ports-and-adapters), [domain model](docs/02-architecture/domain-model.md), [migration history](docs/02-architecture/hexagonal-migration.md) and [architecture test guide](docs/05-testing/hexagonal-architecture-tests.md).
+
 ## Try the Application Locally
 
 Start with the isolated, disposable demo to explore the application without accessing the persistent development database.
@@ -157,7 +181,7 @@ The PIT adapter's artifact name does not change the project's JUnit 6 runtime. P
 
 JUnit 6, Mockito, AssertJ and Spring Boot Test support domain, application and MVC verification. Maven Surefire runs the fast tests; Failsafe runs integration tests, including isolated PostgreSQL databases managed by Testcontainers. JaCoCo measures execution coverage, while separate PIT mutation runs assess whether selected tests detect behavioral changes.
 
-The standard verification command is:
+Use `make verify-fast` for the complete fast suite and ArchUnit checks. `make verify-full SCOPE=all` adds complete regression, JaCoCo reporting and the existing PIT workflow; it is a separate, expensive verification step. The non-PIT regression command is:
 
 ```sh
 ./mvnw -B -ntp clean verify
@@ -165,7 +189,7 @@ The standard verification command is:
 
 Spotless / Palantir Java Format checks formatting during the build. SonarQube Cloud provides separately invoked static analysis; it does not run in ordinary Maven verification. CI publishes analysis without waiting for the remote quality gate.
 
-See the **[Quality Report](docs/05-testing/quality-report.md)** for dated test results, coverage, mutation outcomes, static-analysis evidence and limitations. Results apply to their recorded source snapshot and do not automatically verify later changes or certify production readiness.
+See the [verification guide](docs/05-testing/engineering-verification.md) for command scope, evidence and hook limitations, and the **[Quality Report](docs/05-testing/quality-report.md)** for dated test results, coverage, mutation outcomes, static-analysis evidence and limitations. Results apply to their recorded source snapshot and do not automatically verify later changes or certify production readiness.
 
 ## Advanced Development Setup
 
@@ -239,6 +263,7 @@ See [AGENTS.md](AGENTS.md), the [AI development workflow](docs/04-agentic-coding
 
 ## Architecture and Further Documentation
 
+- **Ports, adapters and decisions:** [implemented class paths](docs/02-architecture/system-architecture.md#implemented-ports-and-adapters), [migration history](docs/02-architecture/hexagonal-migration.md), [ADR-0007](docs/03-decisions/ADR-0007-hexagonal-architecture-migration.md), [ADR-0004](docs/03-decisions/ADR-0004-persistence-mapping.md).
 - **Requirements and boundaries:** [PRD](docs/01-requirements/product-requirements.md), [system architecture](docs/02-architecture/system-architecture.md), [domain model](docs/02-architecture/domain-model.md).
 - **Persistence and concurrency:** [transaction/locking conventions](docs/02-architecture/transaction-locking.md), [technology reference](docs/02-architecture/technology-stack.md), [REST design](docs/02-architecture/rest-api-design.md).
 - **Engineering practice:** [Java/Spring guidelines](docs/04-agentic-coding/java-spring-guidelines.md), [persistence guidelines](docs/04-agentic-coding/persistence-guidelines.md), [testing strategy](docs/05-testing/testing-strategy.md), [mutation testing strategy](docs/05-testing/mutation-testing.md).
@@ -246,7 +271,7 @@ See [AGENTS.md](AGENTS.md), the [AI development workflow](docs/04-agentic-coding
 
 ## Project Status
 
-Customer and Product management, Order placement and concurrency handling have been implemented, verified and formally accepted.
+Customer and Product management, Order placement and concurrency handling have been implemented, verified and formally accepted. The CH-003 pragmatic hexagonal migration is complete under accepted ADR-0007 Option B. On 2026-10-21, the human reported a passing latest SonarQube Cloud Quality Gate with no remaining findings; see the [quality report](docs/05-testing/quality-report.md#current-architecture-and-quality-status--2026-10-21) for provenance and remaining historical verification debt.
 
 Application observability is functionally stabilized and frozen, with selected acceptance evidence and operational requirements still pending.
 

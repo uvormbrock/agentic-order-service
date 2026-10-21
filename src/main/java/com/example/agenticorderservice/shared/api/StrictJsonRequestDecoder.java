@@ -244,9 +244,8 @@ public final class StrictJsonRequestDecoder {
         if (product) {
             return new ProductDetailsRequest(name, decodePrice(((Scalar) fields.get(PRICE)).text()));
         }
-        String email = com.example.agenticorderservice.customer.application.CustomerApplicationService.validateEmail(
-                        ((Scalar) fields.get(EMAIL)).text())
-                .value();
+        String email = com.example.agenticorderservice.customer.application.CustomerApplicationService.normalizeEmail(
+                ((Scalar) fields.get(EMAIL)).text());
         return new CustomerDetailsRequest(name, email);
     }
 

@@ -4,7 +4,10 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
 import com.example.agenticorderservice.customer.application.*;
+import com.example.agenticorderservice.order.integration.*;
 import com.example.agenticorderservice.order.persistence.OrderRepository;
+import com.example.agenticorderservice.order.persistence.OrderWriteAdapter;
+import com.example.agenticorderservice.order.transaction.*;
 import com.example.agenticorderservice.product.application.*;
 import com.example.agenticorderservice.shared.api.PostgreSqlApiTestSupport;
 import java.sql.SQLException;
@@ -367,6 +370,65 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
     }
 
     @Test
+    void retryReadsCommittedCustomerAndProductFactsAfterCompleteRollback() {
+        UUID c = customer(), p = product();
+        var contexts = new ArrayList<Object>();
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        var pauses = new java.util.concurrent.atomic.AtomicInteger();
+        doAnswer(call -> {
+                    contexts.add(EntityManagerFactoryUtils.getTransactionalEntityManager(factory));
+                    var result = call.callRealMethod();
+                    if (calls.incrementAndGet() == 1) {
+                        throw new RuntimeException(new SQLException("Test-owned eligible failure", "40P01"));
+                    }
+                    return result;
+                })
+                .when(productSpy())
+                .lock(p);
+        var coordinator = new OrderPlacementCoordinator(
+                new SpringOrderPlacementAttempts(new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard()),
+                new OrderPlacementCustomerAdapter(customers),
+                new OrderPlacementProductAdapter(products),
+                new OrderWriteAdapter(orders),
+                System::nanoTime,
+                delay -> {
+                    assertThat(delay).isEqualTo(TimeUnit.MILLISECONDS.toNanos(25));
+                    new AmbientTransactionGuard().check();
+                    noOrder(c);
+                    assertThat(jdbc.queryForObject(
+                                    "select count(*) from order_items where product_id=?", Integer.class, p))
+                            .isZero();
+                    tx(() -> {
+                        customerService.update(c, "Fresh customer", c + "@example.com");
+                        productService.update(p, "Fresh product", new java.math.BigDecimal("30.00"));
+                        return null;
+                    });
+                    pauses.incrementAndGet();
+                });
+        var result = coordinator.place(command(c, p));
+        assertThat(pauses.get()).isEqualTo(1);
+        assertThat(calls.get()).isEqualTo(2);
+        assertThat(contexts).hasSize(2).doesNotContainNull();
+        assertThat(contexts.get(0)).isNotSameAs(contexts.get(1));
+        assertThat(result.customer().name()).isEqualTo("Fresh customer");
+        assertThat(result.items()).singleElement().satisfies(item -> {
+            assertThat(item.productName()).isEqualTo("Fresh product");
+            assertThat(item.unitPrice()).isEqualByComparingTo("30.00");
+            assertThat(item.quantity()).isEqualTo(4);
+        });
+        assertThat(result.subtotal()).isEqualByComparingTo("120.00");
+        assertThat(result.discount()).isEqualByComparingTo("12.00");
+        assertThat(result.total()).isEqualByComparingTo("108.00");
+        assertThat(jdbc.queryForObject("select count(*) from orders where customer_id=?", Integer.class, c))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from order_items where order_id=?", Integer.class, result.id()))
+                .isEqualTo(1);
+        assertThat(jdbc.queryForObject(
+                        "select product_name from order_items where order_id=?", String.class, result.id()))
+                .isEqualTo("Fresh product");
+    }
+
+    @Test
     void actualCommitWithLostConfirmationNeverReplays() {
         UUID c = customer(), p = product();
         var commits = new java.util.concurrent.atomic.AtomicInteger();
@@ -386,7 +448,10 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
             }
         };
         var coordinator = new OrderPlacementCoordinator(
-                new TransactionTemplate(lost), jdbc, new AmbientTransactionGuard(), customers, products, orders);
+                new SpringOrderPlacementAttempts(new TransactionTemplate(lost), jdbc, new AmbientTransactionGuard()),
+                new OrderPlacementCustomerAdapter(customers),
+                new OrderPlacementProductAdapter(products),
+                new OrderWriteAdapter(orders));
         var input = command(c, p);
         assertThatExceptionOfType(OrderFailure.class)
                 .isThrownBy(() -> coordinator.place(input))
@@ -590,7 +655,11 @@ class OrderPlacementConcurrencyIT extends PostgreSqlApiTestSupport {
                 Throwable failure = catchThrowable(() -> tx(() ->
                         jdbc.queryForObject("select id from products where id=? for update nowait", UUID.class, p)));
                 assertThat(failure).isNotNull();
-                assertThat(OrderRetryPolicy.transientFailure(failure, true)).isFalse();
+                assertThat(failure).isInstanceOf(RuntimeException.class);
+                assertThat(new SpringOrderPlacementAttempts(
+                                        new TransactionTemplate(manager), jdbc, new AmbientTransactionGuard())
+                                .transientFailure((RuntimeException) failure, true))
+                        .isFalse();
                 Throwable root = failure;
                 while (root.getCause() != null) root = root.getCause();
                 assertThat(root).isInstanceOf(org.postgresql.util.PSQLException.class);

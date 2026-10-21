@@ -3,17 +3,39 @@ package com.example.agenticorderservice.customer.application;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
+import com.example.agenticorderservice.customer.application.port.out.*;
 import com.example.agenticorderservice.customer.domain.*;
-import com.example.agenticorderservice.customer.persistence.CustomerRepository;
 import com.example.agenticorderservice.shared.application.InputValidationException;
 import java.util.*;
 import org.junit.jupiter.api.*;
 
 class CustomerApplicationServiceTest {
-    private final CustomerRepository repository = mock(CustomerRepository.class);
-    private final CustomerApplicationService service = new CustomerApplicationService(
-            repository, mock(com.example.agenticorderservice.order.application.OrderReferenceQuery.class));
+    private final CustomerWriteStore repository = mock(CustomerWriteStore.class);
+    private final CustomerReadStore reads = mock(CustomerReadStore.class);
+    private final CustomerApplicationService service =
+            new CustomerApplicationService(reads, repository, mock(CustomerOrderReferences.class));
     private final UUID id = UUID.randomUUID();
+
+    @Test
+    void normalizesEmailWithoutChangingValidationFailuresOrBoundaries() {
+        assertThat(CustomerApplicationService.normalizeEmail("\u2003 Alice.Tag+Orders@Example.COM \t"))
+                .isEqualTo("alice.tag+orders@example.com");
+        String boundary = "A".repeat(242) + "@EXAMPLE.COM";
+        assertThat(CustomerApplicationService.normalizeEmail(" " + boundary + " "))
+                .isEqualTo("a".repeat(242) + "@example.com");
+        for (String invalid :
+                new String[] {"invalid", "a..b@example.com", "á@example.com", "a".repeat(243) + "@example.com"}) {
+            assertThatExceptionOfType(InputValidationException.class)
+                    .isThrownBy(() -> CustomerApplicationService.normalizeEmail(invalid))
+                    .satisfies(exception ->
+                            assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.EMAIL));
+        }
+        assertThatExceptionOfType(InputValidationException.class)
+                .isThrownBy(() -> CustomerApplicationService.normalizeEmail(null))
+                .satisfies(exception ->
+                        assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
+        verifyNoInteractions(repository, reads);
+    }
 
     @Test
     void createsNormalizedActiveResource() {
@@ -44,12 +66,12 @@ class CustomerApplicationServiceTest {
                 .isThrownBy(() -> service.update(id, "Valid", null))
                 .satisfies(exception ->
                         assertThat(exception.failure()).isEqualTo(InputValidationException.FieldFailure.REQUIRED));
-        verifyNoInteractions(repository);
+        verifyNoInteractions(repository, reads);
     }
 
     @Test
     void missingResourceRaisesFeatureFailure() {
-        when(repository.findById(id)).thenReturn(Optional.empty());
+        when(reads.findById(id)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.get(id)).isInstanceOf(CustomerNotFoundException.class);
         assertThatThrownBy(() -> service.update(id, "Valid", "user@example.com"))
                 .isInstanceOf(CustomerNotFoundException.class);
@@ -90,19 +112,19 @@ class CustomerApplicationServiceTest {
         var active = new Customer("First", new EmailAddress("user@example.com"));
         var inactive = new Customer("Second", new EmailAddress("user@example.com"));
         inactive.deactivate();
-        when(repository.findAll()).thenReturn(List.of(active, inactive));
+        when(reads.findAll()).thenReturn(List.of(CustomerResult.from(active), CustomerResult.from(inactive)));
         var results = service.list();
         assertThat(results).hasSize(2);
         assertThat(results).extracting(CustomerResult::active).containsExactly(true, false);
         assertThatThrownBy(results::clear).isInstanceOf(UnsupportedOperationException.class);
-        when(repository.findAll()).thenReturn(List.of());
+        when(reads.findAll()).thenReturn(List.of());
         assertThat(service.list()).isEmpty();
     }
 
     @Test
     void resultIsSnapshotIndependentOfLaterMutation() {
         var entity = new Customer("Original", new EmailAddress("user@example.com"));
-        when(repository.findById(id)).thenReturn(Optional.of(entity));
+        when(reads.findById(id)).thenReturn(Optional.of(CustomerResult.from(entity)));
         var result = service.get(id);
         entity.update("Changed", new EmailAddress("user@example.com"));
         entity.deactivate();

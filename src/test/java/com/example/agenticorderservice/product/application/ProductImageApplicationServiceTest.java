@@ -7,9 +7,12 @@ import static org.mockito.Mockito.*;
 import com.example.agenticorderservice.product.domain.Product;
 import com.example.agenticorderservice.product.domain.ProductImage;
 import com.example.agenticorderservice.product.domain.ProductImageMetadata;
+import com.example.agenticorderservice.product.persistence.ProductImageMetadataAdapter;
 import com.example.agenticorderservice.product.persistence.ProductImageRepository;
 import com.example.agenticorderservice.product.persistence.ProductRepository;
+import com.example.agenticorderservice.product.storage.ProductImageProcessor;
 import com.example.agenticorderservice.product.storage.ProductImageStorage;
+import com.example.agenticorderservice.product.storage.SpringProductImageTransactions;
 import com.example.agenticorderservice.shared.domain.Money;
 import java.util.*;
 import org.junit.jupiter.api.Test;
@@ -30,10 +33,13 @@ class ProductImageApplicationServiceTest {
     ProductImageApplicationService service(boolean enabled) {
         when(manager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
         when(products.findLockedById(id)).thenReturn(Optional.of(new Product("Product", Money.of("1"))));
-        when(storage.stage(any()))
-                .thenReturn(new ProductImageStorage.StagedImage(generation + "/original", generation + "/thumbnail"));
+        when(storage.stage(any())).thenReturn(new StagedImage(generation + "/original", generation + "/thumbnail"));
         return new ProductImageApplicationService(
-                products, images, new ProductImageProcessor(), storage, manager, enabled);
+                new ProductImageMetadataAdapter(products, images),
+                new ProductImageProcessor(),
+                storage,
+                new SpringProductImageTransactions(manager),
+                enabled);
     }
 
     ProductImage oldImage() {
@@ -89,7 +95,7 @@ class ProductImageApplicationServiceTest {
         order.verify(storage).stage(any());
         order.verify(manager).getTransaction(any());
         order.verify(products).findLockedById(id);
-        order.verify(images).findById(id);
+        order.verify(images, times(2)).findById(id);
         order.verify(images).save(old);
         order.verify(manager).commit(any());
         order.verify(storage).deleteGeneration(previous);
@@ -111,6 +117,42 @@ class ProductImageApplicationServiceTest {
                 .commit(any());
         assertThatThrownBy(() -> uncertain.upload(id, bytes, "image/png"))
                 .isInstanceOf(TransactionSystemException.class);
+        verify(storage, never()).deleteGeneration(any());
+    }
+
+    @Test
+    void stagingFailureDoesNotStartMetadataTransaction() {
+        var service = service(true);
+        when(storage.stage(any())).thenThrow(new ProductImageFailure(ProductImageFailure.Reason.STORAGE));
+        assertReason(() -> service.upload(id, bytes, "image/png"), ProductImageFailure.Reason.STORAGE);
+        verifyNoInteractions(images);
+        verify(products, never()).findLockedById(any());
+        verify(manager, never()).getTransaction(any());
+        verify(storage, never()).deleteGeneration(any());
+    }
+
+    @Test
+    void missingProductAfterStagingRetainsCandidateForQuiescentRecovery() {
+        var service = service(true);
+        when(products.findLockedById(id)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.upload(id, bytes, "image/png")).isInstanceOf(ProductNotFoundException.class);
+        verify(storage).stage(any());
+        verify(manager).rollback(any());
+        verifyNoInteractions(images);
+        verify(storage, never()).deleteGeneration(any());
+    }
+
+    @Test
+    void uncertainDeletionCommitRetainsPriorGenerationAndDoesNotReplay() {
+        var service = service(true);
+        var image = oldImage();
+        when(images.findById(id)).thenReturn(Optional.of(image));
+        doThrow(new TransactionSystemException("commit outcome unknown"))
+                .when(manager)
+                .commit(any());
+        assertThatThrownBy(() -> service.delete(id)).isInstanceOf(TransactionSystemException.class);
+        verify(images).delete(image);
+        verify(manager).commit(any());
         verify(storage, never()).deleteGeneration(any());
     }
 
@@ -165,7 +207,7 @@ class ProductImageApplicationServiceTest {
                 .getTransaction(argThat(definition ->
                         definition.getIsolationLevel() == TransactionDefinition.ISOLATION_READ_COMMITTED));
         order.verify(products).findLockedById(id);
-        order.verify(images).findById(id);
+        order.verify(images, times(2)).findById(id);
         order.verify(images).delete(image);
         order.verify(manager).commit(any());
         order.verify(storage).deleteGeneration(previous);

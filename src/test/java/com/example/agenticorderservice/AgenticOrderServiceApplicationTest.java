@@ -17,19 +17,40 @@ import org.springframework.web.context.WebApplicationContext;
 class AgenticOrderServiceApplicationTest {
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
-    private com.example.agenticorderservice.product.application.ProductImageApplicationService productImages;
+    private com.example.agenticorderservice.product.application.port.in.ProductImageOperations productImages;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     private com.example.agenticorderservice.product.application.ProductApplicationService products;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
-    private com.example.agenticorderservice.customer.application.CustomerApplicationService customers;
+    private com.example.agenticorderservice.product.application.port.in.GetProductQuery getProduct;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
-    protected com.example.agenticorderservice.order.application.OrderPlacementCoordinator placement;
+    private com.example.agenticorderservice.product.application.port.out.FindProductById productLookup;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
-    protected com.example.agenticorderservice.order.application.OrderQueryService orderQueries;
+    protected com.example.agenticorderservice.product.application.port.in.ProductWriteOperations productWrites;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.port.out.ProductWriteStore productWriteStore;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    private com.example.agenticorderservice.customer.application.port.in.CustomerOperations customers;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.out.OrderReadStore orderReadStore;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.in.OrderPlacementOperations placement;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.out.OrderWriteStore orderWriteStore;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.out.OrderPlacementAttempts orderPlacementAttempts;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.in.OrderQueries orderQueries;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     protected com.example.agenticorderservice.customer.application.CustomerOrderAccess customerOrderAccess;
@@ -42,6 +63,18 @@ class AgenticOrderServiceApplicationTest {
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean(name = "orderPlacementTransactionTemplate")
     protected org.springframework.transaction.support.TransactionTemplate orderPlacementTransactions;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.customer.application.port.out.CustomerReadStore customerReads;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.customer.application.port.out.CustomerWriteStore customerWrites;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.port.out.ProductImageMetadataStore imageMetadata;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.port.out.ProductImageTransactions imageTransactions;
 
     @Autowired
     private ApplicationContext context;

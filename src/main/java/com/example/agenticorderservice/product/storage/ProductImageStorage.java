@@ -1,7 +1,10 @@
 package com.example.agenticorderservice.product.storage;
 
+import com.example.agenticorderservice.product.application.ProcessedImage;
 import com.example.agenticorderservice.product.application.ProductImageFailure;
-import com.example.agenticorderservice.product.application.ProductImageProcessor;
+import com.example.agenticorderservice.product.application.ProductImageLimits;
+import com.example.agenticorderservice.product.application.StagedImage;
+import com.example.agenticorderservice.product.application.port.out.ImageStorage;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
@@ -9,18 +12,17 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
-public class ProductImageStorage {
+public class ProductImageStorage implements ImageStorage {
     private static final String ORIGINAL_SUFFIX = "/original";
     private final Path root;
-
-    public record StagedImage(String originalKey, String thumbnailKey) {}
 
     public ProductImageStorage(
             @Value("${app.product-images.storage-directory:./var/product-images}") String directory) {
         root = Path.of(directory).toAbsolutePath().normalize();
     }
 
-    public StagedImage stage(ProductImageProcessor.ProcessedImage image) {
+    @Override
+    public StagedImage stage(ProcessedImage image) {
         String generation = UUID.randomUUID().toString();
         boolean created = false;
         try {
@@ -51,14 +53,14 @@ public class ProductImageStorage {
         }
     }
 
+    @Override
     public byte[] read(String key, long expectedSize) {
         try {
             Path file = checkedFile(key);
             if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)
                     || Files.size(file) != expectedSize
                     || expectedSize <= 0
-                    || expectedSize > ProductImageProcessor.MAX_BYTES)
-                throw new IOException("Invalid managed image file");
+                    || expectedSize > ProductImageLimits.MAX_BYTES) throw new IOException("Invalid managed image file");
             try (var input = Files.newInputStream(file, LinkOption.NOFOLLOW_LINKS)) {
                 byte[] bytes = input.readNBytes((int) expectedSize + 1);
                 if (bytes.length != expectedSize) throw new IOException("Managed image size changed");
@@ -69,6 +71,7 @@ public class ProductImageStorage {
         }
     }
 
+    @Override
     public void deleteGeneration(String originalKey) {
         try {
             Path original = checkedFile(originalKey);
@@ -84,6 +87,7 @@ public class ProductImageStorage {
     }
 
     /** Caller must stop all readers/writers across every instance before invoking reconciliation. */
+    @Override
     public int reconcile(Set<String> referencedOriginalKeys) {
         try {
             ensureRoot();

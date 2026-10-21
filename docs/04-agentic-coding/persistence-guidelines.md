@@ -72,3 +72,7 @@ These accepted guidelines supplement the approved [coding guidelines](coding-gui
 ## Provenance
 
 The user-supplied draft attributes general patterns to *JPA/Hibernate Patterns* and *PostgreSQL Patterns*. Those sources are background material, not adopted repository instructions. This revision follows the supplied review feedback and authoritative project documents; it installs no skill and selects no schema or concurrency protocol.
+
+## Accepted Option B — persistence boundary
+
+[ADR-0007](../03-decisions/ADR-0007-hexagonal-architecture-migration.md) compares separate domain/JPA models (A) with retained direct mapping behind ports (B). B is human Accepted on 2026-10-21; retain existing mappings and isolate persistence access behind ports incrementally. Increment 0 changes no mappings. ADR-0004 remains authoritative; selecting A requires explicit supersession and reviewed identity/rehydration/version contracts before implementation. See the [migration plan](../02-architecture/hexagonal-migration.md).

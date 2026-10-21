@@ -2,41 +2,36 @@ package com.example.agenticorderservice.order.application;
 
 import static com.example.agenticorderservice.order.application.OrderFailure.Reason.*;
 
-import com.example.agenticorderservice.customer.application.CustomerOrderAccess;
+import com.example.agenticorderservice.order.application.port.in.OrderPlacementOperations;
+import com.example.agenticorderservice.order.application.port.out.OrderPlacementAttempts;
+import com.example.agenticorderservice.order.application.port.out.OrderPlacementCustomerFacts;
+import com.example.agenticorderservice.order.application.port.out.OrderPlacementProductFacts;
+import com.example.agenticorderservice.order.application.port.out.OrderWriteStore;
 import com.example.agenticorderservice.order.domain.*;
-import com.example.agenticorderservice.order.persistence.OrderRepository;
-import com.example.agenticorderservice.product.application.ProductOrderAccess;
 import com.example.agenticorderservice.shared.domain.Money;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongConsumer;
 import java.util.function.LongSupplier;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.*;
 
 @Service
-public class OrderPlacementCoordinator {
-    private final TransactionTemplate transactions;
-    private final JdbcTemplate jdbc;
-    private final AmbientTransactionGuard guard;
-    private final CustomerOrderAccess customers;
-    private final ProductOrderAccess products;
-    private final OrderRepository orders;
+public class OrderPlacementCoordinator implements OrderPlacementOperations {
+    private final OrderPlacementAttempts transactions;
+    private final OrderPlacementCustomerFacts customers;
+    private final OrderPlacementProductFacts products;
+    private final OrderWriteStore orders;
     private final LongSupplier clock;
     private final LongConsumer pause;
 
     @Autowired
     public OrderPlacementCoordinator(
-            @Qualifier("orderPlacementTransactionTemplate") TransactionTemplate transactions,
-            JdbcTemplate jdbc,
-            AmbientTransactionGuard guard,
-            CustomerOrderAccess customers,
-            ProductOrderAccess products,
-            OrderRepository orders) {
-        this(transactions, jdbc, guard, customers, products, orders, System::nanoTime, nanos -> {
+            OrderPlacementAttempts transactions,
+            OrderPlacementCustomerFacts customers,
+            OrderPlacementProductFacts products,
+            OrderWriteStore orders) {
+        this(transactions, customers, products, orders, System::nanoTime, nanos -> {
             try {
                 TimeUnit.NANOSECONDS.sleep(nanos);
             } catch (InterruptedException interrupted) {
@@ -47,17 +42,13 @@ public class OrderPlacementCoordinator {
     }
 
     OrderPlacementCoordinator(
-            TransactionTemplate transactions,
-            JdbcTemplate jdbc,
-            AmbientTransactionGuard guard,
-            CustomerOrderAccess customers,
-            ProductOrderAccess products,
-            OrderRepository orders,
+            OrderPlacementAttempts transactions,
+            OrderPlacementCustomerFacts customers,
+            OrderPlacementProductFacts products,
+            OrderWriteStore orders,
             LongSupplier clock,
             LongConsumer pause) {
         this.transactions = transactions;
-        this.jdbc = jdbc;
-        this.guard = guard;
         this.customers = customers;
         this.products = products;
         this.orders = orders;
@@ -65,18 +56,14 @@ public class OrderPlacementCoordinator {
         this.pause = pause;
     }
 
-    private static final class Attempt {
-        int completion = TransactionSynchronization.STATUS_UNKNOWN;
-        RuntimeException lockCallFailure;
-    }
-
+    @Override
     public OrderResult place(PlaceOrderCommand command) {
-        guard.check();
+        transactions.checkUnbound();
         Objects.requireNonNull(command, "command");
         var quantities = command.consolidated();
         long started = clock.getAsLong();
         for (int number = 0; number < 3; number++) {
-            var attempt = new Attempt();
+            var attempt = new PlacementAttempt();
             try {
                 var result = executeAttempt(command, quantities, attempt);
                 event(
@@ -92,16 +79,10 @@ public class OrderPlacementCoordinator {
         throw new IllegalStateException("Unreachable attempt boundary");
     }
 
-    private OrderResult executeAttempt(PlaceOrderCommand command, Map<UUID, Integer> quantities, Attempt attempt) {
+    private OrderResult executeAttempt(
+            PlaceOrderCommand command, Map<UUID, Integer> quantities, PlacementAttempt attempt) {
         // execute() returns only after transaction completion and resource cleanup.
-        return transactions.execute(status -> {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCompletion(int completion) {
-                    attempt.completion = completion;
-                }
-            });
-            jdbc.execute("SET LOCAL lock_timeout = '2s'");
+        return transactions.execute(attempt, () -> {
             var customer = lockCustomer(command.customerId(), attempt);
             if (!customer.active()) {
                 throw new OrderFailure(CUSTOMER_INACTIVE);
@@ -121,31 +102,33 @@ public class OrderPlacementCoordinator {
         });
     }
 
-    private com.example.agenticorderservice.customer.application.CustomerResult lockCustomer(UUID id, Attempt attempt) {
+    private com.example.agenticorderservice.customer.application.CustomerResult lockCustomer(
+            UUID id, PlacementAttempt attempt) {
         try {
             return customers.lock(id);
         } catch (RuntimeException failure) {
-            attempt.lockCallFailure = failure;
+            attempt.recordLockCallFailure(failure);
             throw failure;
         }
     }
 
-    private com.example.agenticorderservice.product.application.ProductResult lockProduct(UUID id, Attempt attempt) {
+    private com.example.agenticorderservice.product.application.ProductResult lockProduct(
+            UUID id, PlacementAttempt attempt) {
         try {
             return products.lock(id);
         } catch (RuntimeException failure) {
-            attempt.lockCallFailure = failure;
+            attempt.recordLockCallFailure(failure);
             throw failure;
         }
     }
 
-    private void retryAfterRollback(RuntimeException failure, Attempt attempt, int number, long started) {
-        if (attempt.completion != TransactionSynchronization.STATUS_ROLLED_BACK) {
+    private void retryAfterRollback(RuntimeException failure, PlacementAttempt attempt, int number, long started) {
+        if (attempt.completion() != PlacementAttempt.Completion.ROLLED_BACK) {
             event(org.slf4j.event.Level.ERROR, "event=ORDER_OUTCOME_UNKNOWN attempt={} outcome=UNKNOWN", number + 1);
             throw new OrderFailure(TECHNICAL, failure, true);
         }
-        guard.check(); // Also confirms unbound resources before any backoff/new attempt.
-        if (!OrderRetryPolicy.transientFailure(failure, attempt.lockCallFailure == failure)) {
+        transactions.checkUnbound(); // Also confirms unbound resources before any backoff/new attempt.
+        if (!transactions.transientFailure(failure, attempt.lockCallFailure() == failure)) {
             String reason = rejectionReason(failure);
             if (reason != null) {
                 event(org.slf4j.event.Level.DEBUG, "event=ORDER_REJECTED attempt={} reason={}", number + 1, reason);

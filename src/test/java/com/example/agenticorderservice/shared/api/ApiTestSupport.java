@@ -20,11 +20,24 @@ import org.springframework.web.context.WebApplicationContext;
                 + "org.springframework.boot.hibernate.autoconfigure.HibernateJpaAutoConfiguration,"
                 + "org.springframework.boot.flyway.autoconfigure.FlywayAutoConfiguration")
 public abstract class ApiTestSupport {
-    @org.springframework.test.context.bean.override.mockito.MockitoBean
-    protected com.example.agenticorderservice.order.application.OrderPlacementCoordinator placement;
+    // The retained concrete compatibility mock also implements the list input contract.
+    @Autowired
+    protected com.example.agenticorderservice.product.application.port.in.ListProductsQuery listProducts;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
-    protected com.example.agenticorderservice.order.application.OrderQueryService orderQueries;
+    protected com.example.agenticorderservice.order.application.port.out.OrderReadStore orderReadStore;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.in.OrderPlacementOperations placement;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.out.OrderWriteStore orderWriteStore;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.out.OrderPlacementAttempts orderPlacementAttempts;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.order.application.port.in.OrderQueries orderQueries;
 
     @org.springframework.test.context.bean.override.mockito.MockitoBean
     protected com.example.agenticorderservice.customer.application.CustomerOrderAccess customerOrderAccess;
@@ -38,17 +51,41 @@ public abstract class ApiTestSupport {
     @org.springframework.test.context.bean.override.mockito.MockitoBean(name = "orderPlacementTransactionTemplate")
     protected org.springframework.transaction.support.TransactionTemplate orderPlacementTransactions;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.customer.application.port.out.CustomerReadStore customerReads;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.customer.application.port.out.CustomerWriteStore customerWrites;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.port.out.ProductImageMetadataStore imageMetadata;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.port.out.ProductImageTransactions imageTransactions;
+
     @Autowired
     protected WebApplicationContext context;
 
     @MockitoBean
-    protected ProductImageApplicationService productImages;
+    protected com.example.agenticorderservice.product.application.port.in.ProductImageOperations productImages;
 
     @MockitoBean
     protected ProductApplicationService products;
 
     @MockitoBean
-    protected CustomerApplicationService customers;
+    protected com.example.agenticorderservice.product.application.port.in.GetProductQuery getProduct;
+
+    @MockitoBean
+    protected com.example.agenticorderservice.product.application.port.out.FindProductById productLookup;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.port.in.ProductWriteOperations productWrites;
+
+    @org.springframework.test.context.bean.override.mockito.MockitoBean
+    protected com.example.agenticorderservice.product.application.port.out.ProductWriteStore productWriteStore;
+
+    @MockitoBean
+    protected com.example.agenticorderservice.customer.application.port.in.CustomerOperations customers;
 
     protected MockMvc mvc;
     protected final UUID id = UUID.fromString("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee");
@@ -56,19 +93,19 @@ public abstract class ApiTestSupport {
     @BeforeEach
     void configureMvcAndServices() {
         mvc = MockMvcBuilders.webAppContextSetup(context).build();
-        when(products.create(anyString(), any()))
+        when(productWrites.create(anyString(), any()))
                 .thenAnswer(c -> new ProductResult(id, c.getArgument(0), c.getArgument(1), true));
         when(customers.create(anyString(), anyString()))
                 .thenAnswer(c -> new CustomerResult(id, c.getArgument(0), c.getArgument(1), true));
-        when(products.get(any())).thenReturn(new ProductResult(id, "Name", new BigDecimal("12.34"), false));
+        when(getProduct.get(any())).thenReturn(new ProductResult(id, "Name", new BigDecimal("12.34"), false));
         when(customers.get(any())).thenReturn(new CustomerResult(id, "Name", "user@example.com", false));
-        when(products.update(any(), anyString(), any()))
+        when(productWrites.update(any(), anyString(), any()))
                 .thenAnswer(c -> new ProductResult(id, c.getArgument(1), c.getArgument(2), false));
         when(customers.update(any(), anyString(), anyString()))
                 .thenAnswer(c -> new CustomerResult(id, c.getArgument(1), c.getArgument(2), false));
-        when(products.deactivate(any())).thenReturn(new ProductResult(id, "Name", new BigDecimal("12.34"), false));
+        when(productWrites.deactivate(any())).thenReturn(new ProductResult(id, "Name", new BigDecimal("12.34"), false));
         when(customers.deactivate(any())).thenReturn(new CustomerResult(id, "Name", "user@example.com", false));
-        when(products.list()).thenReturn(List.of());
+        when(listProducts.list()).thenReturn(List.of());
         when(customers.list()).thenReturn(List.of());
     }
 

@@ -14,6 +14,68 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 
 class ProductApiTest extends ApiTestSupport {
+    @Test
+    void listDelegatesOnlyToInputPortAndRetainsEveryResponseField() throws Exception {
+        when(listProducts.list())
+                .thenReturn(
+                        java.util.List.of(new ProductResult(id, "Inactive", new java.math.BigDecimal("12.34"), false)));
+        mvc.perform(get("/products"))
+                .andExpect(status().isOk())
+                .andExpect(content()
+                        .json("[{\"id\":\"" + id + "\",\"name\":\"Inactive\",\"price\":12.34,\"active\":false}]"));
+        verify(listProducts).list();
+        verifyNoMoreInteractions(listProducts);
+        verifyNoInteractions(getProduct, productWrites);
+    }
+
+    @Test
+    void writeEndpointsDelegateNormalizedFactsAndPreserveExactResponses() throws Exception {
+        var price = new java.math.BigDecimal("45.67");
+        String body = "{\"name\":\"  Äpfel😀  \",\"price\":45.67}";
+        mvc.perform(post("/products").contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/products/" + id))
+                .andExpect(
+                        content().json("{\"id\":\"" + id + "\",\"name\":\"Äpfel😀\",\"price\":45.67,\"active\":true}"));
+        mvc.perform(put("/products/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isOk())
+                .andExpect(content()
+                        .json("{\"id\":\"" + id + "\",\"name\":\"Äpfel😀\",\"price\":45.67,\"active\":false}"));
+        mvc.perform(patch("/products/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"active\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content().json("{\"id\":\"" + id + "\",\"name\":\"Name\",\"price\":12.34,\"active\":false}"));
+        verify(productWrites).create("Äpfel😀", price);
+        verify(productWrites).update(id, "Äpfel😀", price);
+        verify(productWrites).deactivate(id);
+        verifyNoMoreInteractions(productWrites);
+        verifyNoInteractions(products);
+        verifyNoInteractions(getProduct);
+    }
+
+    @Test
+    void missingWriteResourcesRetainFeatureErrorAndPhysicalDeleteRemainsUnsupported() throws Exception {
+        when(productWrites.update(eq(id), anyString(), any())).thenThrow(new ProductNotFoundException());
+        when(productWrites.deactivate(id)).thenThrow(new ProductNotFoundException());
+        error(
+                put("/products/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Valid\",\"price\":12.34}"),
+                PRODUCT_NOT_FOUND);
+        error(
+                patch("/products/" + id).contentType(MediaType.APPLICATION_JSON).content("{\"active\":false}"),
+                PRODUCT_NOT_FOUND);
+        verify(productWrites).update(id, "Valid", new java.math.BigDecimal("12.34"));
+        verify(productWrites).deactivate(id);
+        clearInvocations(productWrites);
+        mvc.perform(delete("/products/" + id)).andExpect(status().isMethodNotAllowed());
+        verifyNoInteractions(products, productWrites, getProduct);
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"products", "customers"})
     void allTenEndpointsUseAcceptedBodiesStatusLocationAndInactiveRecords(String feature) throws Exception {
@@ -62,6 +124,7 @@ class ProductApiTest extends ApiTestSupport {
                         .content("{\"name\":\"Valid\",\"price\":" + spelling + "}"),
                 INVALID_PRODUCT_PRICE);
         verify(products, never()).create(anyString(), any());
+        verify(productWrites, never()).create(anyString(), any());
     }
 
     @Test
@@ -69,9 +132,10 @@ class ProductApiTest extends ApiTestSupport {
         error(put("/products/short").contentType("application/xml").content("not json"), UNSUPPORTED_MEDIA_TYPE);
         error(put("/products/short").contentType(MediaType.APPLICATION_JSON).content("not json"), INVALID_RESOURCE_ID);
         error(put("/products/" + id).contentType(MediaType.APPLICATION_JSON).content("not json"), MALFORMED_JSON);
-        when(products.get(id)).thenThrow(new ProductNotFoundException());
+        when(getProduct.get(id)).thenThrow(new ProductNotFoundException());
         error(get("/products/" + id), PRODUCT_NOT_FOUND);
         verify(products, never()).update(any(), any(), any());
+        verify(productWrites, never()).update(any(), any(), any());
     }
 
     @ParameterizedTest
@@ -84,7 +148,7 @@ class ProductApiTest extends ApiTestSupport {
             })
     void rejectsUnsupportedMedia(String media) throws Exception {
         error(post("/products").contentType(media).content("{}"), UNSUPPORTED_MEDIA_TYPE);
-        verifyNoInteractions(products, customers);
+        verifyNoInteractions(products, productWrites, customers);
     }
 
     @Test
@@ -93,6 +157,22 @@ class ProductApiTest extends ApiTestSupport {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(id.toString()));
         error(get("/products/1-1-1-1-1"), INVALID_RESOURCE_ID);
+    }
+
+    @Test
+    void getDelegatesOnlyToInputPortAndPreservesExactInactiveResponse() throws Exception {
+        mvc.perform(get("/products/" + id))
+                .andExpect(status().isOk())
+                .andExpect(
+                        content().json("{\"id\":\"" + id + "\",\"name\":\"Name\",\"price\":12.34,\"active\":false}"));
+        verify(getProduct).get(id);
+        verifyNoInteractions(products);
+    }
+
+    @Test
+    void invalidGetIdDoesNotInvokeEitherApplicationBoundary() throws Exception {
+        error(get("/products/not-a-uuid"), INVALID_RESOURCE_ID);
+        verifyNoInteractions(getProduct, products, productWrites);
     }
 
     @Test

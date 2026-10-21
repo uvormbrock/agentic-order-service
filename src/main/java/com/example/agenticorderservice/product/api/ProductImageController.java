@@ -1,6 +1,7 @@
 package com.example.agenticorderservice.product.api;
 
 import com.example.agenticorderservice.product.application.*;
+import com.example.agenticorderservice.product.application.port.in.ProductImageOperations;
 import com.example.agenticorderservice.shared.api.ApiError;
 import com.example.agenticorderservice.shared.api.ApiInputException;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,9 +18,9 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/products/{id}/image")
 public class ProductImageController {
-    private final ProductImageApplicationService service;
+    private final ProductImageOperations service;
 
-    public ProductImageController(ProductImageApplicationService service) {
+    public ProductImageController(ProductImageOperations service) {
         this.service = service;
     }
 
@@ -35,10 +36,10 @@ public class ProductImageController {
     @ApiResponse(responseCode = "413", description = "Image exceeds upload limit")
     @ApiResponse(responseCode = "415", description = "Unsupported image or multipart media type")
     public ResponseEntity<Void> upload(@PathVariable UUID id, @RequestPart("file") MultipartFile file) {
-        if (file.getSize() > ProductImageProcessor.MAX_BYTES)
+        if (file.getSize() > ProductImageLimits.MAX_BYTES)
             throw new ProductImageFailure(ProductImageFailure.Reason.TOO_LARGE);
         try (var input = file.getInputStream()) {
-            byte[] bytes = input.readNBytes(ProductImageProcessor.MAX_BYTES + 1);
+            byte[] bytes = input.readNBytes(ProductImageLimits.MAX_BYTES + 1);
             service.upload(id, bytes, file.getContentType());
         } catch (IOException failure) {
             throw new ProductImageFailure(ProductImageFailure.Reason.STORAGE, failure);

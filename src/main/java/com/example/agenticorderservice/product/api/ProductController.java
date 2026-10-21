@@ -1,6 +1,8 @@
 package com.example.agenticorderservice.product.api;
 
-import com.example.agenticorderservice.product.application.ProductApplicationService;
+import com.example.agenticorderservice.product.application.port.in.GetProductQuery;
+import com.example.agenticorderservice.product.application.port.in.ListProductsQuery;
+import com.example.agenticorderservice.product.application.port.in.ProductWriteOperations;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,10 +17,15 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/products")
 public class ProductController {
-    private final ProductApplicationService service;
+    private final ListProductsQuery service;
+    private final GetProductQuery getProductQuery;
+    private final ProductWriteOperations productWriteOperations;
 
-    public ProductController(ProductApplicationService service) {
+    public ProductController(
+            ListProductsQuery service, GetProductQuery getProductQuery, ProductWriteOperations productWriteOperations) {
         this.service = service;
+        this.getProductQuery = getProductQuery;
+        this.productWriteOperations = productWriteOperations;
     }
 
     @PostMapping
@@ -27,7 +34,7 @@ public class ProductController {
             description = "Creates an active product with a server-generated ID and validated EUR gross price.")
     @ApiResponse(responseCode = "201", description = "Created; Location identifies the new resource")
     public ResponseEntity<ProductResponse> create(@RequestBody ProductDetailsRequest input) {
-        var response = ProductResponse.from(service.create(input.name(), input.price()));
+        var response = ProductResponse.from(productWriteOperations.create(input.name(), input.price()));
         return ResponseEntity.created(URI.create("/products/" + response.id()))
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(response);
@@ -46,7 +53,9 @@ public class ProductController {
     @GetMapping("/{id}")
     @Operation(summary = "Get a product", description = "Returns current catalog data, including inactive products.")
     public ResponseEntity<ProductResponse> get(@PathVariable UUID id) {
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(ProductResponse.from(service.get(id)));
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ProductResponse.from(getProductQuery.get(id)));
     }
 
     @PutMapping("/{id}")
@@ -57,7 +66,7 @@ public class ProductController {
     public ResponseEntity<ProductResponse> update(@PathVariable UUID id, @RequestBody ProductDetailsRequest input) {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(ProductResponse.from(service.update(id, input.name(), input.price())));
+                .body(ProductResponse.from(productWriteOperations.update(id, input.name(), input.price())));
     }
 
     @PatchMapping("/{id}")
@@ -69,6 +78,6 @@ public class ProductController {
             @PathVariable UUID id, @RequestBody DeactivateProductRequest input) {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(ProductResponse.from(service.deactivate(id)));
+                .body(ProductResponse.from(productWriteOperations.deactivate(id)));
     }
 }

@@ -5,7 +5,10 @@ import static org.mockito.Mockito.*;
 
 import com.example.agenticorderservice.customer.application.CustomerApplicationService;
 import com.example.agenticorderservice.customer.application.CustomerOrderAccess;
+import com.example.agenticorderservice.order.integration.*;
 import com.example.agenticorderservice.order.persistence.OrderRepository;
+import com.example.agenticorderservice.order.persistence.OrderWriteAdapter;
+import com.example.agenticorderservice.order.transaction.*;
 import com.example.agenticorderservice.product.application.ProductOrderAccess;
 import com.example.agenticorderservice.shared.api.PostgreSqlApiTestSupport;
 import com.example.agenticorderservice.shared.logging.EventCapture;
@@ -290,12 +293,13 @@ class AsyncTransactionLoggingIT extends PostgreSqlApiTestSupport {
                     if (kind.equals("order")) {
                         var selected = mode.equals("UNKNOWN")
                                 ? new OrderPlacementCoordinator(
-                                        new TransactionTemplate(lostConfirmation()),
-                                        jdbc,
-                                        new AmbientTransactionGuard(),
-                                        customerAccess,
-                                        productAccess,
-                                        orders)
+                                        new SpringOrderPlacementAttempts(
+                                                new TransactionTemplate(lostConfirmation()),
+                                                jdbc,
+                                                new AmbientTransactionGuard()),
+                                        new OrderPlacementCustomerAdapter(customerAccess),
+                                        new OrderPlacementProductAdapter(productAccess),
+                                        new OrderWriteAdapter(orders))
                                 : placement;
                         selected.place(command(customer, product));
                     } else {

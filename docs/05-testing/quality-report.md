@@ -1,6 +1,18 @@
 # Quality Report — Agentic Order Service
 
-This report separates historical execution results from the stable project overview. It was compiled from existing evidence on 2026-10-17; no tests, builds, PIT or SonarQube analysis were executed for this documentation update.
+This report separates historical execution results from the stable project overview. The original sections were compiled from existing evidence on 2026-10-17; later dated entries retain their own provenance. No tests, builds, PIT or SonarQube calls were executed for the 2026-10-21 architecture documentation update.
+
+## Current Architecture and Quality Status — 2026-10-21
+
+The human confirmed that CH-003's pragmatic hexagonal migration is complete under Accepted ADR-0007 Option B, with ADR-0004 and the approved JPA mappings retained. The [system architecture](../02-architecture/system-architecture.md#implemented-ports-and-adapters) describes the final class paths; the [architecture test guide](hexagonal-architecture-tests.md) describes current enforcement.
+
+**Cloud provenance:** In the documentation request on 2026-10-21, the human reported that the latest human-run SonarQube Cloud analysis passed its Quality Gate with no remaining findings. This is a human-reported result, not a Cloud query or scanner execution by this documentation task. No analysis ID, branch/revision attribution or dashboard evidence was supplied with that report; none is invented here. Earlier Pending/Failed/Unknown Cloud entries below and in CH-003 records remain historical snapshots, superseded for this reported latest status only.
+
+**Local verification:** The [CH-003 final assessment](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/increment-8-acceptance-report.md) retains complete regression/JaCoCo/full PIT results and the subsequent targeted test-hardening evidence. The targeted R1/R2 mutation gaps were killed in the recorded narrow follow-up; that result does not replace the historical full-run population. Historical surviving/uncovered mutants and timeouts retain their individual provenance and review debt. A passing Cloud gate does not establish their resolution or risk acceptance.
+
+`make verify-fast` runs all fast tests/ArchUnit and Spotless. Complete non-PIT `clean verify` adds integration tests and JaCoCo reporting. `make verify-full SCOPE=all` additionally invokes the existing PIT workflow; process success is not a mutation-score threshold or acceptance of survivors. See [engineering verification](engineering-verification.md) for exact scope. Native lifecycle delivery remains unverified and the prepared Git hook remains inactive under the [recorded hook inventory](../04-agentic-coding/multi-agent/hooks.md); no activation is inferred from passing tests.
+
+This documentation update requires human acceptance. It records migration completion without changing ADR statuses, granting production readiness or closing historical mutation/deployment decisions.
 
 ## Verification Metadata
 

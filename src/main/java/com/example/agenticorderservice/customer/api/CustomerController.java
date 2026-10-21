@@ -1,6 +1,6 @@
 package com.example.agenticorderservice.customer.api;
 
-import com.example.agenticorderservice.customer.application.CustomerApplicationService;
+import com.example.agenticorderservice.customer.application.port.in.CustomerOperations;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/customers")
 public class CustomerController {
-    private final CustomerApplicationService service;
+    private final CustomerOperations service;
 
-    public CustomerController(CustomerApplicationService service) {
+    public CustomerController(CustomerOperations service) {
         this.service = service;
     }
 
