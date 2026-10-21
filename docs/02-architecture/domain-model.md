@@ -10,6 +10,14 @@ The Agentic Order Service models product catalog management, customer management
 
 The model deliberately separates the **current catalog state** from the **historical facts captured when an order is placed**. It is a conceptual domain model. Direct JPA mapping is accepted in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md); D1–D10 mapping/storage selections are Accepted there; concrete SQL was reviewed against the PRD and scoped runtime verification passed as recorded in the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). Increment 3 is Reviewed – Accepted.
 
+### Position in the implemented architecture
+
+CH-003 implements [ADR-0007 Option B](../03-decisions/ADR-0007-hexagonal-architecture-migration.md) while retaining [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md). The same DDD aggregates carry approved JPA annotations and hydration constraints; `Money` and `EmailAddress` remain annotation-free. Domain code does not call application services, repositories, HTTP, SQL or filesystem APIs. The domain is not a separate framework-free persistence model.
+
+Application use cases coordinate eligibility, transactions and calls to domain mutation methods. Only the exact same-feature `ProductWriteStore`, `CustomerWriteStore` and `OrderWriteStore` persistence contracts may carry their managed aggregates inside the owning transaction. REST, input, read and cross-feature contracts expose immutable facts/results instead. This retains dirty checking, optimistic versions and aggregate ownership without introducing duplicate entities or moving business logic into persistence adapters.
+
+See [implemented class paths and exceptions](system-architecture.md#implemented-ports-and-adapters) for application wiring and [transaction attempts](system-architecture.md#order-placement-and-transaction-attempts) for completion, retry and locking semantics. The diagram below describes domain ownership and identity relationships, not Java dependency direction or REST payloads.
+
 ## 2. Domain Model Diagram
 
 ```mermaid
@@ -179,7 +187,7 @@ For the approved MVP requirements:
 
 For example, EUR 100.05 yields a rounded discount of EUR 10.01 and a payable total of EUR 90.04; EUR 99.99 receives no discount.
 
-The domain model shows `subtotal`, `discount`, and `total` as observable domain values. Their original results must be preserved. Reads must not apply current pricing rules to historical orders. D6/D8 select explicit original monetary columns using unconstrained NUMERIC; persisted reads preserve original results even after rules change. Compatibility and exact round trips remain unverified.
+The domain model shows `subtotal`, `discount`, and `total` as observable domain values. Their original results must be preserved. Reads must not apply current pricing rules to historical orders. D6/D8 select explicit original monetary columns using unconstrained NUMERIC; persisted reads preserve original results even after rules change. Scoped PostgreSQL round-trip and historical-snapshot evidence is recorded in the [testing strategy](../05-testing/testing-strategy.md); later results remain specific to their tested source snapshot.
 
 ## 7. Aggregate vs. Persistence Model
 
@@ -189,7 +197,7 @@ The domain model shows `subtotal`, `discount`, and `total` as observable domain 
 - Customer, Product, Order and OrderItem use JPA-generated UUIDs, PostgreSQL uuid, and null IDs before persistence. Entities retain reference equality; compare persisted business identity by UUID explicitly.
 - Order.items is lazy one-to-many mapped by OrderItem.order, cascade PERSIST only, orphan removal false. The lazy, mandatory child association owns the non-null order_id FK. Maintain both sides through Order; cross-aggregate references stay scalar UUIDs with restrictive FKs and no deletion cascades.
 - Direct field-access mappings, protected hydration constructors and persistence-package autoApply converters are Accepted. Value objects remain free of JPA annotations; domain has no persistence-package dependency. The original four-table Increment 3 baseline and required constraints/indexes are selected in [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md). CH-002 adds the fifth table, `product_images`, through V3; this extension does not change the historical Increment 3 acceptance or ADR status.
-- Single-order reads use an explicit item fetch plan and materialize within transactions with OSIV disabled. List/pagination fetch details remain deferred. Application transaction ownership follows [ADR-0003](../03-decisions/ADR-0003-application-architecture.md); ADR-0002's detailed locking protocol remains Proposed.
+- Single-order reads use an explicit item fetch plan and materialize within transactions with OSIV disabled. Current get/list reads use explicit item fetch joins through OrderReadAdapter; pagination-specific design remains deferred. Application transaction ownership follows [ADR-0003](../03-decisions/ADR-0003-application-architecture.md); ADR-0002's detailed locking protocol remains Proposed.
 
 ## 8. Responsibilities and Open Design Questions
 
@@ -201,12 +209,12 @@ The domain model shows `subtotal`, `discount`, and `total` as observable domain 
 | Atomic storage, referential integrity, cross-customer email uniqueness enforcement | Persistence boundary |
 | Historical product names/prices/amounts plus current customer details | Order response assembly |
 
-Concurrency is documented separately in [Order Placement Concurrency](../03-decisions/ADR-0001-order-placement-concurrency.md). Its business policy is accepted. [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) describes the Proposed technical transaction and locking strategy; it is not implementation-verified.
+Concurrency is documented separately in [Order Placement Concurrency](../03-decisions/ADR-0001-order-placement-concurrency.md). Its business policy is accepted. [ADR-0002](../03-decisions/ADR-0002-transaction-locking.md) describes the Proposed technical transaction and locking strategy; its complete-record status remains Proposed despite implemented and tested scoped transaction behavior.
 
 Remaining design questions:
 
-1. Concrete SQL column/check declarations must be reviewed against the Accepted schema/PRD; prove converter hydration, unconstrained NUMERIC capacity and Java/PostgreSQL normalization/collation consistency. No runtime evidence exists yet.
-2. List/pagination-specific fetching, production migration execution/privileges and the detailed ADR-0002 protocol remain Open/Proposed for later work.
+1. Preserve the reviewed SQL constraints, converter hydration, unconstrained NUMERIC capacity and normalization behavior; their scoped acceptance evidence is retained in the Increment 3 record and testing strategy. New mapping changes still require separate approval.
+2. Pagination-specific fetching, production migration execution/privileges and unresolved details of the complete ADR-0002 remain Open/Proposed; the current get/list fetch plans and placement attempt implementation are documented in system architecture.
 3. A line can reach EUR 9,999,999,900.00 and multi-product totals can exceed it. No artificial fixed maximum is selected for Order totals; any additional overall order-size restriction requires approval.
 
 UUID identity in the diagram is now Accepted, including OrderItem's private persistence identity and unique (order_id, product_id); it does not introduce an item API field.
@@ -226,7 +234,7 @@ UUID identity in the diagram is now Accepted, including OrderItem's private pers
 
 ## 10. Status and Next Step
 
-Aggregate boundaries, snapshots, names/value objects and D1–D10 persistence selections are Accepted. Increment 3 implementation, concrete DDL review and scoped compatibility tests executed successfully; Increment 3 is Reviewed – Accepted. See the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). Deferred list fetching and production/locking questions remain unresolved. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.
+Aggregate boundaries, snapshots, names/value objects and D1–D10 persistence selections are Accepted. Increment 3 implementation, concrete DDL review and scoped compatibility tests executed successfully; Increment 3 is Reviewed – Accepted. See the [Increment 3 execution record](../04-agentic-coding/prompts/04-domain-model.md#implementation-results--executed-pending-human-review). CH-003 now supplies application ports/adapters around this unchanged model. Current list fetching is implemented; pagination-specific design, production execution and unresolved complete-ADR details retain their recorded status. Consult [ADR-0004](../03-decisions/ADR-0004-persistence-mapping.md) and the [implementation plan](../07-implementation/implementation-plan.md) before implementation; no code is authorized by this document.
 
 ## Increment 4 Product/Customer Version Direction
 

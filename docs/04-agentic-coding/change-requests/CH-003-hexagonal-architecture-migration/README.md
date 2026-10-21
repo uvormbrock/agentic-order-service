@@ -1,5 +1,13 @@
 # CH-003 — Hexagonal Architecture Migration
 
+## Current documentation status — 2026-10-21
+
+The human confirmed migration completion and reported that the latest human-run SonarQube Cloud analysis passed its Quality Gate with no remaining findings. See the [implemented architecture](../../../02-architecture/system-architecture.md#implemented-ports-and-adapters) and [quality status/provenance](../../../05-testing/quality-report.md#current-architecture-and-quality-status--2026-10-21). No Cloud query or new verification was performed for this documentation update. Historical mutation debt and hook activation limits retain their recorded disposition; this statement does not accept surviving mutants or complete ADR-0002.
+
+## Historical final-increment disposition
+
+The following statuses and increment entries retain their execution-time meaning. Earlier BLOCKED/Pending Cloud recommendations are historical, not the current human-reported Cloud result. Human acceptance of this documentation update remains Pending.
+
 **Current increment:** 8 — Final verification and migration-wide acceptance assessment.
 **Authorization:** Explicit human final verification, cumulative independent review, full mutation testing and documentation request; no production remediation.
 **Status:** Targeted test hardening verified: INC8-R1/R2 technically resolved; focused 132 fast + two PostgreSQL, complete fast 779, 88 architecture checks, Spotless and narrow PIT (68 = 63 killed/five survived) passed. Independent review completed. **Recommendation BLOCKED** pending required human-controlled Cloud evidence and historical debt disposition. Initial full-verification evidence below remains historical.

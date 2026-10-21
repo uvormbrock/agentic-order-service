@@ -2,11 +2,13 @@
 
 **Status:** Accepted — Option B, explicitly approved by the human on 2026-10-21.
 **Recorded:** 2026-10-21
-**Authorization:** Human-approved Option B and Increment 0 quality-automation follow-up, 2026-10-21. Architecture acceptance does not authorize Increment 1 or production migration.
+**Authorization at Increment 0:** Human-approved Option B and Increment 0 quality-automation follow-up, 2026-10-21. Architecture acceptance did not itself authorize Increment 1 or production migration.
+
+**Implementation context — 2026-10-21:** The human has since confirmed CH-003 completion. See the [implemented architecture](../02-architecture/system-architecture.md#implemented-ports-and-adapters) for current classes and [migration history](../02-architecture/hexagonal-migration.md) for the subsequent increments. The initial context/enforcement text below records the original migration decision; later accepted scoped contracts follow it. Option B, ADR-0004 and all decision statuses remain unchanged; this documentation update does not accept historical mutation debt or unresolved complete-ADR details.
 
 ## Context and unchanged authority
 
-The current application is a one-module, feature-oriented layered modular monolith. [ADR-0003](ADR-0003-application-architecture.md) accepts application-owned orchestration and narrow feature contracts. [ADR-0004](ADR-0004-persistence-mapping.md) deliberately accepts directly mapped JPA aggregates. [ADR-0005](ADR-0005-technology-stack.md) owns the stack. Full ADR-0002 and ADR-0006 statuses are unchanged; scoped accepted transaction/version directions remain binding. See [transaction conventions](../02-architecture/transaction-locking.md).
+At the initial Increment 0 assessment, the application was a one-module, feature-oriented layered modular monolith. [ADR-0003](ADR-0003-application-architecture.md) accepts application-owned orchestration and narrow feature contracts. [ADR-0004](ADR-0004-persistence-mapping.md) deliberately accepts directly mapped JPA aggregates. [ADR-0005](ADR-0005-technology-stack.md) owns the stack. Full ADR-0002 and ADR-0006 statuses are unchanged; scoped accepted transaction/version directions remain binding. See [transaction conventions](../02-architecture/transaction-locking.md).
 
 The installed [hexagonal skill](../../.codex/skills/hexagonal-architecture/SKILL.md) recommends a framework-independent domain, inward dependencies and incremental port extraction. It supplies guidance, not authority to replace accepted decisions. Initial assessment favored strict separation; the Increment 0 comparison recommended the pragmatic option for the current requirements. The human subsequently explicitly accepted Option B. This records architectural acceptance only; no mapping or production code is changed.
 
@@ -32,7 +34,7 @@ Option A remains an unselected alternative. Any future change to A requires sepa
 
 Follow [target boundaries and increments](../02-architecture/hexagonal-migration.md). Keep Customer, Product and Order features, shared Money and one Maven/Spring deployment. Input ports describe capabilities with immutable transport-neutral data. Output ports belong to consuming application code and express persistence, cross-feature access, image processing/storage or transaction-completion capabilities. Concrete adapters implement them; only composition code selects implementations. Introduce no universal repository/port framework.
 
-Existing api/persistence/storage names can remain semantic adapter packages. application.port.in/out are the selected convention for new capability interfaces; these packages do not exist yet and this does not mandate renaming existing adapters. For the chosen B, domain may depend on Java, domain values and required jakarta.persistence metadata only. This accepted exception does not allow repository calls, SQL or HTTP coupling. ADR-0004 remains valid and is not superseded. Application orchestration must not depend on concrete Spring Data/JDBC/filesystem/ImageIO adapters.
+Existing api/persistence/storage names can remain semantic adapter packages. application.port.in/out are the selected convention for new capability interfaces; these packages did not yet exist at Increment 0 and this does not mandate renaming existing adapters. For the chosen B, domain may depend on Java, domain values and required jakarta.persistence metadata only. This accepted exception does not allow repository calls, SQL or HTTP coupling. ADR-0004 remains valid and is not superseded. Application orchestration must not depend on concrete Spring Data/JDBC/filesystem/ImageIO adapters.
 
 Cross-feature calls use consumer output ports bridged to provider input contracts, returning immutable facts; no entity graphs or foreign repositories. Helpers join the outer transaction. Opposite feature references do not justify recursive calls, constructor cycles or independently committed helpers.
 

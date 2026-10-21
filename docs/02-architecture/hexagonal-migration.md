@@ -1,6 +1,10 @@
-# Hexagonal Migration — Accepted Option B and Increment Proposal
+# Hexagonal Migration — Implemented Option B and Increment History
 
-**Status:** Option B accepted under [ADR-0007](../03-decisions/ADR-0007-hexagonal-architecture-migration.md), 2026-10-21. The sequence below guides separately authorized increments. Increment 1 GET-by-ID is implemented; Increment 2 Product create/update/PATCH deactivation is explicitly authorized. Current [system architecture](system-architecture.md) and ADR-0004 remain authoritative for unmigrated code. Increment 3 Customer, Increment 4 Product image, Increment 5 Order reads and Increment 6 Order placement are explicitly authorized; Increment 7 consolidation is explicitly authorized; Increment 8 remains unauthorized; mappings and behavior remain unchanged.
+**Current status — 2026-10-21:** The human confirmed that CH-003 is complete and the latest human-run SonarQube Cloud Quality Gate passed with no remaining findings. [ADR-0007 Option B](../03-decisions/ADR-0007-hexagonal-architecture-migration.md) is Accepted; ADR-0004 and the existing mappings remain valid. This documentation update awaits human acceptance.
+
+For a new developer, start with the [implemented ports, adapters and transaction diagrams](system-architecture.md#implemented-ports-and-adapters), [domain model](domain-model.md), [architecture tests](../05-testing/hexagonal-architecture-tests.md) and [verification guide](../05-testing/engineering-verification.md). The class-path table in system architecture is the maintained implementation inventory; this page preserves the migration rationale and sequence rather than duplicating that inventory.
+
+**Reading the history:** The increment-specific authorization, stop, legacy-path and Pending statements below describe their recorded stage. Subsequent authorized increments completed those paths. They are not current migration blockers or new approvals. [CH-003 records](../04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/README.md) retain execution evidence; the [quality report](../05-testing/quality-report.md#current-architecture-and-quality-status--2026-10-21) distinguishes the later human-reported Cloud result from historical mutation debt and unverified hook delivery. Migration completion does not silently dispose of surviving mutants or accept complete ADR-0002.
 
 ## Boundaries
 
@@ -30,6 +34,8 @@ flowchart LR
 
 ## Feature integration and transactions
 
+This section records the pre-migration design direction; the implemented annotation/template choices are documented in [system architecture](system-architecture.md#order-placement-and-transaction-attempts).
+
 Order consumes Customer/Product facts through its output ports; a bridge calls each provider's narrow input port. Customer consumes Order reference lookup separately from placement orchestration. No foreign persistence/domain entity access, HTTP calls between features or recursive CRUD chaining. Provider operations join the caller's transaction; MANDATORY participation checks remain where required. Composition must not form constructor cycles.
 
 For ordinary operations, consider transactional input-port decorators around plain services. For Order, freeze an attempt-execution contract that distinguishes committed, confirmed rolled-back and unknown outcomes, including lock-origin failure provenance, before moving infrastructure. Keep retry scheduling outside completed attempts and preserve existing count/delay/budget/classification behavior. Do not substitute REQUIRES_NEW, suspend ambient transactions or treat flush as commit. Preserve post-commit success logging, safe terminal ownership, request correlation and MDC cleanup.
@@ -52,6 +58,8 @@ Option B keeps generated UUIDs, converters, @Version, entity relationships and d
 Reassess the exact file manifest and prerequisites for each increment. Use one feature/use case at a time, not concurrent aggregate rewrites. A compatibility facade may delegate through an existing legacy adapter while its internals await migration; label and bound this transitional path. Do not run dual conflicting JPA mappings for an aggregate. Reversion means restoring the reviewed implementation/wiring, not deleting user data or automatically resetting Git.
 
 ## ArchUnit strategy
+
+Historical activation plan; the [current architecture test guide](../05-testing/hexagonal-architecture-tests.md) describes the completed enforcement.
 
 Keep [ArchitectureComplianceTest](../../src/test/java/com/example/agenticorderservice/architecture/ArchitectureComplianceTest.java) unchanged in Increment 0. Future approved checks distinguish port signatures, implementations, adapters and composition. Application must not access Spring Data/JDBC/filesystem/ImageIO implementations; adapters may depend on their port contracts but not use-case implementations. API invokes input capabilities and exposes DTOs; no managed entities in boundary signatures. For B retain the explicit JPA domain exception; for A remove it only from migrated scopes. Existing value validation remains authoritative; preserve the application-owned normalized-email String boundary.
 

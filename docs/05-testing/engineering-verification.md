@@ -2,6 +2,12 @@
 
 **Authority:** Human-approved CH-003 Increment 0 follow-up, 2026-10-21. [ADR-0007](../03-decisions/ADR-0007-hexagonal-architecture-migration.md) accepts Option B. This workflow does not authorize production migration or human acceptance.
 
+## Reading the commands after migration
+
+CH-003 is complete as confirmed by the human on 2026-10-21. The commands remain available: `make verify-fast` for all fast/ArchUnit/formatting checks, direct `clean verify` for complete non-PIT regression and JaCoCo, and `make verify-full SCOPE=all` when the separate PIT workflow is intended. The increment/final-migration scheduling sections below preserve the approved CH-003 execution policy; they do not require PIT for documentation-only maintenance.
+
+Current production boundaries are documented in [system architecture](../02-architecture/system-architecture.md#implemented-ports-and-adapters). The [quality report](quality-report.md#current-architecture-and-quality-status--2026-10-21) records the later human-reported passing Cloud gate separately from local execution, historical mutation findings and hook activation limits.
+
 ## Existing gate inventory
 
 | Mechanism | Actual configuration and scope |
