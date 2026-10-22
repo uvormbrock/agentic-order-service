@@ -2,6 +2,16 @@
 
 This report separates historical execution results from the stable project overview. The original sections were compiled from existing evidence on 2026-10-17; later dated entries retain their own provenance. No tests, builds, PIT or SonarQube calls were executed for the 2026-10-21 architecture documentation update.
 
+## SonarQube Screenshot and ArchUnit Count — 2026-10-22
+
+The developer supplied a SonarQube Cloud summary screenshot and saved a cropped status view as [sonarqube_2026_10_22.png](../../assets/screenshots/sonarqube_2026_10_22.png). The asset was inspected and embedded unchanged. The full supplied summary identifies branch **main**, source revision **41f9abdd** and a private project. The capture date is 2026-10-22; the relative “15 hours ago” analysis label is not treated as an exact analysis timestamp or analysis ID. No authenticated Cloud query, new scan or badge-token retrieval was performed.
+
+Visible evidence: **Quality Gate Passed** for “Sonar way for Agentic AI” and **AI Code Assurance passed**. The selected **New Code** tab shows **0 new issues, 0 accepted issues, 0 security hotspots, 0 dependency risks, 0.0% duplication and 95.72% coverage**. The screenshot also notes a changed quality profile; this task made no quality-profile or gate change. These are the captured new-code metrics, not independently verified overall-code counts. The developer's earlier report of no remaining findings is retained separately; the unselected Overall Code tab is not inferred to be empty from this image. Cloud new-code coverage and local JaCoCo line/branch coverage have different scopes and are not interchangeable.
+
+Read-only parsing of current `target/surefire-reports/TEST-*.xml` confirmed the developer's **88 ArchUnit test executions across nine architecture suites**: ArchitectureComplianceTest 10; CustomerArchitectureTest 6; HexagonalArchitectureRulesTest 29; HexagonalConsolidationArchitectureTest 11; OrderPlacementArchitectureTest 6; OrderReadArchitectureTest 7; ProductGetArchitectureTest 8; ProductImageArchitectureTest 5; ProductWriteArchitectureTest 6. This total includes rule-fixture checks and parameterized executions; it is not 88 distinct architectural rules or an additional population on top of the fast-suite count. No tests were rerun for this documentation update.
+
+The README now names the implemented **pragmatic hexagonal architecture (ADR-0007 Option B)** explicitly in At a Glance. Modular monolith describes deployment/feature organization; hexagonal describes internal dependencies. Both apply to the current system. The approved aggregate JPA mappings remain deliberate exceptions under ADR-0004/0007.
+
 ## Current Architecture and Quality Status — 2026-10-21
 
 The human confirmed that CH-003's pragmatic hexagonal migration is complete under Accepted ADR-0007 Option B, with ADR-0004 and the approved JPA mappings retained. The [system architecture](../02-architecture/system-architecture.md#implemented-ports-and-adapters) describes the final class paths; the [architecture test guide](hexagonal-architecture-tests.md) describes current enforcement.
@@ -13,6 +23,84 @@ The human confirmed that CH-003's pragmatic hexagonal migration is complete unde
 `make verify-fast` runs all fast tests/ArchUnit and Spotless. Complete non-PIT `clean verify` adds integration tests and JaCoCo reporting. `make verify-full SCOPE=all` additionally invokes the existing PIT workflow; process success is not a mutation-score threshold or acceptance of survivors. See [engineering verification](engineering-verification.md) for exact scope. Native lifecycle delivery remains unverified and the prepared Git hook remains inactive under the [recorded hook inventory](../04-agentic-coding/multi-agent/hooks.md); no activation is inferred from passing tests.
 
 This documentation update requires human acceptance. It records migration completion without changing ADR statuses, granting production readiness or closing historical mutation/deployment decisions.
+
+## Latest Recorded Local Regression — 2026-10-21
+
+The later SonarQube issue-cleanup task ran Java 21 `./mvnw -B -ntp clean verify`, finishing **2026-10-21T20:13:30+02:00** in 1:47 with exit 0. Its source was HEAD `46278837932b9b20940c70597dd696a47206a111` plus the ten test-only cleanup changes; it followed the CH-003 targeted hardening, rather than reusing the earlier 777-test migration run. No production/build inputs changed during cleanup verification.
+
+| Check | Observed result in this full non-PIT run |
+| --- | --- |
+| Surefire | 779 executions, zero failures/errors/skips |
+| Failsafe | 172 executions across 25 suites, zero failures/errors/skips; 160 PostgreSQL-backed and 12 HTTP lifecycle cases |
+| Architecture | 88 executions, included in the 779 fast tests |
+| OpenAPI fast tests | 13 executions, included in the 779; runtime compatibility also runs through Failsafe |
+| JaCoCo lines | 1889/1936 covered = 97.57% |
+| JaCoCo branches | 942/1021 covered = 92.26% |
+| Formatting | Spotless lifecycle check passed |
+| PIT / Cloud analysis | Not executed by this non-PIT verification |
+
+A separate preceding `make verify-fast` passed 779 tests, and clean focused regression passed 62. Those are repeated/subset executions, not extra unique tests added to the full-run totals. The first focused sandbox/non-clean attempt failed on Mockito attachment and stale compiled test classes; clean verification with the required local permissions passed without additional source changes.
+
+Evidence is retained temporarily under `/var/folders/53/qkl7wg6953lc164f335n3skr0000gn/T/sonar-local-7t3y4xk6/`: `full.log`, Surefire/Failsafe XML, `jacoco.xml`, `verification-summary.json`, reviewed cleanup diff and issue analysis. The separate fast archive is `/private/var/folders/53/qkl7wg6953lc164f335n3skr0000gn/T/agentic-verify-fast-vkoawc9_/`. These external artifacts are not durable repository storage; the counts and provenance above are the retained summary.
+
+For the portfolio documentation audit on **2026-10-22**, the archived fast `source-sha256.json` was compared read-only with current HEAD `293360db483b28733c61c05a9f18c1a2fa75d4b8`: **232 build inputs matched, zero mismatches**. Full-run test XML and JaCoCo counters were re-read, without running Maven. This supports reuse of the recorded results for unchanged build inputs, not a new test execution or Cloud result. Earlier full PIT and narrow targeted PIT runs retain their own populations and outcomes in the CH-003 assessment.
+
+## Public Badge Availability — 2026-10-22
+
+Unauthenticated HTTP checks used only public repository/project identifiers and no credentials. GitHub's public repository API confirmed `uvormbrock/agentic-order-service` is public with default branch `main`. The README explicitly selects **develop push events**, matching the recent development evidence, using the [documented workflow badge format](https://docs.github.com/en/actions/how-tos/monitor-workflows/add-a-status-badge):
+
+- `https://github.com/uvormbrock/agentic-order-service/actions/workflows/build.yml/badge.svg?branch=develop&event=push` returned HTTP 200, SVG, **SonarQube - passing**. This is the workflow's configured name and execution result; its `sonar.qualitygate.wait=false` means it is not an independent Quality Gate badge.
+- `https://sonarcloud.io/api/project_badges/measure?project=uvormbrock_agentic-order-service&metric=alert_status` and `https://sonarcloud.io/api/project_badges/ai_code_assurance?project=uvormbrock_agentic-order-service` both returned HTTP 200 SVGs labelled **Project not found**, not valid status badges. Unauthenticated `components/show` returned 404. The project key is confirmed by the existing POM/workflow; public visibility and project-specific AI Code Assurance eligibility could not be established.
+
+The two SonarQube badges are omitted. This access result neither contradicts the human-reported successful analysis nor proves project deletion or a particular visibility setting. Private-project badge URLs can contain access tokens; none was retrieved, created, published or embedded. No visibility, gate, AI-assurance, CI or remote repository setting was changed. Verbose token-free checks are retained in `/tmp/portfolio-readme/badge-checks.json`. No companion React/TypeScript repository URL was found in the existing repository documentation, so none is invented.
+
+## Companion Frontend and Default-Branch Badge — 2026-10-22
+
+After the earlier portfolio check, the developer supplied `https://github.com/uvormbrock/agentic-order-service-ui`. Public GitHub access succeeded. Read-only inspection covered its README, package.json, npm lockfile presence, .env.example, vite.config.ts, application navigation, API client and feature source. This supersedes the earlier absence of a supplied frontend URL; it does not change historical CH-003 approval records.
+
+The frontend documents Node.js 24 and npm, with `dev` invoking Vite. Its server-only `BACKEND_URL` defaults to `http://127.0.0.1:18080`; the development proxy forwards anchored Product/Customer/Order and image paths. Browser API calls use relative paths, avoiding a browser cross-origin API request in the documented local setup. The README uses documented Vite host/port/strictPort flags to select `http://127.0.0.1:5173` explicitly rather than assuming an unconfigured port. No CORS setting or frontend file was changed. Production hosting requires separate same-origin API routing.
+
+Source confirms Admin Product/Customer/Order views and a Customer shopping mode with catalog, cart, checkout, receipt and My Orders. Modes are not authentication; My Orders filters the complete Order response in the browser. At this initial inspection, setup and walkthrough were verified against documentation/configuration/source only; the subsequent live verification is recorded below. No public hosted demo is claimed.
+
+The public backend default branch was rechecked as **main**. Its token-free `build.yml/badge.svg?branch=main&event=push` returned HTTP 200 SVG labelled **SonarQube - passing**. The final README now explicitly displays main, replacing the earlier deliberate develop selection; neither workflow success nor the change of badge branch establishes a fresh Cloud gate result. The unavailable SonarQube badges remain omitted. Public metadata reports no license, and no root LICENSE file was found; selecting a license remains the owner's decision.
+
+## Local Walkthrough Attempt — 2026-10-22
+
+**Current result:** The interactive UI walkthrough passed after the developer restarted backend and Docker; see the successful retry below. Earlier Pending/Unknown entries retain their original execution-time meaning.
+
+The README polish retains the developer-provided `assets/screenshots/products_ui.png`, showing the companion Product catalog; the file was inspected and left unchanged. It is a supplied UI illustration; the earlier failures and later successful live walkthrough have separate evidence below.
+
+The live-check attempt found an existing PostgreSQL demo container reported healthy and an existing Java listener on `127.0.0.1:18080`. A local request to `GET /products` returned **HTTP 503 SERVICE_UNAVAILABLE**. The frontend listener used IPv6 loopback, and opening the documented `http://127.0.0.1:5173` failed with connection refused. The developer interrupted the attempt and directed reuse of the existing screenshot. No successful seed, frontend checkout, receipt or saved-order verification is claimed. **End-to-end walkthrough verification remains Pending**; no “last verified” date was added to the README. No application, database, frontend or network configuration was changed to bypass these conditions.
+
+### Retry after frontend restart — 2026-10-22
+
+The developer restarted Vite and supplied `http://127.0.0.1:5173/`. A fresh interactive browser visit succeeded and the Product catalog displayed eight demo products. Customer management was opened and a single synthetic customer creation was submitted with the name `README Walkthrough 2026-10-22` and an example.test address. Both customer listing and the write timed out; the UI explicitly reported an uncertain write outcome, retained the input and warned that cancellation does not guarantee rollback. The write was not replayed.
+
+After closing the dialog, one read-only customer refresh also timed out, so customer creation could not be confirmed or disproved. A separate direct read-only request to backend `GET /customers` produced no HTTP response within eight seconds (curl exit 28); this demonstrates that the problem is not limited to the browser's development proxy. It does not identify the backend root cause or prove rollback. Screenshot evidence of the write timeout is retained temporarily at `/tmp/readme-final/customer-timeout-2026-10-22.png`.
+
+**Result:** Frontend access and Product catalog verified; Customer creation outcome Unknown; checkout, receipt and saved-order verification Pending because the customer flow could not complete. No seed was rerun against the populated database. No completed-walkthrough date was added to the README, and no application, frontend or database configuration was changed. The supplied Product screenshot remains unchanged.
+
+### Successful retry after backend and Docker restart — 2026-10-22
+
+Earlier checks saw an IPv4 frontend connection failure, then customer reads and a write timing out even after Vite restarted; a direct backend read also timed out. After the developer restarted backend and Docker, the same live UI flow completed without those failures. This demonstrates recovery after the restart, not a diagnosed cause: no evidence establishes whether database connectivity, connection-pool state or another runtime condition caused the original timeouts. No code or configuration correction was needed for the successful retry.
+
+After the developer restarted backend and Docker, a fresh browser session at `http://127.0.0.1:5173/` completed the README UI scenarios against the live backend. Existing seeded data was reused; the seed was not rerun. The initial customer list contained five seeded customers and no prior walkthrough customer, so no uncertain earlier write was blindly replayed.
+
+| Interactive scenario | Observed result |
+| --- | --- |
+| Product catalog and thumbnails | Eight seeded products displayed; existing thumbnails loaded. |
+| Product creation | Created `README Walkthrough Product 2026-10-22` at EUR 12.34; success confirmation and the ninth active catalog entry were visible. |
+| Customer creation | Created `README Walkthrough 2026-10-22` with an example.test email; success confirmation and the sixth active customer entry were visible. |
+| Customer selection and cart | Selected that customer; added two Demo Mouse units at EUR 25.00 and one Demo Desk at EUR 100.00; estimate EUR 150.00. |
+| Checkout and receipt | Confirmed once; UI displayed Order confirmed and authoritative subtotal EUR 150.00, discount EUR 15.00, total EUR 135.00, currency EUR. The cart was cleared. |
+| My Orders | The new order appeared with matching stored item quantities, unit prices and totals. |
+| Independently loaded Admin detail | Opened Admin → Orders → View order; detail showed the same customer, two historical item positions and all matching monetary values. The list contained five orders. |
+
+Confirmed order ID: `659fe09e-3c9c-4332-8094-8b5dbd2223b2`; customer ID: `355bc2d0-c401-4a2a-b0ca-87139eeca2bf`. This is a manual interactive smoke test, not a fresh Maven/PIT/Cloud run or a new clean-install/seed verification. Image upload, deletion and every possible failure path were outside this walkthrough. The prior failures are not erased; their underlying cause was not independently diagnosed.
+
+The README verification date applies to the application/frontend/seed state used for this walkthrough; changes to those inputs require re-verifying the affected flow before refreshing that date. Subsequent README wording/link edits do not represent a new live run.
+
+The created product, customer and order remain in the disposable demo for inspection; no data was deleted. Temporary screenshots: `/tmp/readme-final/successful-order-2026-10-22.png` (My Orders with complete amounts) and `/tmp/readme-final/saved-order-details-2026-10-22.png` (independent detail dialog). The supplied repository Product screenshot remains unchanged. README now contains the dated successful UI-walkthrough note. No production/test/build/frontend configuration, Git publication or remote analysis was changed or executed.
 
 ## Verification Metadata
 
