@@ -2,6 +2,16 @@
 
 This report separates historical execution results from the stable project overview. The original sections were compiled from existing evidence on 2026-10-17; later dated entries retain their own provenance. No tests, builds, PIT or SonarQube calls were executed for the 2026-10-21 architecture documentation update.
 
+## SonarQube Screenshot and ArchUnit Count — 2026-10-22
+
+The developer supplied a SonarQube Cloud summary screenshot and saved a cropped status view as [sonarqube_2026_10_22.png](../../assets/screenshots/sonarqube_2026_10_22.png). The asset was inspected and embedded unchanged. The full supplied summary identifies branch **main**, source revision **41f9abdd** and a private project. The capture date is 2026-10-22; the relative “15 hours ago” analysis label is not treated as an exact analysis timestamp or analysis ID. No authenticated Cloud query, new scan or badge-token retrieval was performed.
+
+Visible evidence: **Quality Gate Passed** for “Sonar way for Agentic AI” and **AI Code Assurance passed**. The selected **New Code** tab shows **0 new issues, 0 accepted issues, 0 security hotspots, 0 dependency risks, 0.0% duplication and 95.72% coverage**. The screenshot also notes a changed quality profile; this task made no quality-profile or gate change. These are the captured new-code metrics, not independently verified overall-code counts. The developer's earlier report of no remaining findings is retained separately; the unselected Overall Code tab is not inferred to be empty from this image. Cloud new-code coverage and local JaCoCo line/branch coverage have different scopes and are not interchangeable.
+
+Read-only parsing of current `target/surefire-reports/TEST-*.xml` confirmed the developer's **88 ArchUnit test executions across nine architecture suites**: ArchitectureComplianceTest 10; CustomerArchitectureTest 6; HexagonalArchitectureRulesTest 29; HexagonalConsolidationArchitectureTest 11; OrderPlacementArchitectureTest 6; OrderReadArchitectureTest 7; ProductGetArchitectureTest 8; ProductImageArchitectureTest 5; ProductWriteArchitectureTest 6. This total includes rule-fixture checks and parameterized executions; it is not 88 distinct architectural rules or an additional population on top of the fast-suite count. No tests were rerun for this documentation update.
+
+The README now names the implemented **pragmatic hexagonal architecture (ADR-0007 Option B)** explicitly in At a Glance. Modular monolith describes deployment/feature organization; hexagonal describes internal dependencies. Both apply to the current system. The approved aggregate JPA mappings remain deliberate exceptions under ADR-0004/0007.
+
 ## Current Architecture and Quality Status — 2026-10-21
 
 The human confirmed that CH-003's pragmatic hexagonal migration is complete under Accepted ADR-0007 Option B, with ADR-0004 and the approved JPA mappings retained. The [system architecture](../02-architecture/system-architecture.md#implemented-ports-and-adapters) describes the final class paths; the [architecture test guide](hexagonal-architecture-tests.md) describes current enforcement.

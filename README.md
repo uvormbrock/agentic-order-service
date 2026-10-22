@@ -17,10 +17,11 @@ The backend owns validation, persistence and monetary calculations. The separate
 | Area | Recorded engineering facts |
 | --- | --- |
 | Stack | Java 21 · Spring Boot 4.1.1 · PostgreSQL 17.11 · Maven Wrapper · Flyway |
-| Architecture | Feature-oriented modular monolith; DDD; Ports & Adapters with approved JPA mappings |
+| Architecture | **Pragmatic hexagonal architecture (Ports & Adapters, ADR-0007 Option B)**; DDD; feature-oriented modular monolith with approved JPA mappings |
 | Local regression | 2026-10-21: **779 fast + 172 integration tests**, zero failures/errors/skips |
-| Architecture / coverage | **88 architecture checks** included in the fast count; **97.57% line / 92.26% branch coverage** in that regression |
-| Cloud gate | Developer-confirmed pass with no findings, 2026-10-21; separate from the CI badge |
+| Architecture tests | **88 ArchUnit test executions across nine suites**, included in the fast count |
+| Coverage | **97.57% line / 92.26% branch coverage** in the recorded local regression |
+| Cloud quality | **Quality Gate and AI Code Assurance passed; 0 new issues, 0 accepted issues** in the supplied main-branch New Code screenshot, captured 2026-10-22 |
 
 [Evidence and source provenance](docs/05-testing/quality-report.md#latest-recorded-local-regression--2026-10-21) distinguish these dated results from historical PIT runs. The CI badge tracks **main**, the public default branch; its workflow uploads analysis without waiting for the Cloud gate.
 
@@ -106,7 +107,7 @@ Stop frontend and backend with Ctrl-C in their terminals, then run `make demo-do
 
 ## Architecture
 
-The service is a **feature-oriented modular monolith**: Customer, Product and Order run in one Spring Boot application with one PostgreSQL database. Domain-Driven Design (DDD) keeps business invariants in aggregate roots (`Customer`, `Product` and `Order`), Order-owned `OrderItem` entities, and immutable value objects such as `Money` and `EmailAddress`.
+The service implements **pragmatic hexagonal architecture (Ports & Adapters)** within a feature-oriented modular monolith: Customer, Product and Order run in one Spring Boot application with one PostgreSQL database. Domain-Driven Design (DDD) keeps business invariants in aggregate roots (`Customer`, `Product` and `Order`), Order-owned `OrderItem` entities, and immutable value objects such as `Money` and `EmailAddress`.
 
 Its **pragmatic hexagonal architecture (Ports & Adapters)** separates application capabilities from delivery and infrastructure. REST controllers are inbound adapters calling application input ports. Use cases implement those ports and depend on application-owned output ports; outbound adapters implement persistence, image processing/storage and transaction capabilities.
 
@@ -144,6 +145,10 @@ The PIT-enabled full workflow can take significantly longer. PIT uses only the f
 
 JaCoCo reports appear at `target/site/jacoco/`; coverage measures execution, not assertion strength. [Formatting and focused test commands](docs/04-agentic-coding/coding-guidelines.md#java-formatting), [test execution conventions](docs/05-testing/testing-strategy.md#running-tests) and the [SonarQube runbook](docs/06-operations/local-development.md#local-sonarqube-cloud-quality-gate) provide deeper instructions. Token-free SonarQube Quality Gate and AI Assurance badges remain unavailable; no private badge tokens are embedded.
 
+![SonarQube Cloud Quality Gate and AI Code Assurance passed, with zero new issues](assets/screenshots/sonarqube_2026_10_22.png)
+
+SonarQube Cloud, captured **2026-10-22**: the selected **New Code** view shows zero new/accepted issues, security hotspots and dependency risks, with 0.0% duplication. Its 95.72% new-code coverage uses a different scope from the local JaCoCo line/branch figures above. [Screenshot provenance and scope](docs/05-testing/quality-report.md#sonarqube-screenshot-and-archunit-count--2026-10-22).
+
 ## Human-Controlled Agentic Development
 
 The developer owns requirements, critical architecture decisions, acceptance, Git operations and deployment. Codex assists with bounded planning and implementation. The main session coordinates requirements/documentation; native implementer, tester and read-only reviewer roles separate production changes, verification and independent architecture review. Scoped maintenance can stay in the main session.
@@ -162,6 +167,6 @@ ADRs and project instructions constrain each increment. CH-003 migrated one capa
 
 ## Project Status
 
-The pragmatic hexagonal migration is complete. Local regression passed with the dated results above, and the developer confirmed a passing Cloud Quality Gate with no findings on 2026-10-21. Historical PIT survivors, uncovered paths and timeouts retain review debt. [ADR-0002](docs/03-decisions/ADR-0002-transaction-locking.md), the transaction and locking strategy, remains Proposed; unresolved deployment, security and operational decisions are tracked in [open items](docs/00-overview/open-items.md).
+The service implements pragmatic hexagonal architecture under ADR-0007 Option B. Local regression passed with the dated results above; the supplied SonarQube Cloud screenshot shows a passing Quality Gate, passing AI Code Assurance and no new issues on main. Historical PIT survivors, uncovered paths and timeouts retain review debt. [ADR-0002](docs/03-decisions/ADR-0002-transaction-locking.md), the transaction and locking strategy, remains Proposed; unresolved deployment, security and operational decisions are tracked in [open items](docs/00-overview/open-items.md).
 
 Production readiness is not established. Neither application provides authentication; image writes require trusted-deployment opt-in (enabled in the isolated demo). Durable image storage, quiescent orphan reconciliation and multi-instance filesystem behavior have deployment limits. See [known limitations](docs/00-overview/open-items.md), [image lifecycle](docs/02-architecture/system-architecture.md#product-image-storage-and-lifecycle--ch-002) and [technology details](docs/02-architecture/technology-stack.md).
