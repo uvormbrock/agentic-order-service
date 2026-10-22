@@ -1,7 +1,7 @@
 # Agentic Order Service
 
 <p align="center">
-  <img src="assets/branding/vormbrock-logo.png" alt="Vormbrock" width="140">
+  <img src="assets/branding/vormbrock-logo.png" alt="Vormbrock" width="200">
 </p>
 
 A Java 21 / Spring Boot backend for customers, products and historical orders, demonstrating **transaction-safe processing, pragmatic hexagonal architecture and human-controlled agentic coding**.
