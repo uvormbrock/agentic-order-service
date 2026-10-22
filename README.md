@@ -1,14 +1,108 @@
-<p align="center">
-  <img src="assets/branding/vormbrock-logo.png" alt="Vormbrock" width="520">
-</p>
-
 # Agentic Order Service
 
-A Java 21 / Spring Boot REST backend demonstrating **agentic software engineering with human-controlled architecture, implementation and quality assurance**.
+<p align="center">
+  <img src="assets/branding/vormbrock-logo.png" alt="Vormbrock" width="140">
+</p>
 
-The application manages customers, products and orders, with a focus on transactional consistency, PostgreSQL concurrency control, bounded retries and observability. It follows a feature-oriented modular monolith architecture.
+A Java 21 / Spring Boot backend for customers, products and historical orders, demonstrating **transaction-safe processing, pragmatic hexagonal architecture and human-controlled agentic coding**.
 
-Developed with OpenAI Codex under explicit human review and acceptance controls, the project serves as a practical engineering demonstration rather than a commercial e-commerce platform. Production deployment readiness has not been established.
+[![CI build and analysis — main](https://github.com/uvormbrock/agentic-order-service/actions/workflows/build.yml/badge.svg?branch=main&event=push)](https://github.com/uvormbrock/agentic-order-service/actions/workflows/build.yml?query=branch%3Amain)
+
+**[Try the Application](#try-the-application)** · **[React/TypeScript frontend](https://github.com/uvormbrock/agentic-order-service-ui)** · [Explore in 5 Minutes](#explore-in-5-minutes)
+
+The backend owns validation, persistence and monetary calculations. The separate **agentic-order-service-ui** repository provides a graphical interface; frontend source is not included here.
+
+## At a Glance
+
+| Area | Recorded engineering facts |
+| --- | --- |
+| Stack | Java 21 · Spring Boot 4.1.1 · PostgreSQL 17.11 · Maven Wrapper · Flyway |
+| Architecture | Feature-oriented modular monolith; DDD; Ports & Adapters with approved JPA mappings |
+| Local regression | 2026-10-21: **779 fast + 172 integration tests**, zero failures/errors/skips |
+| Architecture / coverage | **88 architecture checks** included in the fast count; **97.57% line / 92.26% branch coverage** in that regression |
+| Cloud gate | Developer-confirmed pass with no findings, 2026-10-21; separate from the CI badge |
+
+[Evidence and source provenance](docs/05-testing/quality-report.md#latest-recorded-local-regression--2026-10-21) distinguish these dated results from historical PIT runs. The CI badge tracks **main**, the public default branch; its workflow uploads analysis without waiting for the Cloud gate.
+
+<a id="getting-started"></a>
+<a id="try-the-application-locally"></a>
+
+## Try the Application
+
+Use the companion UI for the normal workflow; curl, Postman and DBeaver are optional. This is a local demo setup, not a public hosted deployment.
+
+**Prerequisites:** Java 21 with `JAVA_HOME` set; Docker Engine/Desktop with Compose v2; Git, Make, Python 3 and curl for backend helpers; **Node.js 24 and npm** for the frontend. Maven is supplied by the wrapper, and PostgreSQL runs in Docker. Keep ports **15432**, **18080** and **5173** free.
+
+### 1. Start PostgreSQL and the backend
+
+In the backend checkout:
+
+```sh
+make demo-setup
+make demo-run
+```
+
+Keep this terminal running and wait for Spring Boot's `Started` message. Setup creates the local demo configuration and isolated PostgreSQL on `127.0.0.1:15432`; `demo-run` packages the backend and starts it at **http://127.0.0.1:18080**, applying Flyway V1–V3 and validating the schema. No manual database credentials or `.env` configuration is needed for this path.
+
+In another backend terminal, seed the empty database once:
+
+```sh
+make demo-seed
+```
+
+This supplies five customers, eight products and four orders. Do not repeat or automatically retry a partial seed. [Dataset details](demo/data/README.md) describe the scenarios.
+
+### 2. Start the separate React frontend
+
+From a parent development directory, in another terminal:
+
+```sh
+git clone https://github.com/uvormbrock/agentic-order-service-ui.git
+cd agentic-order-service-ui
+npm ci
+cp .env.example .env.local
+npm run dev -- --host 127.0.0.1 --port 5173 --strictPort
+```
+
+For an existing frontend checkout, start at `npm ci`; preserve any existing `.env.local` rather than overwriting it. Its server-only setting must point to the backend origin:
+
+```dotenv
+BACKEND_URL=http://127.0.0.1:18080
+```
+
+Open **[http://127.0.0.1:5173](http://127.0.0.1:5173)**; the explicit [Vite CLI options](https://vite.dev/guide/cli.html) fix the host/port and fail if occupied. Vite proxies API requests to the server-only `BACKEND_URL`; restart it after configuration changes and see the [frontend setup guide](https://github.com/uvormbrock/agentic-order-service-ui#run-locally) for environment, CORS and production-routing details.
+
+### 3. Walk through the UI
+
+**Local UI walkthrough last verified: 2026-10-22** — product/customer creation, checkout, receipt, My Orders and independently loaded Admin order details. [Verification record](docs/05-testing/quality-report.md#successful-retry-after-backend-and-docker-restart--2026-10-22).
+
+1. In **Admin → Products**, browse the seeded catalog and thumbnails; create or edit a disposable product. Image upload is a separate action after creation.
+2. Open **Customers** and create an active demo customer with a test email.
+3. Switch to **Customer**, select that customer, add active products to the cart, then choose **Checkout → Confirm order**. The backend returns the authoritative prices, discount and total.
+4. Inspect the receipt and **My Orders**, then switch to **Admin → Orders** to open the saved order details and historical line-item snapshots.
+
+These actions write to the disposable backend. Admin/Customer modes are presentation only, not authentication; My Orders filters the full order list in the browser. The cart is in memory. After an uncertain write result, inspect current data before retrying; the UI does not automatically replay writes. See the [frontend README](https://github.com/uvormbrock/agentic-order-service-ui#run-locally) for its setup and demo boundaries.
+
+![Product catalog in the companion React frontend](assets/screenshots/products_ui.png)
+
+### Optional tools and shutdown
+
+[Swagger UI](http://127.0.0.1:18080/swagger-ui/index.html) is enabled in the demo profile; its write requests modify demo data. The [OpenAPI snapshot](docs/02-architecture/openapi.yaml) and [API maintenance guide](docs/06-operations/api-documentation.md) describe the contract. Optional [logging](docs/06-operations/local-demo.md#application-logs), [DBeaver](docs/06-operations/local-demo.md#view-data-in-dbeaver), [curl examples](docs/06-operations/local-demo-technical.md#rest-examples) and [troubleshooting](docs/06-operations/local-demo.md#troubleshooting) remain in the demo guides.
+
+Stop frontend and backend with Ctrl-C in their terminals, then run `make demo-down` from the backend checkout. The demo database is disposable: teardown loses its data. The optional [persistent development setup](docs/06-operations/local-development.md) has separate configuration and migration safeguards.
+
+## Key Engineering Features
+
+- **Customers and Products:** create, query, update and deactivate; delete only unreferenced customers, with referenced deletion rejected as 409 without mutation. Optimistic `@Version` checks detect conflicting writes.
+- **Product images:** validate JPEG/PNG, generate PNG thumbnails and store immutable filesystem generations separately from PostgreSQL metadata. Stage before the transaction, retire obsolete files after commit and retain candidates on failure.
+- **Orders:** consolidate quantities, capture historical product names/prices and preserve original totals. A subtotal of EUR 100.00 or more receives a 10% discount. Current Customer details enrich stored orders.
+- **Strict contracts and observability:** dedicated DTOs, deterministic validation/errors, generated `X-Request-ID`, scoped MDC and Servlet lifecycle events. OSIV is disabled; responses materialize inside transactions.
+
+**Why Order processing is more than a save:**
+
+- **Lock order:** provider capabilities join one Order-owned READ COMMITTED transaction, locking Customer first and Products in canonical order to protect eligibility and snapshots.
+- **Bounded retries:** at most three fresh attempts, scheduled outside completed transactions, after confirmed rollback, released resources and eligible failure provenance.
+- **Success after commit:** flush is not commit; results and success events follow transaction completion. Uncertain outcomes are never automatically replayed.
 
 ## Architecture
 
@@ -30,251 +124,44 @@ flowchart TB
 
 Solid arrows show compile-time use of a contract or domain type; dotted arrows show implementation of an interface. Thick arrows show runtime dispatch or infrastructure access. At runtime, Spring injects adapter implementations behind output ports; an output port has no dependency on its adapter.
 
-[ADR-0007 Option B](docs/03-decisions/ADR-0007-hexagonal-architecture-migration.md) retains [ADR-0004's direct JPA mappings](docs/03-decisions/ADR-0004-persistence-mapping.md) on the DDD aggregates. This is a deliberate framework coupling, with narrowly approved aggregate-bearing write ports. Cross-feature integration uses capability contracts rather than foreign repositories. ArchUnit checks enforce these boundaries and their explicit exceptions.
+[ADR-0007 Option B](docs/03-decisions/ADR-0007-hexagonal-architecture-migration.md) retains [ADR-0004's direct JPA mappings](docs/03-decisions/ADR-0004-persistence-mapping.md) on the DDD aggregates. Option B avoids a second domain/persistence model and the associated identity, dirty-checking, optimistic-version and historical-snapshot mapping risks for this single-deployment service. The tradeoff is deliberate ORM metadata coupling, with narrowly approved aggregate-bearing write ports. Cross-feature integration uses capability contracts rather than foreign repositories. ArchUnit checks enforce these boundaries and their explicit exceptions.
 
 Start with the [implemented architecture and class paths](docs/02-architecture/system-architecture.md#implemented-ports-and-adapters), [domain model](docs/02-architecture/domain-model.md), [migration history](docs/02-architecture/hexagonal-migration.md) and [architecture test guide](docs/05-testing/hexagonal-architecture-tests.md).
 
-## Try the Application Locally
-
-Start with the isolated, disposable demo to explore the application without accessing the persistent development database.
-
-### Prerequisites
-
-- **Java 21 / JDK 21**, with `JAVA_HOME` set to that installation.
-- **Docker Desktop or a compatible Docker Engine with Compose v2**; Docker must be running.
-- **Git, GNU Make, Python 3 and curl**.
-
-You do **not** need to install PostgreSQL or Maven separately: PostgreSQL runs in Docker and the Maven Wrapper is included. See [platform/tool setup](docs/06-operations/local-demo-technical.md#requirements) and [troubleshooting](docs/06-operations/local-demo.md#troubleshooting) for environment guidance. Keep ports 15432 and 18080 free.
-
-### Step 1 — Start Database and Application
-
-From the repository root, choose **one** startup option in **Terminal 1**.
-
-**Standard startup:**
-
-```sh
-make demo-setup
-make demo-run
-```
-
-**Logging-enabled startup:**
-
-```sh
-make demo-setup
-make demo-run-logged LOG_LEVEL=DEBUG
-```
-
-Both options run in the **foreground**; keep Terminal 1 open and wait for Spring Boot's
-`Started` message. The logged startup sends output to both the console and `logs/demo.log`.
-Without `LOG_LEVEL=DEBUG`, `demo-run-logged` defaults to INFO. DEBUG targets only
-`RequestLoggingListener`, making expected HTTP 409 completion events visible;
-global/framework DEBUG stays disabled. `logs/demo.log` is local runtime output and is not committed.
-
-**Optional Terminal 2 — Follow logs after logging-enabled startup:**
-
-```sh
-make demo-logs
-```
-
-The equivalent direct command is `tail -f logs/demo.log`.
-
-### Step 2 — Load Sample Data
-
-After either startup option succeeds, use another available terminal at the repository
-root (Terminal 3 if Terminal 2 is following logs):
-
-```sh
-make demo-seed
-```
-
-This creates **5 customers, 8 products, 4 orders and 8 order items** through the REST APIs. The [dataset description](demo/data/README.md) explains the discount and historical-price scenarios. Seed only an empty database; do not execute it repeatedly or retry a partial seed automatically. A second run refuses writes rather than duplicating or overwriting data.
-
-After logging-enabled startup, search recorded events from this terminal:
-
-```sh
-grep -E 'CUSTOMER_DELETED|HTTP_REQUEST_COMPLETED' logs/demo.log
-grep -E 'HTTP_REQUEST_COMPLETED.*status=409' logs/demo.log
-```
-
-Match a response's server-generated `X-Request-ID` to the log's `requestId` to correlate
-HTTP and application events. See the [demo logging guide](docs/06-operations/local-demo.md#application-logs)
-for details; rejected deletes have no `CUSTOMER_DELETED` success event.
-
-### Step 3 — Inspect Data with DBeaver
-
-Follow the **[DBeaver connection instructions](docs/06-operations/local-demo.md#view-data-in-dbeaver)** to create a PostgreSQL connection: host `127.0.0.1`, port `15432`, database `agentic_order_demo`, username `demo`, password `demo_only_local`.
-
-Open **Schemas → public → Tables** and choose `customers`, `products`, `orders` or `order_items`, then **View Data → All Rows**. These intentionally insecure credentials are exclusively for the isolated disposable demo, never production or shared environments. Existing legacy installations require the guide's explicit credential-transition steps.
-
-### Step 4 — Try the REST API
-
-Application base URL: **http://localhost:18080**.
-
-```sh
-curl http://localhost:18080/customers
-curl http://localhost:18080/products
-curl http://localhost:18080/orders
-```
-
-Use `127.0.0.1` if `localhost` resolves only to IPv6. See the [detailed REST examples](docs/06-operations/local-demo-technical.md#rest-examples) for order creation, updates and validation responses.
-
-### Step 5 — Stop the Demo
-
-Press **Ctrl-C in Terminal 1** to stop the foreground application while leaving the
-database running. Ctrl-C in Terminal 2 stops only the log follower. To tear down the
-disposable demo infrastructure and discard its data, run:
-
-```sh
-make demo-down
-```
-
-This stops the owned application/container. The database uses disposable storage: stopping or removing its container **loses all demo data**. The persistent development database is unaffected.
-
-For advanced instructions and troubleshooting, see the **[complete Local Demo Guide](docs/06-operations/local-demo.md#quick-start)**.
-
-## API Documentation
-
-Start the application using the [local demo quick start](docs/06-operations/local-demo.md#quick-start), then open [Swagger UI](http://localhost:18080/swagger-ui/index.html) to explore Customers, Products and Orders. **Interactive write requests modify demo data.** Documentation endpoints are disabled outside the demo profile.
-
-The runtime-generated [OpenAPI YAML specification](docs/02-architecture/openapi.yaml) is versioned for review. See [API documentation and maintenance](docs/06-operations/api-documentation.md) for JSON/YAML URLs, snapshot regeneration, drift checks and demo-only exposure details. Integration acceptance remains pending human review.
-
-## Key Engineering Features
-
-- **Customer, Product and Order APIs:** create, query and update customers/products, deactivate products, explicitly deactivate customers and delete only unreferenced customers, and place/retrieve orders. CH-001 Phase 2 implements referenced DELETE/409 without mutation; see the [review evidence](docs/04-agentic-coding/change-requests/CH-001-customer-delete-semantics/03-review.md). Human acceptance is pending.
-- **Strict HTTP contracts:** dedicated request/response DTOs, nested JSON validation, rejected caller-supplied prices and deterministic error codes with safe response messages.
-- **Domain invariants:** immutable monetary values, consolidated order quantities, historical product snapshots and a 10% discount at a subtotal of **EUR 100.00 or above**.
-- **Transactional consistency:** `TransactionTemplate`, READ COMMITTED, ambient-transaction rejection, Customer-first pessimistic locking and deterministically ordered Product locks. Product/Customer writes retain optimistic `@Version` checks.
-- **Conservative retries:** at most three complete attempts; only approved transient failures after confirmed rollback and resource release. Uncertain commit outcomes are never automatically replayed.
-- **Persistence:** directly mapped JPA aggregates, PostgreSQL constraints and versioned Flyway migrations; Open EntityManager in View is disabled.
-- **Observability:** SLF4J application events, generated `X-Request-ID` correlation, scoped MDC handling and synchronous/asynchronous Servlet lifecycle support. Increment 6's remaining acceptance limits are explicit below.
-
-Controllers delegate to application operations. Features expose narrow application contracts instead of accessing another feature's persistence internals; response data is materialized inside transactions.
-
-## Technology Stack
-
-Versions below come from the current build and image configuration. Components marked **Boot-managed** follow Spring Boot dependency management rather than independent version pins.
-
-| Category | Technology | Version / integration |
-| --- | --- | --- |
-| Language | Java | 21 |
-| Backend | Spring Boot | 4.1.1 |
-| HTTP | Spring MVC; Jakarta Bean Validation | Boot-managed |
-| Servlet runtime | Embedded Apache Tomcat | 11.0.26; explicit security override |
-| Database | PostgreSQL | 17.11; official `postgres:17.11-bookworm` |
-| Persistence | Spring Data JPA; Hibernate ORM; HikariCP | Boot-managed |
-| Schema evolution | Flyway with PostgreSQL support | Boot-managed; V1/V2 migrations |
-| JDBC | PostgreSQL JDBC driver | 42.7.14; explicit security override |
-| JSON | Jackson | BOM 3.1.7; explicit security override |
-| Logging | SLF4J; Logback; MDC | SLF4J Boot-managed; Logback 1.6.5 override |
-| Build | Maven Wrapper | Maven 3.9.9; wrapper scripts 3.3.4 |
-| Test framework | JUnit 6; Mockito; AssertJ; Spring Boot Test | Boot-managed |
-| Test execution | Maven Surefire; Maven Failsafe | Boot-managed; `*Test` / `*IT` separation |
-| Database tests | Testcontainers PostgreSQL; Docker Engine | Boot-managed Testcontainers; Docker required |
-| Coverage | JaCoCo | 0.8.15; report generated during `verify` |
-| Mutation testing | PIT Maven; PIT JUnit platform adapter | 1.30.1; `pitest-junit5-plugin` 1.2.3 |
-| Formatting | Spotless; Palantir Java Format | 3.10.4; 2.102.0 |
-| External analysis | SonarQube Cloud; Maven scanner | Scanner 5.8.0.7211 in GitHub Actions |
-
-The PIT adapter's artifact name does not change the project's JUnit 6 runtime. PIT is opt-in; SonarQube analysis is a separate scanner invocation. Neither runs as part of ordinary `./mvnw verify`.
-
 ## Quality Assurance
 
-JUnit 6, Mockito, AssertJ and Spring Boot Test support domain, application and MVC verification. Maven Surefire runs the fast tests; Failsafe runs integration tests, including isolated PostgreSQL databases managed by Testcontainers. JaCoCo measures execution coverage, while separate PIT mutation runs assess whether selected tests detect behavioral changes.
+JUnit 6, Mockito and AssertJ cover domain/application behavior; Spring MVC and OpenAPI tests check HTTP contracts. Testcontainers exercises real PostgreSQL behavior, ArchUnit enforces boundaries, Spotless checks formatting, and JaCoCo reports coverage. GitHub Actions runs `clean verify` and uploads SonarQube Cloud static analysis; `sonar.qualitygate.wait=false` keeps workflow success distinct from the remote gate.
 
-Use `make verify-fast` for the complete fast suite and ArchUnit checks. `make verify-full SCOPE=all` adds complete regression, JaCoCo reporting and the existing PIT workflow; it is a separate, expensive verification step. The non-PIT regression command is:
-
-```sh
-./mvnw -B -ntp clean verify
-```
-
-Spotless / Palantir Java Format checks formatting during the build. SonarQube Cloud provides separately invoked static analysis; it does not run in ordinary Maven verification. CI publishes analysis without waiting for the remote quality gate.
-
-See the [verification guide](docs/05-testing/engineering-verification.md) for command scope, evidence and hook limitations, and the **[Quality Report](docs/05-testing/quality-report.md)** for dated test results, coverage, mutation outcomes, static-analysis evidence and limitations. Results apply to their recorded source snapshot and do not automatically verify later changes or certify production readiness.
-
-## Advanced Development Setup
-
-A [persistent local database setup](docs/06-operations/local-development.md) is optional for developers who specifically need data to survive container shutdown. It is separate from the recommended disposable demo. Existing-database migration approval, target verification, backup and recovery requirements still apply; read the full instructions before startup.
-
-## Running Tests and Quality Checks
-
-### Automated Tests and Regression Verification
+With Java 21 selected:
 
 ```sh
-# Fast Surefire tests: domain, application, configuration and MVC; no Docker.
-./mvnw -B -ntp test
-
-# Complete regression: Surefire, Failsafe, formatting check and coverage report.
-./mvnw -B -ntp clean verify
-
-# Failsafe integration tests independently, after compiling test sources.
-./mvnw -B -ntp test-compile failsafe:integration-test failsafe:verify
-
-# Explicit formatting validation; apply formatting only when intentionally editing.
-./mvnw -B -ntp spotless:check
-./mvnw -B -ntp spotless:apply
+make verify-fast             # Complete fast suite, ArchUnit and Spotless; no Docker/PIT.
+make verify-full             # Full regression, JaCoCo and PIT; defaults to SCOPE=all.
+./mvnw -B -ntp clean verify  # Full non-PIT regression and JaCoCo; Docker required.
 ```
 
-Surefire runs `*Test`; Failsafe runs `*IT`, including PostgreSQL and embedded-Servlet lifecycle tests. PostgreSQL tests require Docker, use isolated Testcontainers databases and do not require local `.env`, a running Compose database or persistent development data. Context teardown stops the containers. Spotless also checks formatting in Maven's `validate` phase.
+The PIT-enabled full workflow can take significantly longer. PIT uses only the fast test suite; PostgreSQL integration tests are excluded, while the JaCoCo figures above come from full regression coverage. **Historical full PIT, 2026-10-21:** 1,050 mutants = 800 killed, 213 survived, 31 uncovered and six timed out; strict kill rate **76.19%**. A later focused run killed two targeted survivors; the full PIT suite was not rerun afterward. No mutation threshold or blanket survivor resolution is claimed. See the [mutation assessment](docs/04-agentic-coding/change-requests/CH-003-hexagonal-architecture-migration/increment-8-mutation-analysis.md), [advanced mutation commands](docs/05-testing/mutation-testing-runbook.md#current-automated-workflow) and [verification guide](docs/05-testing/engineering-verification.md).
 
-`verify` generates JaCoCo HTML at `target/site/jacoco/index.html` and XML at `target/site/jacoco/jacoco.xml`. To regenerate reports from existing execution data:
-
-```sh
-./mvnw -B -ntp jacoco:report
-```
-
-### Automated Mutation Testing
-
-```sh
-make mutation-test SCOPE=order
-make mutation-test SCOPE=product
-make mutation-test SCOPE=customer
-make mutation-test SCOPE=shared
-make mutation-test SCOPE=all
-```
-
-`SCOPE` defaults to `all` and restricts **production mutation targets**. Order targets `order.domain.*`; Product, Customer and Shared target their respective feature packages; All targets `com.example.agenticorderservice.*`.
-
-Every scope selects the project-wide fast `*Test` suite for the baseline and PIT discovery. Cross-feature assertions remain eligible; PIT uses coverage to select tests for individual mutants. **PostgreSQL `*IT` tests are excluded**; persistence mutation testing remains future work.
-
-The Makefile checks Java 21, runs a green baseline and verifies nonempty, failure-free Surefire XML before PIT. It activates `mutation-order` with `DEFAULTS`, one thread and HTML/XML reports. Each execution creates unique evidence under the sibling `agentic-order-service-mutation-evidence` directory, preserving logs, exit codes, selected test counts, Git state, the Makefile copy and checksums. Override the external root with `MUTATION_EVIDENCE_ROOT`.
-
-Mutation testing is separate and potentially expensive. There is no configured numeric mutation-score threshold: Maven success can include survivors. Review meaningful behavioral gaps, retain timeouts separately and preserve prior evidence. See the [automated runbook](docs/05-testing/mutation-testing-runbook.md#current-automated-workflow) and [verified experiments](docs/05-testing/mutation-results/mutation-testing-experiments.md).
-
-### SonarQube Analysis
-
-The existing GitHub Actions workflow invokes the scanner after `clean verify`. For a separately authorized local analysis, configure `SONAR_TOKEN` securely in the environment and set `SONAR_PROJECT_KEY` to the existing project's key from that workflow:
-
-```sh
-./mvnw -B -ntp clean verify \
-  org.sonarsource.scanner.maven:sonar-maven-plugin:5.8.0.7211:sonar \
-  -Dsonar.projectKey="$SONAR_PROJECT_KEY" \
-  -Dsonar.qualitygate.wait=false
-```
-
-This publishes analysis to the external service. It does not wait for the remote quality-gate result, and a clean SonarQube result does not constitute mutation-testing evidence.
+JaCoCo reports appear at `target/site/jacoco/`; coverage measures execution, not assertion strength. [Formatting and focused test commands](docs/04-agentic-coding/coding-guidelines.md#java-formatting), [test execution conventions](docs/05-testing/testing-strategy.md#running-tests) and the [SonarQube runbook](docs/06-operations/local-development.md#local-sonarqube-cloud-quality-gate) provide deeper instructions. Token-free SonarQube Quality Gate and AI Assurance badges remain unavailable; no private badge tokens are embedded.
 
 ## Human-Controlled Agentic Development
 
-Codex assists with scoped implementation, review, testing and documentation. Humans own architecture decisions, approval of implementation scope and final acceptance.
+The developer owns requirements, critical architecture decisions, acceptance, Git operations and deployment. Codex assists with bounded planning and implementation. The main session coordinates requirements/documentation; native implementer, tester and read-only reviewer roles separate production changes, verification and independent architecture review. Scoped maintenance can stay in the main session.
 
-The workflow defines explicit acceptance criteria, bounded review/correction rounds, automated verification and traceable execution evidence. Unavailable gates remain Pending; a passing build does not grant acceptance. Freeze decisions constrain further work, and commit/push authorization remains separate.
+ADRs and project instructions constrain each increment. CH-003 migrated one capability at a time while preserving API, schema and transaction behavior, using structured handoffs, bounded correction rounds, regression/ArchUnit checks, mutation testing and static analysis. Prepared architecture/handoff hooks have script checks; native lifecycle triggering is unverified and the prepared Git hook is inactive. See the [agentic workflow](docs/04-agentic-coding/ai-development-workflow.md), [specialist responsibilities](docs/04-agentic-coding/multi-agent/workflow.md) and [hook inventory](docs/04-agentic-coding/multi-agent/hooks.md).
 
-See [AGENTS.md](AGENTS.md), the [AI development workflow](docs/04-agentic-coding/ai-development-workflow.md) and the [prompt playbook](docs/04-agentic-coding/prompts/00-index.md) for the actual approval history and execution records.
+<a id="architecture-and-further-documentation"></a>
 
-## Architecture and Further Documentation
+## Explore in 5 Minutes
 
-- **Ports, adapters and decisions:** [implemented class paths](docs/02-architecture/system-architecture.md#implemented-ports-and-adapters), [migration history](docs/02-architecture/hexagonal-migration.md), [ADR-0007](docs/03-decisions/ADR-0007-hexagonal-architecture-migration.md), [ADR-0004](docs/03-decisions/ADR-0004-persistence-mapping.md).
-- **Requirements and boundaries:** [PRD](docs/01-requirements/product-requirements.md), [system architecture](docs/02-architecture/system-architecture.md), [domain model](docs/02-architecture/domain-model.md).
-- **Persistence and concurrency:** [transaction/locking conventions](docs/02-architecture/transaction-locking.md), [technology reference](docs/02-architecture/technology-stack.md), [REST design](docs/02-architecture/rest-api-design.md).
-- **Engineering practice:** [Java/Spring guidelines](docs/04-agentic-coding/java-spring-guidelines.md), [persistence guidelines](docs/04-agentic-coding/persistence-guidelines.md), [testing strategy](docs/05-testing/testing-strategy.md), [mutation testing strategy](docs/05-testing/mutation-testing.md).
-- **Progress and decisions:** [implementation plan](docs/07-implementation/implementation-plan.md), [open items](docs/00-overview/open-items.md), [increment execution records](docs/04-agentic-coding/prompts/00-index.md).
+- [ADR-0007: pragmatic hexagonal architecture](docs/03-decisions/ADR-0007-hexagonal-architecture-migration.md)
+- [Quality report: dated results, provenance and remaining debt](docs/05-testing/quality-report.md)
+- [AGENTS.md: scope, agent instructions and human approval boundaries](AGENTS.md)
+- [Companion React/TypeScript frontend](https://github.com/uvormbrock/agentic-order-service-ui)
+- [System architecture: actual class paths and transaction diagrams](docs/02-architecture/system-architecture.md)
 
 ## Project Status
 
-Customer and Product management, Order placement and concurrency handling have been implemented, verified and formally accepted. The CH-003 pragmatic hexagonal migration is complete under accepted ADR-0007 Option B. On 2026-10-21, the human reported a passing latest SonarQube Cloud Quality Gate with no remaining findings; see the [quality report](docs/05-testing/quality-report.md#current-architecture-and-quality-status--2026-10-21) for provenance and remaining historical verification debt.
+The pragmatic hexagonal migration is complete. Local regression passed with the dated results above, and the developer confirmed a passing Cloud Quality Gate with no findings on 2026-10-21. Historical PIT survivors, uncovered paths and timeouts retain review debt. [ADR-0002](docs/03-decisions/ADR-0002-transaction-locking.md), the transaction and locking strategy, remains Proposed; unresolved deployment, security and operational decisions are tracked in [open items](docs/00-overview/open-items.md).
 
-Application observability is functionally stabilized and frozen, with selected acceptance evidence and operational requirements still pending.
-
-The project is intended as an engineering demonstration. Production deployment readiness has not yet been established.
-
-See the [Quality Report](docs/05-testing/quality-report.md), [architecture documentation](docs/02-architecture/system-architecture.md) and [open items](docs/00-overview/open-items.md) for detailed verification evidence, architectural decisions and outstanding work.
+Production readiness is not established. Neither application provides authentication; image writes require trusted-deployment opt-in (enabled in the isolated demo). Durable image storage, quiescent orphan reconciliation and multi-instance filesystem behavior have deployment limits. See [known limitations](docs/00-overview/open-items.md), [image lifecycle](docs/02-architecture/system-architecture.md#product-image-storage-and-lifecycle--ch-002) and [technology details](docs/02-architecture/technology-stack.md).
